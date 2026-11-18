@@ -7,12 +7,14 @@ import {
 } from '@angular/cdk/drag-drop';
 import { TaskStoreService } from './services/task-store.service';
 import {
+  Project,
   Task,
   TaskStatus,
   TaskPriority,
   MethodologyView,
   Subtask,
-  TeamMember
+  TeamMember,
+  TechnicalRole
 } from './models/task.model';
 import { TaskDrawerComponent } from './components/task-drawer.component';
 import { ImportModalComponent } from './components/import-modal.component';
@@ -33,7 +35,6 @@ import { ImportModalComponent } from './components/import-modal.component';
 export class AppComponent {
   protected readonly store = inject(TaskStoreService);
 
-  // Workflow status column definitions
   readonly statusColumns: Array<{
     status: TaskStatus;
     title: string;
@@ -73,11 +74,25 @@ export class AppComponent {
   readonly isNewTaskModalOpen = signal<boolean>(false);
   readonly isSmartImportModalOpen = signal<boolean>(false);
   readonly isActivityDrawerOpen = signal<boolean>(false);
+  readonly isNewProjectModalOpen = signal<boolean>(false);
+  readonly isAddMemberFormOpen = signal<boolean>(false);
+
+  // New Project Form State
+  newProjectName = '';
+  newProjectCode = '';
+  newProjectTeam = 'Core AI Squad';
+  newProjectDesc = '';
+
+  // New Member Form State
+  newMemberName = '';
+  newMemberRole: TechnicalRole = 'Full-Stack Dev';
+  newMemberSquad = 'Core AI Squad';
 
   // New Task Form State
   newTaskTitle = '';
   newTaskDescription = '';
-  newTaskAssigneeId = 'tm-1';
+  newTaskProjectId = '';
+  newTaskAssigneeId = '';
   newTaskPriority: TaskPriority = 'MEDIUM';
   newTaskPhase = 'Phase 2: Serving Engine';
   newTaskSprint = 'Sprint 24.3';
@@ -87,12 +102,10 @@ export class AppComponent {
   newTaskDeployedUrl = '';
   newTaskInitialSubtasks = '';
 
-  // Sidebar controls
   toggleSidebar(): void {
     this.isSidebarCollapsed.update((v: boolean) => !v);
   }
 
-  // Switch Methodology View
   switchView(view: MethodologyView): void {
     this.store.currentView.set(view);
   }
@@ -144,6 +157,52 @@ export class AppComponent {
     );
   }
 
+  // Project Switcher
+  selectProject(projectId: string): void {
+    this.store.selectProject(projectId);
+  }
+
+  openNewProjectModal(): void {
+    this.newProjectName = '';
+    this.newProjectCode = '';
+    this.newProjectTeam = 'Core AI Squad';
+    this.newProjectDesc = '';
+    this.isNewProjectModalOpen.set(true);
+  }
+
+  closeNewProjectModal(): void {
+    this.isNewProjectModalOpen.set(false);
+  }
+
+  submitNewProject(): void {
+    if (!this.newProjectName.trim() || !this.newProjectCode.trim()) return;
+    this.store.addProject(
+      this.newProjectName,
+      this.newProjectCode,
+      this.newProjectTeam,
+      this.newProjectDesc
+    );
+    this.closeNewProjectModal();
+  }
+
+  // Add Member Inline Form
+  toggleAddMemberForm(): void {
+    this.isAddMemberFormOpen.update(v => !v);
+    this.newMemberName = '';
+    this.newMemberRole = 'Full-Stack Dev';
+    this.newMemberSquad = 'Core AI Squad';
+  }
+
+  submitNewMember(): void {
+    if (!this.newMemberName.trim()) return;
+    this.store.addTeamMember(
+      this.newMemberName,
+      this.newMemberRole,
+      this.newMemberSquad
+    );
+    this.isAddMemberFormOpen.set(false);
+  }
+
   // Task selection & detail drawer
   openTask(taskId: string): void {
     this.store.selectTask(taskId);
@@ -153,7 +212,9 @@ export class AppComponent {
   openNewTaskModal(): void {
     this.newTaskTitle = '';
     this.newTaskDescription = '';
-    this.newTaskAssigneeId = this.store.teamMembers()[0].id;
+    const activeP = this.store.selectedProjectId();
+    this.newTaskProjectId = activeP !== 'ALL' ? activeP : (this.store.projects()[0]?.id || 'proj-1');
+    this.newTaskAssigneeId = this.store.teamMembers()[0]?.id || 'tm-1';
     this.newTaskPriority = 'MEDIUM';
     this.newTaskPhase = 'Phase 2: Serving Engine';
     this.newTaskSprint = 'Sprint 24.3';
@@ -185,6 +246,7 @@ export class AppComponent {
       }));
 
     this.store.createTask({
+      projectId: this.newTaskProjectId,
       title: this.newTaskTitle.trim(),
       description: this.newTaskDescription.trim(),
       assigneeId: this.newTaskAssigneeId,
@@ -217,6 +279,11 @@ export class AppComponent {
 
   closeActivityDrawer(): void {
     this.isActivityDrawerOpen.set(false);
+  }
+
+  // Project Code helper
+  getProject(projectId: string): Project | undefined {
+    return this.store.projectMap().get(projectId);
   }
 
   // Assignee helper for cards

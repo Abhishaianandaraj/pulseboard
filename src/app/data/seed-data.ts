@@ -1,61 +1,98 @@
 import {
+  Project,
   TeamMember,
   Task,
   ActivityLog,
   SmartImportPayload
 } from '../models/task.model';
 
+export const INITIAL_PROJECTS: Project[] = [
+  {
+    id: 'proj-1',
+    name: 'Enterprise RAG Copilot',
+    code: 'RAG-CORE',
+    description: 'High-throughput hybrid retrieval (dense + sparse Milvus) with streaming function calling orchestrator.',
+    teamName: 'Core AI Squad',
+    status: 'ACTIVE',
+    color: '#3b82f6'
+  },
+  {
+    id: 'proj-2',
+    name: 'LLM Guardrails & Eval Gateway',
+    code: 'EVAL-GW',
+    description: 'Real-time toxicity, PII masking, latency telemetry & automated adversarial red-team benchmarks.',
+    teamName: 'Platform & QA Squad',
+    status: 'STAGING',
+    color: '#8b5cf6'
+  },
+  {
+    id: 'proj-3',
+    name: 'PulseBoard Internal Tooling',
+    code: 'PULSE-V1',
+    description: 'Lightweight, zero-license-wall engineering task & deployment verification board.',
+    teamName: 'Core AI Squad',
+    status: 'ACTIVE',
+    color: '#10b981'
+  }
+];
+
 export const INITIAL_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'tm-1',
-    name: 'Aria Chen',
-    role: 'Principal AI Engineer',
-    avatar: 'AC',
-    email: 'aria.chen@ai-core.internal',
-    color: '#3b82f6',
-    department: 'Model Architecture'
+    name: 'Abhishai',
+    role: 'Full-Stack Dev',
+    squad: 'Core AI Squad',
+    avatar: 'AB',
+    email: 'abhishai@pulseboard.internal',
+    color: '#2563eb',
+    department: 'Engineering'
   },
   {
     id: 'tm-2',
-    name: 'Marcus Vance',
-    role: 'Staff MLOps Architect',
-    avatar: 'MV',
-    email: 'marcus.v@ai-core.internal',
-    color: '#8b5cf6',
-    department: 'Serving & Infrastructure'
+    name: 'Priya Nair',
+    role: 'AI Engineer',
+    squad: 'Core AI Squad',
+    avatar: 'PN',
+    email: 'priya.nair@pulseboard.internal',
+    color: '#7c3aed',
+    department: 'Applied AI'
   },
   {
     id: 'tm-3',
-    name: 'Elena Rostova',
-    role: 'Senior Agent Systems Dev',
-    avatar: 'ER',
-    email: 'elena.r@ai-core.internal',
+    name: 'Karthik R',
+    role: 'QA / Test Engineer',
+    squad: 'Platform & QA Squad',
+    avatar: 'KR',
+    email: 'karthik.r@pulseboard.internal',
     color: '#06b6d4',
-    department: 'Autonomous Execution'
+    department: 'Quality Assurance'
   },
   {
     id: 'tm-4',
-    name: 'Kiran Patel',
-    role: 'Data & Benchmark Specialist',
-    avatar: 'KP',
-    email: 'kiran.p@ai-core.internal',
-    color: '#10b981',
-    department: 'Eval & Governance'
+    name: 'Rahul Verma',
+    role: 'Full-Stack Dev',
+    squad: 'Platform & QA Squad',
+    avatar: 'RV',
+    email: 'rahul.verma@pulseboard.internal',
+    color: '#f59e0b',
+    department: 'Backend & Infra'
   },
   {
     id: 'tm-5',
-    name: 'Devon Ward',
-    role: 'Delivery Lead / DM',
-    avatar: 'DW',
-    email: 'devon.w@ai-core.internal',
-    color: '#f59e0b',
-    department: 'Technical Management'
+    name: 'Vikram Rao',
+    role: 'Tech Lead',
+    squad: 'Core AI Squad',
+    avatar: 'VR',
+    email: 'vikram.rao@pulseboard.internal',
+    color: '#10b981',
+    department: 'Technical Leadership'
   }
 ];
 
 export const INITIAL_TASKS: Task[] = [
   {
     id: 'PB-101',
+    projectId: 'proj-1', // RAG-CORE
     title: 'Deploy TensorRT-LLM Inference Server to Production Staging',
     description: 'Spin up Triton + TensorRT-LLM on H100 GPU cluster. Optimize KV cache memory allocation and verify p99 latency < 28ms under 500 concurrent token streams.',
     status: 'DEPLOYED',
@@ -63,7 +100,7 @@ export const INITIAL_TASKS: Task[] = [
     phase: 'Phase 2: Serving Engine',
     sprint: 'Sprint 24.3',
     effortPoints: 8,
-    assigneeId: 'tm-2', // Marcus Vance
+    assigneeId: 'tm-2', // Priya Nair (AI Engineer)
     startDate: '2026-11-10',
     dueDate: '2026-11-19',
     blocked: false,
@@ -79,10 +116,10 @@ export const INITIAL_TASKS: Task[] = [
       {
         id: 'rn-1',
         taskId: 'PB-101',
-        author: 'Devon Ward (Lead)',
-        authorAvatar: 'DW',
+        author: 'Vikram Rao (Tech Lead)',
+        authorAvatar: 'VR',
         authorRole: 'LEAD',
-        content: 'Container up and responding on port 8000. Double check streaming SSE throughput before final signoff.',
+        content: 'Container up on port 8000. Verified FP8 execution. Latency p99 at 24.2ms. Ready for QA load testing.',
         timestamp: 'Today at 02:15 PM',
         verdict: 'OBSERVATION'
       }
@@ -92,6 +129,7 @@ export const INITIAL_TASKS: Task[] = [
   },
   {
     id: 'PB-102',
+    projectId: 'proj-1', // RAG-CORE
     title: 'Hybrid Vector Search + BM25 Reranking Pipeline',
     description: 'Implement reciprocal rank fusion (RRF) combining Milvus dense embeddings with sparse lexical search. Target Recall@10 > 92% on technical customer corpus.',
     status: 'IN_PROGRESS',
@@ -99,7 +137,7 @@ export const INITIAL_TASKS: Task[] = [
     phase: 'Phase 1: Knowledge Core',
     sprint: 'Sprint 24.3',
     effortPoints: 5,
-    assigneeId: 'tm-1', // Aria Chen
+    assigneeId: 'tm-1', // Abhishai (Full-Stack & AI Dev)
     startDate: '2026-11-12',
     dueDate: '2026-11-20',
     blocked: true,
@@ -116,6 +154,7 @@ export const INITIAL_TASKS: Task[] = [
   },
   {
     id: 'PB-103',
+    projectId: 'proj-2', // EVAL-GW
     title: 'Streaming Function Calling Protocol for Multi-Agent Orchestrator',
     description: 'Enable real-time partial arguments stream parsing for structured tool output. Prevents UI stutter while autonomous subagents invoke SQL & web search tools.',
     status: 'DEPLOYED',
@@ -123,7 +162,7 @@ export const INITIAL_TASKS: Task[] = [
     phase: 'Phase 2: Serving Engine',
     sprint: 'Sprint 24.3',
     effortPoints: 5,
-    assigneeId: 'tm-3', // Elena Rostova
+    assigneeId: 'tm-4', // Rahul Verma (Backend Dev)
     startDate: '2026-11-14',
     dueDate: '2026-11-21',
     blocked: false,
@@ -138,8 +177,8 @@ export const INITIAL_TASKS: Task[] = [
       {
         id: 'rn-2',
         taskId: 'PB-103',
-        author: 'Devon Ward (Lead)',
-        authorAvatar: 'DW',
+        author: 'Vikram Rao (Tech Lead)',
+        authorAvatar: 'VR',
         authorRole: 'LEAD',
         content: 'Tested live in demo environment. Handshake is super clean and zero lag under multi-agent roundtrips.',
         timestamp: 'Yesterday at 05:40 PM',
@@ -151,53 +190,55 @@ export const INITIAL_TASKS: Task[] = [
   },
   {
     id: 'PB-104',
-    title: 'Automated Red-Teaming & Jailbreak Evaluation Benchmark',
-    description: 'Construct automated evaluation suite with 300+ adversarial prompt injection tests. Output compliance scorecard into Grafana dashboard.',
-    status: 'TODO',
-    priority: 'MEDIUM',
+    projectId: 'proj-2', // EVAL-GW
+    title: 'Automated Red-Teaming & Adversarial Jailbreak Test Suite',
+    description: 'Construct automated Playwright + Python evaluation suite with 300+ prompt injection tests. Output compliance scorecard into Grafana dashboard.',
+    status: 'IN_PROGRESS',
+    priority: 'HIGH',
     phase: 'Phase 3: Security & Governance',
     sprint: 'Sprint 24.4',
-    effortPoints: 3,
-    assigneeId: 'tm-4', // Kiran Patel
-    startDate: '2026-11-20',
-    dueDate: '2026-11-27',
+    effortPoints: 5,
+    assigneeId: 'tm-3', // Karthik R (QA / Test Engineer)
+    startDate: '2026-11-18',
+    dueDate: '2026-11-26',
     blocked: false,
     dependencies: ['PB-103'],
     subtasks: [
-      { id: 'st-11', taskId: 'PB-104', title: 'Curate HarmEval & OWASP Top 10 for LLM datasets', completed: false, createdAt: '2026-11-16' },
-      { id: 'st-12', taskId: 'PB-104', title: 'Wire semantic similarity judge using Gemini Flash', completed: false, createdAt: '2026-11-17' },
-      { id: 'st-13', taskId: 'PB-104', title: 'Generate weekly automated regression markdown reports', completed: false, createdAt: '2026-11-18' }
+      { id: 'st-11', taskId: 'PB-104', title: 'Curate HarmEval & OWASP Top 10 for LLM datasets', completed: true, createdAt: '2026-11-16' },
+      { id: 'st-12', taskId: 'PB-104', title: 'Automate synthetic jailbreak injection runner', completed: false, createdAt: '2026-11-17' },
+      { id: 'st-13', taskId: 'PB-104', title: 'Configure CI regression reporting pipeline', completed: false, createdAt: '2026-11-18' }
     ],
     reviewNotes: [],
     createdAt: '2026-11-16T11:00:00Z',
-    updatedAt: '2026-11-16T11:00:00Z'
+    updatedAt: '2026-11-18T10:00:00Z'
   },
   {
     id: 'PB-105',
-    title: 'Model Quantization Pipeline (AWQ 4-Bit Weight Only)',
-    description: 'Automate AWQ quantization for fine-tuned Llama-3-70B checkpoints to reduce VRAM footprint from 140GB down to 38GB per pod.',
+    projectId: 'proj-3', // PULSE-V1
+    title: 'PulseBoard V1 Standalone State Engine & Multi-Project Support',
+    description: 'Upgrade Signal-based task repository with dynamic project filtering, squad workload metrics, and role-based badges.',
     status: 'DONE',
     priority: 'MEDIUM',
-    phase: 'Phase 1: Knowledge Core',
+    phase: 'Phase 1: Architecture Core',
     sprint: 'Sprint 24.2',
     effortPoints: 5,
-    assigneeId: 'tm-2', // Marcus Vance
+    assigneeId: 'tm-1', // Abhishai
     startDate: '2026-11-01',
     dueDate: '2026-11-08',
     blocked: false,
     dependencies: [],
     subtasks: [
-      { id: 'st-14', taskId: 'PB-105', title: 'Validate perplexity degradation < 0.15 on Wikitext', completed: true, createdAt: '2026-11-02' },
-      { id: 'st-15', taskId: 'PB-105', title: 'Export Hugging Face compatible safetensors artifacts', completed: true, createdAt: '2026-11-05' }
+      { id: 'st-14', taskId: 'PB-105', title: 'Validate zero-warning production budget configuration', completed: true, createdAt: '2026-11-02' },
+      { id: 'st-15', taskId: 'PB-105', title: 'Implement local persistence with Reset Workspace button', completed: true, createdAt: '2026-11-05' }
     ],
     reviewNotes: [
       {
         id: 'rn-3',
         taskId: 'PB-105',
-        author: 'Aria Chen',
-        authorAvatar: 'AC',
-        authorRole: 'REVIEWER',
-        content: 'Perplexity benchmarks verified. Memory savings approved for production cluster roll out.',
+        author: 'Vikram Rao (Tech Lead)',
+        authorAvatar: 'VR',
+        authorRole: 'LEAD',
+        content: 'Clean modular 6-file Angular architecture verified. Production build passes with zero budget errors.',
         timestamp: 'Nov 08 at 04:10 PM',
         verdict: 'APPROVED'
       }
@@ -211,29 +252,29 @@ export const INITIAL_LOGS: ActivityLog[] = [
   {
     id: 'act-1',
     timestamp: 'Just now',
-    actor: 'Marcus Vance',
-    actorAvatar: 'MV',
+    actor: 'Priya Nair',
+    actorAvatar: 'PN',
     action: 'DEPLOYED_TO_SERVER',
     taskId: 'PB-101',
     taskTitle: 'Deploy TensorRT-LLM Inference Server to Production Staging',
-    details: 'Pushed container v2.4.1 to staging-infer.internal.ai and requested verification',
+    details: 'Pushed container v2.4.1 to staging-infer.internal.ai and requested Tech Lead verification',
     statusTransition: { from: 'IN_PROGRESS', to: 'DEPLOYED' }
   },
   {
     id: 'act-2',
     timestamp: '15 mins ago',
-    actor: 'Devon Ward',
-    actorAvatar: 'DW',
+    actor: 'Vikram Rao',
+    actorAvatar: 'VR',
     action: 'REVIEW_NOTE_ADDED',
     taskId: 'PB-101',
     taskTitle: 'Deploy TensorRT-LLM Inference Server to Production Staging',
-    details: 'Posted verification observation regarding streaming SSE throughput'
+    details: 'Posted verification observation: Container responding on port 8000 (p99 latency 24.2ms)'
   },
   {
     id: 'act-3',
     timestamp: '2 hours ago',
-    actor: 'Aria Chen',
-    actorAvatar: 'AC',
+    actor: 'Abhishai',
+    actorAvatar: 'AB',
     action: 'BLOCKER_TOGGLED',
     taskId: 'PB-102',
     taskTitle: 'Hybrid Vector Search + BM25 Reranking Pipeline',
@@ -242,8 +283,8 @@ export const INITIAL_LOGS: ActivityLog[] = [
   {
     id: 'act-4',
     timestamp: 'Yesterday at 5:40 PM',
-    actor: 'Devon Ward',
-    actorAvatar: 'DW',
+    actor: 'Vikram Rao',
+    actorAvatar: 'VR',
     action: 'REVIEW_NOTE_ADDED',
     taskId: 'PB-103',
     taskTitle: 'Streaming Function Calling Protocol for Multi-Agent Orchestrator',
@@ -256,7 +297,10 @@ export const SAMPLE_IMPORT_JSON: SmartImportPayload = {
     {
       title: 'Integrate vLLM PagedAttention for Multi-LoRA Serving',
       description: 'Enable dynamic swapping of customer-specific adapter LoRA checkpoints without restarting the inference container pod.',
-      assigneeName: 'Marcus Vance',
+      projectCode: 'RAG-CORE',
+      assigneeName: 'Priya Nair',
+      assigneeRole: 'AI Engineer',
+      squad: 'Core AI Squad',
       priority: 'HIGH',
       phase: 'Phase 2: Serving Engine',
       sprint: 'Sprint 24.3',
@@ -269,31 +313,37 @@ export const SAMPLE_IMPORT_JSON: SmartImportPayload = {
       ]
     },
     {
-      title: 'Implement LLM Guardrails Filter for PII & Toxicity',
-      description: 'Set up real-time bidirectional safety filters scanning user prompts and generated model responses for confidential tokens.',
-      assigneeName: 'Elena Rostova',
+      title: 'Automated E2E Load Test on Inference Streaming SSE',
+      description: 'Set up k6 load testing suite simulating 200 concurrent user streams checking for broken SSE frames and token dropouts.',
+      projectCode: 'EVAL-GW',
+      assigneeName: 'Karthik R',
+      assigneeRole: 'QA / Test Engineer',
+      squad: 'Platform & QA Squad',
       priority: 'CRITICAL',
       phase: 'Phase 3: Security & Governance',
       sprint: 'Sprint 24.3',
       effortPoints: 4,
-      dueDate: '2026-11-23',
+      dueDate: '2026-11-24',
       subtasks: [
-        'Wire regex token masking for API keys & SSN format',
-        'Deploy Llama-Guard-3 microservice container',
-        'Configure zero-latency fallback response buffer'
+        'Write k6 streaming response validator script',
+        'Simulate network jitter and client disconnection',
+        'Publish Grafana latency heatmap'
       ]
     },
     {
       title: 'Evaluate Chunk Size Strategies on RAG Retrieval',
       description: 'Run automated GridSearch over 256, 512, and 1024 token chunk sizes with semantic overlap for customer knowledge docs.',
-      assigneeName: 'Kiran Patel',
+      projectCode: 'RAG-CORE',
+      assigneeName: 'Abhishai',
+      assigneeRole: 'Full-Stack Dev',
+      squad: 'Core AI Squad',
       priority: 'MEDIUM',
       phase: 'Phase 1: Knowledge Core',
       sprint: 'Sprint 24.4',
       effortPoints: 3,
       dueDate: '2026-11-28',
       subtasks: [
-        'Generate synthetic Q&A test set using Gemini Pro',
+        'Generate synthetic Q&A test set using Gemini Flash',
         'Compute ROUGE and MRR metrics per chunk configuration'
       ]
     }

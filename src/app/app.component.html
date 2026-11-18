@@ -6,7 +6,7 @@
         <div class="brand-avatar">⚡</div>
         <div class="brand-meta">
           <span class="brand-name">PulseBoard</span>
-          <span class="brand-version">V1 Commercial</span>
+          <span class="brand-version">Multi-Project V1</span>
         </div>
       </div>
       <button type="button" class="btn-sidebar-toggle" (click)="toggleSidebar()" title="Toggle Sidebar">
@@ -26,7 +26,7 @@
         >
           <span class="nav-icon">▦</span>
           <span class="nav-text">Kanban Board</span>
-          <span class="nav-badge">{{ store.tasks().length }}</span>
+          <span class="nav-badge">{{ store.filteredTasks().length }}</span>
         </button>
 
         <button
@@ -53,19 +53,60 @@
       </nav>
     </div>
 
-    <!-- Team Workload Filters -->
+    <!-- Team & Squad Workload Filters -->
     <div class="sidebar-section">
       <div class="section-header-flex">
-        <span class="section-label">TEAM WORKLOAD</span>
-        <button
-          type="button"
-          class="btn-reset-member"
-          *ngIf="store.filterAssigneeId() !== 'ALL'"
-          (click)="setAssigneeFilter('ALL')"
-        >
-          Reset
-        </button>
+        <span class="section-label">TEAM & SQUADS</span>
+        <div class="section-header-actions">
+          <button
+            type="button"
+            class="btn-mini-add"
+            (click)="toggleAddMemberForm()"
+            title="Add Team Member"
+          >
+            + Member
+          </button>
+          <button
+            type="button"
+            class="btn-reset-member"
+            *ngIf="store.filterAssigneeId() !== 'ALL'"
+            (click)="setAssigneeFilter('ALL')"
+          >
+            Reset
+          </button>
+        </div>
       </div>
+
+      <!-- Quick Inline Add Member Form -->
+      @if (isAddMemberFormOpen()) {
+        <div class="inline-add-member-form">
+          <input
+            type="text"
+            class="mini-input"
+            placeholder="Engineer Name..."
+            [(ngModel)]="newMemberName"
+            (keyup.enter)="submitNewMember()"
+          />
+          <div class="mini-form-row">
+            <select class="mini-select" [(ngModel)]="newMemberRole">
+              <option value="Full-Stack Dev">Full-Stack Dev</option>
+              <option value="AI Engineer">AI Engineer</option>
+              <option value="QA / Test Engineer">QA / Test Engineer</option>
+              <option value="Tech Lead">Tech Lead</option>
+              <option value="Delivery Manager">Delivery Manager</option>
+            </select>
+            <select class="mini-select" [(ngModel)]="newMemberSquad">
+              <option value="Core AI Squad">Core AI Squad</option>
+              <option value="Platform & QA Squad">Platform & QA Squad</option>
+            </select>
+          </div>
+          <div class="mini-form-buttons">
+            <button type="button" class="btn-mini-cancel" (click)="toggleAddMemberForm()">Cancel</button>
+            <button type="button" class="btn-mini-save" [disabled]="!newMemberName.trim()" (click)="submitNewMember()">Add</button>
+          </div>
+        </div>
+      }
+
       <div class="team-list custom-scroll">
         @for (member of store.teamMembers(); track member.id) {
           <button
@@ -78,8 +119,13 @@
               <span class="member-avatar" [style.background-color]="member.color">{{ member.avatar }}</span>
             </div>
             <div class="member-info">
-              <span class="member-name">{{ member.name }}</span>
-              <span class="member-role">{{ member.role.split(' ')[0] }}</span>
+              <div class="member-name-row">
+                <span class="member-name">{{ member.name }}</span>
+                <span class="role-badge" [attr.data-role]="store.getRoleCategory(member.role)">
+                  {{ store.getRoleCategory(member.role) }}
+                </span>
+              </div>
+              <span class="member-squad-text">{{ member.squad }}</span>
             </div>
             <span class="workload-pill" [class.zero-load]="(store.memberWorkloadMap().get(member.id) || 0) === 0">
               {{ store.memberWorkloadMap().get(member.id) || 0 }}
@@ -111,6 +157,39 @@
 
   <!-- MAIN WORKSPACE CONTAINER -->
   <div class="workspace-area">
+    <!-- PROJECT SWITCHER BAR (Workspace Scope) -->
+    <div class="project-switcher-bar">
+      <div class="project-tabs-scroll custom-scroll">
+        <button
+          type="button"
+          class="project-tab"
+          [class.active]="store.selectedProjectId() === 'ALL'"
+          (click)="selectProject('ALL')"
+        >
+          <span class="proj-icon">🌐</span>
+          <span class="proj-name">All Projects</span>
+          <span class="proj-badge">{{ store.tasks().length }}</span>
+        </button>
+
+        @for (proj of store.projects(); track proj.id) {
+          <button
+            type="button"
+            class="project-tab"
+            [class.active]="store.selectedProjectId() === proj.id"
+            (click)="selectProject(proj.id)"
+          >
+            <span class="proj-code-chip" [style.color]="proj.color">{{ proj.code }}</span>
+            <span class="proj-name">{{ proj.name }}</span>
+            <span class="proj-squad-tag">{{ proj.teamName }}</span>
+          </button>
+        }
+      </div>
+
+      <button type="button" class="btn-add-project" (click)="openNewProjectModal()" title="Create New Project Workspace">
+        + Project
+      </button>
+    </div>
+
     <!-- TOP COMMAND BAR -->
     <header class="top-command-bar">
       <!-- Search Box -->
@@ -182,7 +261,7 @@
       </div>
     </header>
 
-    <!-- LEAD RADAR KPI STRIP (4 Compact High-Craft Cards) -->
+    <!-- LEAD RADAR KPI STRIP (4 Compact High-Craft Cards scoped to Project) -->
     <section class="lead-radar-kpi-strip">
       <!-- Card 1: Completion Progress -->
       <div class="kpi-card">
@@ -254,7 +333,7 @@
                 <span
                   class="member-badge-circle"
                   [style.background-color]="member.color"
-                  [title]="member.name + ' (' + member.role + ') has 0 active tasks'"
+                  [title]="member.name + ' (' + member.role + ' - ' + member.squad + ') has 0 active tasks'"
                 >
                   {{ member.avatar }}
                 </span>
@@ -331,9 +410,14 @@
                     <div class="card-priority-accent" [attr.data-priority]="task.priority"></div>
 
                     <div class="card-inner">
-                      <!-- Meta Top: ID, Phase & Priority -->
+                      <!-- Meta Top: ID, Project Code, Phase & Priority -->
                       <div class="card-meta-top">
-                        <span class="card-task-id">{{ task.id }}</span>
+                        <div class="card-meta-left">
+                          <span class="card-task-id">{{ task.id }}</span>
+                          @if (getProject(task.projectId); as proj) {
+                            <span class="card-project-pill" [style.color]="proj.color">{{ proj.code }}</span>
+                          }
+                        </div>
                         <div class="card-tags-right">
                           <span class="card-phase-tag">{{ task.phase }}</span>
                           <span class="card-p-badge" [attr.data-priority]="task.priority">{{ task.priority }}</span>
@@ -359,13 +443,16 @@
                         </div>
                       }
 
-                      <!-- Footer: Assignee, Checklist progress, Review count, Due date -->
+                      <!-- Footer: Assignee + Role Badge, Checklist progress, Review count, Due date -->
                       <div class="card-footer-meta">
-                        <div class="card-assignee-badge" [title]="getMember(task.assigneeId).name">
+                        <div class="card-assignee-badge" [title]="getMember(task.assigneeId).name + ' (' + getMember(task.assigneeId).role + ')'">
                           <span class="avatar-mini" [style.background-color]="getMember(task.assigneeId).color">
                             {{ getMember(task.assigneeId).avatar }}
                           </span>
                           <span class="assignee-first-name">{{ getMember(task.assigneeId).name.split(' ')[0] }}</span>
+                          <span class="role-badge-mini" [attr.data-role]="store.getRoleCategory(getMember(task.assigneeId).role)">
+                            {{ store.getRoleCategory(getMember(task.assigneeId).role) }}
+                          </span>
                         </div>
 
                         <div class="card-stats-right">
@@ -412,11 +499,11 @@
           <div class="view-header-card">
             <div>
               <h2 class="view-heading">Sprint Backlog & Story Sizing</h2>
-              <p class="view-sub">Grouped by Sprint cadence with direct inline status updates and effort points</p>
+              <p class="view-sub">Grouped by active cadence with inline status dropdowns, role badges and effort points</p>
             </div>
             <div class="header-badges-row">
               <span class="sprint-pill-highlight">🏃 Sprint 24.3 (Active)</span>
-              <span class="points-pill-highlight">Total Tasks: {{ store.filteredTasks().length }}</span>
+              <span class="points-pill-highlight">Filtered Tasks: {{ store.filteredTasks().length }}</span>
             </div>
           </div>
 
@@ -425,11 +512,12 @@
               <thead>
                 <tr>
                   <th style="width: 85px;">ID</th>
+                  <th style="width: 110px;">Project</th>
                   <th>Task Title</th>
-                  <th style="width: 160px;">Phase</th>
-                  <th style="width: 150px;">Assignee</th>
+                  <th style="width: 150px;">Phase</th>
+                  <th style="width: 160px;">Assignee</th>
                   <th style="width: 100px;">Priority</th>
-                  <th style="width: 80px;">Points</th>
+                  <th style="width: 75px;">Points</th>
                   <th style="width: 110px;">Due Date</th>
                   <th style="width: 160px;">Status</th>
                 </tr>
@@ -438,6 +526,11 @@
                 @for (task of store.filteredTasks(); track task.id) {
                   <tr (click)="openTask(task.id)" class="table-row" [class.row-blocked]="task.blocked">
                     <td class="font-mono text-muted">{{ task.id }}</td>
+                    <td>
+                      @if (getProject(task.projectId); as proj) {
+                        <span class="proj-table-badge" [style.color]="proj.color">{{ proj.code }}</span>
+                      }
+                    </td>
                     <td>
                       <div class="title-cell-wrap">
                         <strong class="table-task-title">{{ task.title }}</strong>
@@ -455,7 +548,10 @@
                         <span class="avatar-mini" [style.background-color]="getMember(task.assigneeId).color">
                           {{ getMember(task.assigneeId).avatar }}
                         </span>
-                        <span>{{ getMember(task.assigneeId).name }}</span>
+                        <span class="assignee-text-name">{{ getMember(task.assigneeId).name }}</span>
+                        <span class="role-badge-mini" [attr.data-role]="store.getRoleCategory(getMember(task.assigneeId).role)">
+                          {{ store.getRoleCategory(getMember(task.assigneeId).role) }}
+                        </span>
                       </div>
                     </td>
                     <td>
@@ -491,7 +587,7 @@
           <div class="view-header-card">
             <div>
               <h2 class="view-heading">Waterfall Phase Roadmap & Sequential Dependencies</h2>
-              <p class="view-sub">Visual chronological schedule with start-to-due timeline durations</p>
+              <p class="view-sub">Visual chronological roadmap with start-to-due timeline durations</p>
             </div>
             <div class="timeline-legend">
               <span class="legend-item"><span class="box-dot bg-todo"></span> To Do</span>
@@ -526,6 +622,9 @@
                     <div class="gantt-item-row" (click)="openTask(task.id)">
                       <div class="gantt-item-info">
                         <span class="font-mono text-muted text-xs">{{ task.id }}</span>
+                        @if (getProject(task.projectId); as proj) {
+                          <span class="proj-table-badge" [style.color]="proj.color">{{ proj.code }}</span>
+                        }
                         <span class="gantt-task-name" [title]="task.title">{{ task.title }}</span>
                         @if (task.dependencies && task.dependencies.length > 0) {
                           <span class="dep-pill" [title]="'Depends on ' + task.dependencies.join(', ')">
@@ -575,6 +674,75 @@
     <app-import-modal (closeModal)="closeSmartImport()"></app-import-modal>
   }
 
+  <!-- NEW PROJECT WORKSPACE MODAL -->
+  @if (isNewProjectModalOpen()) {
+    <div class="modal-backdrop" (click)="closeNewProjectModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div>
+            <h3 class="modal-title">Create Project Workspace</h3>
+            <p class="modal-sub">Add a technical project with assigned squad & code identifier</p>
+          </div>
+          <button type="button" class="btn-close" (click)="closeNewProjectModal()">✕</button>
+        </div>
+
+        <div class="modal-body custom-scroll">
+          <div class="form-group">
+            <label class="form-label required">Project Name</label>
+            <input
+              type="text"
+              class="form-input"
+              [(ngModel)]="newProjectName"
+              placeholder="e.g. Fine-Tuning Pipeline & LoRA Hub"
+            />
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label required">Project Code</label>
+              <input
+                type="text"
+                class="form-input font-mono"
+                [(ngModel)]="newProjectCode"
+                placeholder="e.g. LORA-HUB"
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Squad / Team</label>
+              <select class="form-select" [(ngModel)]="newProjectTeam">
+                <option value="Core AI Squad">Core AI Squad</option>
+                <option value="Platform & QA Squad">Platform & QA Squad</option>
+                <option value="DevOps & Serving Squad">DevOps & Serving Squad</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Description & Architecture Scope</label>
+            <textarea
+              class="form-textarea"
+              rows="3"
+              [(ngModel)]="newProjectDesc"
+              placeholder="Technical objectives, models involved, and target milestones..."
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeNewProjectModal()">Cancel</button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            [disabled]="!newProjectName.trim() || !newProjectCode.trim()"
+            (click)="submitNewProject()"
+          >
+            Create Project
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- NEW TASK MODAL -->
   @if (isNewTaskModalOpen()) {
     <div class="modal-backdrop" (click)="closeNewTaskModal()">
@@ -582,12 +750,21 @@
         <div class="modal-header">
           <div>
             <h3 class="modal-title">Create Engineering Task</h3>
-            <p class="modal-sub">Add a work item directly to the active sprint backlog</p>
+            <p class="modal-sub">Add a work item directly to the active project backlog</p>
           </div>
           <button type="button" class="btn-close" (click)="closeNewTaskModal()">✕</button>
         </div>
 
         <div class="modal-body custom-scroll">
+          <div class="form-group">
+            <label class="form-label required">Project</label>
+            <select class="form-select" [(ngModel)]="newTaskProjectId">
+              @for (proj of store.projects(); track proj.id) {
+                <option [value]="proj.id">[{{ proj.code }}] {{ proj.name }}</option>
+              }
+            </select>
+          </div>
+
           <div class="form-group">
             <label class="form-label required">Task Title</label>
             <input
@@ -613,7 +790,9 @@
               <label class="form-label">Assignee</label>
               <select class="form-select" [(ngModel)]="newTaskAssigneeId">
                 @for (member of store.teamMembers(); track member.id) {
-                  <option [value]="member.id">{{ member.name }} ({{ member.role }})</option>
+                  <option [value]="member.id">
+                    {{ member.name }} • {{ member.role }} ({{ member.squad }})
+                  </option>
                 }
               </select>
             </div>

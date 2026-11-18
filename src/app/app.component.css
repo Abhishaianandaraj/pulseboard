@@ -1,4 +1,4 @@
-/* PulseBoard V1 App Shell, Collapsible Sidebar, Lead Radar & Methodology Views */
+/* PulseBoard V1 App Shell, Multi-Project Switcher, Role Badges & Sidebar */
 
 :host {
   display: block;
@@ -20,8 +20,8 @@
 
 /* --- COLLAPSIBLE LEFT SIDEBAR --- */
 .sidebar {
-  width: 260px;
-  min-width: 260px;
+  width: 270px;
+  min-width: 270px;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-subtle);
   display: flex;
@@ -37,11 +37,12 @@
 
 .sidebar-collapsed .brand-meta,
 .sidebar-collapsed .section-label,
+.sidebar-collapsed .section-header-actions,
 .sidebar-collapsed .nav-text,
 .sidebar-collapsed .nav-badge,
 .sidebar-collapsed .member-info,
 .sidebar-collapsed .workload-pill,
-.sidebar-collapsed .btn-reset-member,
+.sidebar-collapsed .inline-add-member-form,
 .sidebar-collapsed .footer-text,
 .sidebar-collapsed .audit-counter {
   display: none !important;
@@ -105,7 +106,7 @@
 }
 
 .sidebar-section {
-  padding: 16px 14px;
+  padding: 14px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
@@ -117,7 +118,6 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--text-muted);
-  margin-bottom: 4px;
   padding-left: 6px;
 }
 
@@ -125,6 +125,28 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-mini-add {
+  border: none;
+  background: var(--accent-light);
+  color: var(--accent-primary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-mini-add:hover {
+  opacity: 0.85;
 }
 
 .btn-reset-member {
@@ -134,11 +156,74 @@
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  padding-right: 6px;
 }
 
 .btn-reset-member:hover {
   text-decoration: underline;
+}
+
+/* Inline Add Member Form */
+.inline-add-member-form {
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.mini-input, .mini-select {
+  width: 100%;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 11.5px;
+  font-family: inherit;
+  outline: none;
+}
+
+.mini-input:focus, .mini-select:focus {
+  border-color: var(--accent-primary);
+}
+
+.mini-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.mini-form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.btn-mini-cancel {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.btn-mini-save {
+  padding: 2px 8px;
+  background: var(--accent-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-mini-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Nav items */
@@ -201,7 +286,7 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  max-height: 180px;
+  max-height: 190px;
   overflow-y: auto;
 }
 
@@ -247,6 +332,12 @@
   overflow: hidden;
 }
 
+.member-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .member-name {
   font-size: 12px;
   font-weight: 600;
@@ -256,8 +347,23 @@
   text-overflow: ellipsis;
 }
 
-.member-role {
-  font-size: 10.5px;
+.role-badge {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 0 4px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.role-badge[data-role="AI"] { background: var(--status-deployed-bg); color: var(--status-deployed-text); }
+.role-badge[data-role="DEV"] { background: var(--status-inprogress-bg); color: var(--status-inprogress-text); }
+.role-badge[data-role="QA/TEST"] { background: #ec489920; color: #f472b6; }
+.role-badge[data-role="LEAD"] { background: var(--status-done-bg); color: var(--status-done-text); }
+.role-badge[data-role="DM"] { background: var(--badge-high-bg); color: var(--badge-high-text); }
+
+.member-squad-text {
+  font-size: 10px;
   color: var(--text-muted);
 }
 
@@ -332,9 +438,94 @@
   overflow: hidden;
 }
 
+/* PROJECT SWITCHER BAR */
+.project-switcher-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 20px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 12px;
+}
+
+.project-tabs-scroll {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  flex: 1;
+}
+
+.project-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s ease;
+}
+
+.project-tab:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.project-tab.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.proj-icon { font-size: 12px; }
+
+.proj-code-chip {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.proj-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+
+.proj-squad-tag {
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+
+.btn-add-project {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--accent-primary);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-add-project:hover {
+  background: var(--bg-surface);
+}
+
 /* TOP COMMAND BAR */
 .top-command-bar {
-  padding: 12px 24px;
+  padding: 10px 24px;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
@@ -667,7 +858,7 @@
   padding: 12px;
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 275px);
+  min-height: calc(100vh - 310px);
 }
 
 .kanban-column.col-deployed-accent {
@@ -785,11 +976,26 @@
   justify-content: space-between;
 }
 
+.card-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .card-task-id {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
   color: var(--text-muted);
+}
+
+.card-project-pill {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--bg-elevated);
 }
 
 .card-tags-right {
@@ -899,6 +1105,20 @@
   color: var(--text-secondary);
   font-weight: 500;
 }
+
+.role-badge-mini {
+  font-size: 8.5px;
+  font-weight: 800;
+  padding: 0 4px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.role-badge-mini[data-role="AI"] { background: var(--status-deployed-bg); color: var(--status-deployed-text); }
+.role-badge-mini[data-role="DEV"] { background: var(--status-inprogress-bg); color: var(--status-inprogress-text); }
+.role-badge-mini[data-role="QA/TEST"] { background: #ec489920; color: #f472b6; }
+.role-badge-mini[data-role="LEAD"] { background: var(--status-done-bg); color: var(--status-done-text); }
+.role-badge-mini[data-role="DM"] { background: var(--badge-high-bg); color: var(--badge-high-text); }
 
 .card-stats-right {
   display: flex;
@@ -1034,6 +1254,12 @@
   font-size: 12.5px;
 }
 
+.proj-table-badge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
 .title-cell-wrap {
   display: flex;
   align-items: center;
@@ -1067,6 +1293,10 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.assignee-text-name {
+  white-space: nowrap;
 }
 
 .points-badge {
@@ -1441,6 +1671,8 @@
 .action-tag[data-action="BLOCKER_TOGGLED"] { background: var(--badge-critical-bg); color: var(--badge-critical-text); }
 .action-tag[data-action="TASK_CREATED"] { background: var(--badge-done-bg); color: var(--badge-done-text); }
 .action-tag[data-action="SMART_IMPORT_BATCH"] { background: var(--status-deployed-bg); color: var(--status-deployed-text); }
+.action-tag[data-action="PROJECT_CREATED"] { background: var(--accent-light); color: var(--accent-primary); }
+.action-tag[data-action="MEMBER_ADDED"] { background: var(--status-inprogress-bg); color: var(--status-inprogress-text); }
 
 .activity-task-title {
   font-size: 12px;

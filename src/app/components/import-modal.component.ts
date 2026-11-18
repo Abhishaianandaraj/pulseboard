@@ -16,9 +16,9 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
           <div class="modal-title-row">
             <span class="ai-spark-icon">✨</span>
             <div>
-              <h3 class="modal-title">Smart Import (AI-Ready JSON)</h3>
+              <h3 class="modal-title">Smart Import (Multi-Project & AI-Ready JSON)</h3>
               <p class="modal-sub">
-                Extract tasks from raw meeting transcripts into PulseBoard schema via external LLM
+                Extract tasks into PulseBoard schema with automatic project linkage and new squad member registration
               </p>
             </div>
           </div>
@@ -34,7 +34,7 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
               <div>
                 <strong class="step-title">Copy Gemini / Claude System Prompt</strong>
                 <p class="step-desc">
-                  Pre-configured prompt that instructs an LLM to parse unstructured transcripts into PulseBoard JSON.
+                  Prompt instructs LLM to output valid JSON matching project codes (RAG-CORE, EVAL-GW, PULSE-V1) and roles.
                 </p>
               </div>
             </div>
@@ -59,7 +59,7 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
             class="json-textarea"
             rows="9"
             [(ngModel)]="jsonInput"
-            placeholder='{\n  "tasks": [\n    {\n      "title": "Optimize Triton FP8 Dynamic Batching",\n      "assigneeName": "Marcus Vance",\n      "priority": "HIGH",\n      "phase": "Phase 2: Serving Engine",\n      "dueDate": "2026-11-25",\n      "subtasks": ["Tune scheduler", "Test p99 latency"]\n    }\n  ]\n}'
+            placeholder='{\n  "tasks": [\n    {\n      "title": "Optimize Triton FP8 Dynamic Batching",\n      "projectCode": "RAG-CORE",\n      "assigneeName": "Priya Nair",\n      "assigneeRole": "AI Engineer",\n      "priority": "HIGH",\n      "subtasks": ["Tune scheduler", "Test p99 latency"]\n    }\n  ]\n}'
           ></textarea>
 
           <!-- Error Alert Banner -->
@@ -80,8 +80,8 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
         <!-- Modal Footer -->
         <div class="modal-footer">
           <div class="footer-note">
-            <span class="arch-tag">Architecture Ready</span>
-            <span>Direct Gemini 1.5/2.0 API webhook endpoint stub available</span>
+            <span class="arch-tag">Auto-Squad Onboarding</span>
+            <span>New engineers auto-registered into squads if not yet present</span>
           </div>
           <div class="footer-actions">
             <button type="button" class="btn-cancel" (click)="close()">Cancel</button>
@@ -114,7 +114,7 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
     .modal-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      width: 680px;
+      width: 700px;
       max-width: 95vw;
       border-radius: 12px;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
@@ -337,7 +337,10 @@ Analyze the following unstructured meeting notes, transcribe them into actionabl
     {
       "title": "Clear concise engineering task title",
       "description": "Specific implementation instructions, benchmark goals, or context",
-      "assigneeName": "Aria Chen | Marcus Vance | Elena Rostova | Kiran Patel | Devon Ward",
+      "projectCode": "RAG-CORE | EVAL-GW | PULSE-V1",
+      "assigneeName": "Abhishai | Priya Nair | Karthik R | Rahul Verma | Vikram Rao | Any New Member",
+      "assigneeRole": "AI Engineer | Full-Stack Dev | QA / Test Engineer | Tech Lead | Delivery Manager",
+      "squad": "Core AI Squad | Platform & QA Squad",
       "priority": "LOW | MEDIUM | HIGH | CRITICAL",
       "phase": "Phase 1: Knowledge Core | Phase 2: Serving Engine | Phase 3: Security & Governance",
       "sprint": "Sprint 24.3",
@@ -382,10 +385,10 @@ Raw Meeting Notes to Extract:
 
     try {
       const parsed = JSON.parse(this.jsonInput);
-      const res = this.store.importFromJson(parsed);
+      const res = this.store.importTasksFromJson(parsed);
 
       if (res.success) {
-        this.successMessage.set(`Successfully imported ${res.count} tasks into the board!`);
+        this.successMessage.set(`Successfully imported ${res.count} tasks with automatic project and squad member resolution!`);
         setTimeout(() => this.close(), 1200);
       } else {
         this.errorMessage.set(res.error || 'Failed to import JSON.');

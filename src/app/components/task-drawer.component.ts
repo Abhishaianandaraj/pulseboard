@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TaskStoreService } from '../services/task-store.service';
@@ -16,6 +16,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict } from '../models/task.mo
           <div class="drawer-header">
             <div class="header-left">
               <span class="task-id-badge">{{ task.id }}</span>
+              <span class="project-code-tag">{{ getProjectCode(task.projectId) }}</span>
               <span class="priority-pill" [attr.data-priority]="task.priority">{{ task.priority }}</span>
               @if (task.blocked) {
                 <span class="blocked-badge">BLOCKED</span>
@@ -80,17 +81,32 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict } from '../models/task.mo
               </div>
             </div>
 
-            <!-- 2-Column Metadata Grid -->
+            <!-- Metadata Grid -->
             <div class="meta-grid">
               <div class="field-group">
-                <label class="field-label">Assignee</label>
+                <label class="field-label">Project Workspace</label>
+                <select
+                  class="select-input"
+                  [ngModel]="task.projectId"
+                  (ngModelChange)="updateField('projectId', $event)"
+                >
+                  @for (proj of store.projects(); track proj.id) {
+                    <option [value]="proj.id">[{{ proj.code }}] {{ proj.name }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label">Assignee (Role & Squad)</label>
                 <select
                   class="select-input"
                   [ngModel]="task.assigneeId"
                   (ngModelChange)="updateField('assigneeId', $event)"
                 >
                   @for (member of store.teamMembers(); track member.id) {
-                    <option [value]="member.id">{{ member.name }} ({{ member.role }})</option>
+                    <option [value]="member.id">
+                      {{ member.name }} • {{ member.role }} ({{ member.squad }})
+                    </option>
                   }
                 </select>
               </div>
@@ -217,7 +233,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict } from '../models/task.mo
                     class="text-input text-input-sm"
                     [ngModel]="task.blockerReason"
                     (ngModelChange)="updateField('blockerReason', $event)"
-                    placeholder="Describe blocker (e.g., waiting for Milvus GPU cluster license unlock)..."
+                    placeholder="Describe blocker (e.g., waiting for GPU cluster quota)..."
                   />
                 </div>
               }
@@ -273,7 +289,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict } from '../models/task.mo
                 <div class="review-title-wrap">
                   <span class="review-icon">🛡️</span>
                   <div>
-                    <h4 class="section-title">Lead / DM Server Verification</h4>
+                    <h4 class="section-title">Lead / QA Server Verification</h4>
                     <p class="section-sub">Audit trail of endpoint checks & approvals prior to closing</p>
                   </div>
                 </div>
@@ -300,7 +316,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict } from '../models/task.mo
                   </div>
                 } @empty {
                   <div class="empty-reviews">
-                    <span>No Lead server verification notes posted yet.</span>
+                    <span>No Tech Lead / QA server verification notes recorded yet.</span>
                   </div>
                 }
               </div>
@@ -371,14 +387,9 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict } from '../models/task.mo
       flex-direction: column;
       animation: slideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    @keyframes slideIn {
-      from { transform: translateX(100%); }
-      to { transform: translateX(0); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
     .drawer-header {
       padding: 16px 24px;
       border-bottom: 1px solid var(--border-subtle);
@@ -401,6 +412,16 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict } from '../models/task.mo
       padding: 3px 8px;
       border-radius: 6px;
       border: 1px solid var(--border-subtle);
+    }
+    .project-code-tag {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--accent-light);
+      color: var(--accent-primary);
+      border: 1px solid var(--accent-primary);
     }
     .priority-pill {
       font-size: 10.5px;
@@ -608,11 +629,6 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict } from '../models/task.mo
       font-weight: 700;
       color: var(--text-primary);
       margin: 0;
-    }
-    .section-sub {
-      font-size: 11.5px;
-      color: var(--text-secondary);
-      margin: 2px 0 0 0;
     }
     .subtasks-list {
       display: flex;
@@ -833,6 +849,10 @@ export class TaskDrawerComponent {
     this.store.closeTaskDrawer();
   }
 
+  getProjectCode(projectId: string): string {
+    return this.store.projectMap().get(projectId)?.code || 'PROJ';
+  }
+
   updateField(field: keyof Task, val: any): void {
     const task = this.store.selectedTask();
     if (!task) return;
@@ -862,8 +882,8 @@ export class TaskDrawerComponent {
   submitReview(taskId: string): void {
     if (!this.newReviewContent.trim()) return;
     this.store.addReviewNote(taskId, {
-      author: 'Devon Ward (Lead)',
-      authorAvatar: 'DW',
+      author: 'Vikram Rao (Tech Lead)',
+      authorAvatar: 'VR',
       authorRole: 'LEAD',
       verdict: this.newReviewVerdict,
       content: this.newReviewContent.trim()

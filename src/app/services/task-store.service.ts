@@ -1,5 +1,6 @@
 import { Injectable, signal, computed, effect } from '@angular/core';
 import {
+  Project,
   Task,
   TaskStatus,
   TaskPriority,
@@ -9,28 +10,38 @@ import {
   SmartImportPayload,
   ReviewNote,
   ReviewVerdict,
-  ThemeMode
+  ThemeMode,
+  TechnicalRole,
+  RoleCategory
 } from '../models/task.model';
 import {
+  INITIAL_PROJECTS,
   INITIAL_TEAM_MEMBERS,
   INITIAL_TASKS,
   INITIAL_LOGS
 } from '../data/seed-data';
 
+const STORAGE_KEY_PROJECTS = 'pulseboard_v1_projects';
+const STORAGE_KEY_MEMBERS = 'pulseboard_v1_members';
 const STORAGE_KEY_TASKS = 'pulseboard_v1_tasks';
 const STORAGE_KEY_LOGS = 'pulseboard_v1_logs';
 const STORAGE_KEY_THEME = 'pulseboard_v1_theme';
+const STORAGE_KEY_ACTIVE_PROJECT = 'pulseboard_v1_active_project';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TaskStoreService {
   // --- Core State Signals ---
+  readonly projects = signal<Project[]>(this.loadFromStorage(STORAGE_KEY_PROJECTS, INITIAL_PROJECTS));
+  readonly teamMembers = signal<TeamMember[]>(this.loadFromStorage(STORAGE_KEY_MEMBERS, INITIAL_TEAM_MEMBERS));
   readonly tasks = signal<Task[]>(this.loadFromStorage(STORAGE_KEY_TASKS, INITIAL_TASKS));
-  readonly teamMembers = signal<TeamMember[]>(INITIAL_TEAM_MEMBERS);
   readonly activityLogs = signal<ActivityLog[]>(this.loadFromStorage(STORAGE_KEY_LOGS, INITIAL_LOGS));
   readonly currentView = signal<MethodologyView>('BOARD');
   readonly theme = signal<ThemeMode>(this.loadTheme());
+
+  // --- Project Workspace Filter ---
+  readonly selectedProjectId = signal<string>(this.loadActiveProject());
 
   // --- Search & Filter Signals ---
   readonly searchQuery = signal<string>('');
@@ -56,30 +67,55 @@ export class TaskStoreService {
     return map;
   });
 
-  // --- Computed: Filtered Tasks List ---
+  // --- Computed: Map of Projects by ID ---
+  readonly projectMap = computed(() => {
+    const map = new Map<string, Project>();
+    this.projects().forEach((p: Project) => map.set(p.id, p));
+    return map;
+  });
+
+  // --- Computed: Active Project Object ---
+  readonly activeProject = computed(() => {
+    const pId = this.selectedProjectId();
+    if (pId === 'ALL') return null;
+    return this.projectMap().get(pId) || null;
+  });
+
+  // --- Computed: Filtered Tasks List (Project + Keyword + Assignee + Priority + Blocked/Deployed) ---
   readonly filteredTasks = computed(() => {
+    const activeProject = this.selectedProjectId();
     const query = this.searchQuery().trim().toLowerCase();
     const assignee = this.filterAssigneeId();
     const priority = this.filterPriority();
     const blockedOnly = this.filterBlockedOnly();
     const deployedOnly = this.filterDeployedOnly();
     const map = this.assigneeMap();
+    const pMap = this.projectMap();
 
     return this.tasks().filter((task: Task) => {
+      // 1. Project Filter
+      if (activeProject !== 'ALL' && task.projectId !== activeProject) return false;
+
+      // 2. Special flags
       if (blockedOnly && !task.blocked) return false;
       if (deployedOnly && task.status !== 'DEPLOYED') return false;
+
+      // 3. Assignee & Priority
       if (assignee !== 'ALL' && task.assigneeId !== assignee) return false;
       if (priority !== 'ALL' && task.priority !== priority) return false;
 
+      // 4. Query text search
       if (query) {
         const titleMatch = task.title.toLowerCase().includes(query);
         const descMatch = (task.description || '').toLowerCase().includes(query);
         const idMatch = task.id.toLowerCase().includes(query);
         const phaseMatch = (task.phase || '').toLowerCase().includes(query);
+        const proj = pMap.get(task.projectId);
+        const projCodeMatch = proj ? proj.code.toLowerCase().includes(query) : false;
         const assigneeObj = map.get(task.assigneeId);
         const nameMatch = assigneeObj ? assigneeObj.name.toLowerCase().includes(query) : false;
 
-        if (!titleMatch && !descMatch && !idMatch && !phaseMatch && !nameMatch) {
+        if (!titleMatch && !descMatch && !idMatch && !phaseMatch && !projCodeMatch && !nameMatch) {
           return false;
         }
       }
@@ -88,15 +124,22 @@ export class TaskStoreService {
     });
   });
 
+  // --- Computed: Tasks scope for current project (before search/assignee filters) ---
+  readonly currentProjectTasks = computed(() => {
+    const activeProject = this.selectedProjectId();
+    if (activeProject === 'ALL') return this.tasks();
+    return this.tasks().filter((t: Task) => t.projectId === activeProject);
+  });
+
   // --- Computed: Kanban Workflow Columns ---
   readonly todoTasks = computed(() => this.filteredTasks().filter((t: Task) => t.status === 'TODO'));
   readonly inProgressTasks = computed(() => this.filteredTasks().filter((t: Task) => t.status === 'IN_PROGRESS'));
   readonly deployedTasks = computed(() => this.filteredTasks().filter((t: Task) => t.status === 'DEPLOYED'));
   readonly doneTasks = computed(() => this.filteredTasks().filter((t: Task) => t.status === 'DONE'));
 
-  // --- Computed: Lead Radar KPIs (Zero-Spam Intelligence) ---
-  readonly totalTasksCount = computed(() => this.tasks().length);
-  readonly doneTasksCount = computed(() => this.tasks().filter((t: Task) => t.status === 'DONE').length);
+  // --- Computed: Lead Radar KPIs (Dynamically scoped to active Project) ---
+  readonly totalTasksCount = computed(() => this.currentProjectTasks().length);
+  readonly doneTasksCount = computed(() => this.currentProjectTasks().filter((t: Task) => t.status === 'DONE').length);
 
   readonly completionProgressPercent = computed(() => {
     const total = this.totalTasksCount();
@@ -105,18 +148,18 @@ export class TaskStoreService {
   });
 
   readonly readyForServerCheckCount = computed(() =>
-    this.tasks().filter((t: Task) => t.status === 'DEPLOYED').length
+    this.currentProjectTasks().filter((t: Task) => t.status === 'DEPLOYED').length
   );
 
   readonly blockedCount = computed(() =>
-    this.tasks().filter((t: Task) => t.blocked && t.status !== 'DONE').length
+    this.currentProjectTasks().filter((t: Task) => t.blocked && t.status !== 'DONE').length
   );
 
-  // Team members with 0 active tasks (TODO or IN_PROGRESS)
+  // Available bandwidth: Team members with 0 active tasks in the active scope
   readonly availableBandwidthMembers = computed(() => {
     const all = this.teamMembers();
     const busyIds = new Set(
-      this.tasks()
+      this.currentProjectTasks()
         .filter((t: Task) => t.status === 'TODO' || t.status === 'IN_PROGRESS')
         .map((t: Task) => t.assigneeId)
     );
@@ -127,7 +170,7 @@ export class TaskStoreService {
   readonly memberWorkloadMap = computed(() => {
     const map = new Map<string, number>();
     this.teamMembers().forEach((m: TeamMember) => map.set(m.id, 0));
-    this.tasks().forEach((t: Task) => {
+    this.currentProjectTasks().forEach((t: Task) => {
       if (t.status !== 'DONE') {
         const current = map.get(t.assigneeId) || 0;
         map.set(t.assigneeId, current + 1);
@@ -139,14 +182,14 @@ export class TaskStoreService {
   // Distinct Phases for Waterfall Timeline
   readonly projectPhases = computed(() => {
     const set = new Set<string>();
-    this.tasks().forEach((t: Task) => set.add(t.phase || 'Unassigned Phase'));
+    this.filteredTasks().forEach((t: Task) => set.add(t.phase || 'Unassigned Phase'));
     return Array.from(set);
   });
 
   // Distinct Sprints for Agile Sprint View
   readonly sprints = computed(() => {
     const set = new Set<string>();
-    this.tasks().forEach((t: Task) => set.add(t.sprint || 'Sprint Backlog'));
+    this.filteredTasks().forEach((t: Task) => set.add(t.sprint || 'Sprint Backlog'));
     return Array.from(set);
   });
 
@@ -162,15 +205,125 @@ export class TaskStoreService {
       }
     });
 
-    // Auto-persist tasks to storage
+    // Auto-persist active project
     effect(() => {
-      this.persistTasks(this.tasks());
+      try {
+        localStorage.setItem(STORAGE_KEY_ACTIVE_PROJECT, this.selectedProjectId());
+      } catch (e) {}
     });
 
-    // Auto-persist activity logs to storage
+    // Auto-persist projects
     effect(() => {
-      this.persistLogs(this.activityLogs());
+      try {
+        localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(this.projects()));
+      } catch (e) {}
     });
+
+    // Auto-persist members
+    effect(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(this.teamMembers()));
+      } catch (e) {}
+    });
+
+    // Auto-persist tasks
+    effect(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(this.tasks()));
+      } catch (e) {}
+    });
+
+    // Auto-persist activity logs
+    effect(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(this.activityLogs()));
+      } catch (e) {}
+    });
+  }
+
+  // --- Project Workspace Switcher ---
+  selectProject(projectId: string): void {
+    this.selectedProjectId.set(projectId);
+  }
+
+  addProject(name: string, code: string, teamName: string = 'Core AI Squad', description: string = ''): Project {
+    const nextId = `proj-${Date.now()}`;
+    const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'];
+    const color = colors[this.projects().length % colors.length];
+
+    const project: Project = {
+      id: nextId,
+      name: name.trim(),
+      code: code.trim().toUpperCase(),
+      teamName: teamName.trim(),
+      description: description.trim() || `Workspace project for ${teamName}`,
+      status: 'ACTIVE',
+      color
+    };
+
+    this.projects.update((prev: Project[]) => [...prev, project]);
+    this.selectedProjectId.set(project.id);
+
+    this.recordActivity({
+      actor: 'Vikram Rao',
+      actorAvatar: 'VR',
+      action: 'PROJECT_CREATED',
+      taskId: project.code,
+      taskTitle: `New Project [${project.code}] Created`,
+      details: `Project "${project.name}" initialized under ${project.teamName}`
+    });
+
+    return project;
+  }
+
+  // --- Team Member Management ---
+  addTeamMember(name: string, role: TechnicalRole = 'Full-Stack Dev', squad: string = 'Core AI Squad'): TeamMember {
+    const nextId = `tm-${Date.now()}`;
+    const initials = name
+      .trim()
+      .split(' ')
+      .map(part => part[0]?.toUpperCase() || '')
+      .slice(0, 2)
+      .join('') || 'DEV';
+
+    const colors = ['#2563eb', '#7c3aed', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'];
+    const color = colors[this.teamMembers().length % colors.length];
+
+    const newMember: TeamMember = {
+      id: nextId,
+      name: name.trim(),
+      role,
+      squad,
+      avatar: initials,
+      email: `${name.toLowerCase().replace(/\s+/g, '.')}@pulseboard.internal`,
+      color,
+      department: squad.includes('QA') ? 'Quality Assurance' : 'Engineering'
+    };
+
+    this.teamMembers.update((prev: TeamMember[]) => [...prev, newMember]);
+
+    this.recordActivity({
+      actor: 'Vikram Rao',
+      actorAvatar: 'VR',
+      action: 'MEMBER_ADDED',
+      taskId: newMember.id,
+      taskTitle: `Team Member Added: ${newMember.name}`,
+      details: `Registered ${newMember.name} as ${newMember.role} in ${newMember.squad}`
+    });
+
+    return newMember;
+  }
+
+  getRoleCategory(role: TechnicalRole): RoleCategory {
+    switch (role) {
+      case 'AI Engineer': return 'AI';
+      case 'QA / Test Engineer': return 'QA/TEST';
+      case 'Tech Lead': return 'LEAD';
+      case 'Delivery Manager': return 'DM';
+      case 'Full-Stack Dev':
+      default:
+        return 'DEV';
+    }
   }
 
   // --- Theme Toggle ---
@@ -187,8 +340,7 @@ export class TaskStoreService {
     this.selectedTaskId.set(null);
   }
 
-  // --- Async-Ready Repository CRUD Methods (mirrors REST API) ---
-
+  // --- Task CRUD Methods ---
   async createTask(newTaskData: Partial<Task>): Promise<Task> {
     const nextNum = Math.max(
       100,
@@ -201,8 +353,16 @@ export class TaskStoreService {
     const defaultMember = this.teamMembers()[0];
     const assigneeId = newTaskData.assigneeId || defaultMember.id;
 
+    // Use task's projectId or fall back to selected project (or first project if ALL)
+    let projectId = newTaskData.projectId;
+    if (!projectId || projectId === 'ALL') {
+      const activeP = this.selectedProjectId();
+      projectId = activeP !== 'ALL' ? activeP : (this.projects()[0]?.id || 'proj-1');
+    }
+
     const task: Task = {
       id: `PB-${nextNum}`,
+      projectId,
       title: newTaskData.title?.trim() || 'Untitled Engineering Task',
       description: newTaskData.description?.trim() || '',
       status: newTaskData.status || 'TODO',
@@ -226,13 +386,14 @@ export class TaskStoreService {
     this.tasks.update((prev: Task[]) => [task, ...prev]);
 
     const member = this.assigneeMap().get(assigneeId);
+    const proj = this.projectMap().get(projectId);
     this.recordActivity({
-      actor: 'Devon Ward',
-      actorAvatar: 'DW',
+      actor: 'Vikram Rao',
+      actorAvatar: 'VR',
       action: 'TASK_CREATED',
       taskId: task.id,
       taskTitle: task.title,
-      details: `Created task [${task.id}] in ${task.phase} assigned to ${member?.name || 'Engineer'}`
+      details: `Created task [${task.id}] in [${proj?.code || 'PROJECT'}] assigned to ${member?.name || 'Engineer'}`
     });
 
     return task;
@@ -256,7 +417,7 @@ export class TaskStoreService {
         taskId: updated.id,
         taskTitle: updated.title,
         details: isDeployed
-          ? `Pushed container to ${updated.deployedUrl || 'staging endpoint'} awaiting Lead signoff`
+          ? `Pushed container to ${updated.deployedUrl || 'staging endpoint'} awaiting Tech Lead signoff`
           : `Transitioned status from ${old.status} to ${updated.status}`,
         statusTransition: { from: old.status, to: updated.status }
       });
@@ -273,8 +434,8 @@ export class TaskStoreService {
 
     if (task) {
       this.recordActivity({
-        actor: 'Devon Ward',
-        actorAvatar: 'DW',
+        actor: 'Vikram Rao',
+        actorAvatar: 'VR',
         action: 'TASK_DELETED',
         taskId: task.id,
         taskTitle: task.title,
@@ -294,13 +455,13 @@ export class TaskStoreService {
 
     const member = this.assigneeMap().get(task.assigneeId);
     this.recordActivity({
-      actor: member?.name || 'Devon Ward',
-      actorAvatar: member?.avatar || 'DW',
+      actor: member?.name || 'Vikram Rao',
+      actorAvatar: member?.avatar || 'VR',
       action: newStatus === 'DEPLOYED' ? 'DEPLOYED_TO_SERVER' : 'STATUS_CHANGED',
       taskId: task.id,
       taskTitle: task.title,
       details: newStatus === 'DEPLOYED'
-        ? `Task deployed to server! Flagged for Team Lead verification.`
+        ? `Task deployed to server! Flagged for Tech Lead / QA verification.`
         : `Moved status from ${oldStatus} to ${newStatus}`,
       statusTransition: { from: oldStatus, to: newStatus }
     });
@@ -346,8 +507,8 @@ export class TaskStoreService {
       taskId: task.id,
       taskTitle: task.title,
       details: targetStatus === 'DEPLOYED'
-        ? `Task deployed to server! Flagged for Lead inspection.`
-        : `Drag moved card from ${oldStatus} to ${targetStatus}`,
+        ? `Task deployed to server! Flagged for QA / Lead inspection.`
+        : `Moved card from ${oldStatus} to ${targetStatus}`,
       statusTransition: { from: oldStatus, to: targetStatus }
     });
   }
@@ -375,7 +536,7 @@ export class TaskStoreService {
     const member = this.assigneeMap().get(task.assigneeId);
     this.recordActivity({
       actor: member?.name || 'Lead',
-      actorAvatar: member?.avatar || 'DW',
+      actorAvatar: member?.avatar || 'VR',
       action: 'BLOCKER_TOGGLED',
       taskId: task.id,
       taskTitle: task.title,
@@ -397,7 +558,6 @@ export class TaskStoreService {
       timestamp: 'Just now'
     };
 
-    // If verdict is APPROVED and currently DEPLOYED, auto-complete to DONE
     const nextStatus = (note.verdict === 'APPROVED' && task.status === 'DEPLOYED') ? 'DONE' : task.status;
 
     this.tasks.update((prev: Task[]) =>
@@ -476,14 +636,13 @@ export class TaskStoreService {
     );
   }
 
-  // --- Smart Import Batch Ingestion ---
-  importFromJson(payload: SmartImportPayload): { success: boolean; count: number; error?: string } {
+  // --- Smart Import Batch Ingestion (Enhanced with Project and Auto-Member creation) ---
+  importTasksFromJson(payload: SmartImportPayload): { success: boolean; count: number; error?: string } {
     try {
       if (!payload || !Array.isArray(payload.tasks) || payload.tasks.length === 0) {
         return { success: false, count: 0, error: 'JSON must contain a "tasks" array with at least one task.' };
       }
 
-      const team = this.teamMembers();
       let maxNum = Math.max(
         100,
         ...this.tasks().map((t: Task) => {
@@ -492,13 +651,36 @@ export class TaskStoreService {
         })
       );
 
+      const projectsList = this.projects();
+      const currentActiveProjectId = this.selectedProjectId();
+
       const newTasks: Task[] = payload.tasks.map(item => {
         maxNum++;
-        let matched = team.find(
-          (m: TeamMember) => item.assigneeName && m.name.toLowerCase().includes(item.assigneeName.toLowerCase())
-        );
-        if (!matched) {
-          matched = team[maxNum % team.length];
+
+        // 1. Resolve Project
+        let matchedProjectId = currentActiveProjectId !== 'ALL' ? currentActiveProjectId : (projectsList[0]?.id || 'proj-1');
+        if (item.projectCode) {
+          const foundProject = projectsList.find(p => p.code.toLowerCase() === item.projectCode!.toLowerCase());
+          if (foundProject) {
+            matchedProjectId = foundProject.id;
+          }
+        }
+
+        // 2. Resolve Assignee or Auto-Register new team member
+        let assignedMemberId = this.teamMembers()[0]?.id || 'tm-1';
+        if (item.assigneeName && item.assigneeName.trim()) {
+          const nameClean = item.assigneeName.trim();
+          let existingMember = this.teamMembers().find(
+            (m: TeamMember) => m.name.toLowerCase().includes(nameClean.toLowerCase())
+          );
+
+          if (!existingMember) {
+            // Auto-create new team member
+            const newRole: TechnicalRole = item.assigneeRole || 'Full-Stack Dev';
+            const newSquad = item.squad || (item.projectCode === 'EVAL-GW' ? 'Platform & QA Squad' : 'Core AI Squad');
+            existingMember = this.addTeamMember(nameClean, newRole, newSquad);
+          }
+          assignedMemberId = existingMember.id;
         }
 
         const taskId = `PB-${maxNum}`;
@@ -512,6 +694,7 @@ export class TaskStoreService {
 
         return {
           id: taskId,
+          projectId: matchedProjectId,
           title: item.title?.trim() || 'AI Imported Task',
           description: item.description?.trim() || 'Extracted from meeting action items.',
           status: 'TODO' as TaskStatus,
@@ -519,7 +702,7 @@ export class TaskStoreService {
           phase: item.phase?.trim() || 'Phase 1: Knowledge Core',
           sprint: item.sprint?.trim() || 'Sprint 24.3',
           effortPoints: Number(item.effortPoints) || 3,
-          assigneeId: matched.id,
+          assigneeId: assignedMemberId,
           startDate: item.startDate || new Date().toISOString().split('T')[0],
           dueDate: item.dueDate || new Date(Date.now() + 6 * 86400000).toISOString().split('T')[0],
           blocked: false,
@@ -535,12 +718,12 @@ export class TaskStoreService {
       this.tasks.update((prev: Task[]) => [...newTasks, ...prev]);
 
       this.recordActivity({
-        actor: 'Devon Ward',
-        actorAvatar: 'DW',
+        actor: 'Vikram Rao',
+        actorAvatar: 'VR',
         action: 'SMART_IMPORT_BATCH',
         taskId: `PB-${maxNum}`,
         taskTitle: `Batch Ingestion (${newTasks.length} tasks)`,
-        details: `Imported ${newTasks.length} action items into Sprint backlog from meeting notes.`
+        details: `Imported ${newTasks.length} engineering deliverables with auto-team resolution.`
       });
 
       return { success: true, count: newTasks.length };
@@ -551,8 +734,11 @@ export class TaskStoreService {
 
   // --- Reset Workspace ---
   resetWorkspace(): void {
+    this.projects.set(INITIAL_PROJECTS);
+    this.teamMembers.set(INITIAL_TEAM_MEMBERS);
     this.tasks.set(INITIAL_TASKS);
     this.activityLogs.set(INITIAL_LOGS);
+    this.selectedProjectId.set('ALL');
     this.searchQuery.set('');
     this.filterAssigneeId.set('ALL');
     this.filterPriority.set('ALL');
@@ -561,16 +747,13 @@ export class TaskStoreService {
     this.currentView.set('BOARD');
     this.selectedTaskId.set(null);
 
-    this.persistTasks(INITIAL_TASKS);
-    this.persistLogs(INITIAL_LOGS);
-
     this.recordActivity({
-      actor: 'Devon Ward',
-      actorAvatar: 'DW',
+      actor: 'Vikram Rao',
+      actorAvatar: 'VR',
       action: 'WORKSPACE_RESET',
       taskId: 'SYS-0',
       taskTitle: 'PulseBoard V1 Workspace Reset',
-      details: 'Restored baseline AI engineering demo datasets and clearing filter state.'
+      details: 'Restored multi-project workspace, squads, and cross-functional team demo state.'
     });
   }
 
@@ -601,22 +784,14 @@ export class TaskStoreService {
       const theme = localStorage.getItem(STORAGE_KEY_THEME) as ThemeMode;
       if (theme === 'light' || theme === 'dark') return theme;
     } catch (e) {}
-    return 'light';
+    return 'dark';
   }
 
-  private persistTasks(tasks: Task[]): void {
+  private loadActiveProject(): string {
     try {
-      localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
-    } catch (e) {
-      console.error('Failed to persist tasks', e);
-    }
-  }
-
-  private persistLogs(logs: ActivityLog[]): void {
-    try {
-      localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs));
-    } catch (e) {
-      console.error('Failed to persist logs', e);
-    }
+      const active = localStorage.getItem(STORAGE_KEY_ACTIVE_PROJECT);
+      if (active) return active;
+    } catch (e) {}
+    return 'ALL';
   }
 }

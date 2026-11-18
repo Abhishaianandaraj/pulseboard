@@ -6,6 +6,25 @@ export type MethodologyView = 'BOARD' | 'SPRINT' | 'TIMELINE';
 
 export type ThemeMode = 'light' | 'dark';
 
+export type TechnicalRole =
+  | 'AI Engineer'
+  | 'Full-Stack Dev'
+  | 'QA / Test Engineer'
+  | 'Tech Lead'
+  | 'Delivery Manager';
+
+export type RoleCategory = 'AI' | 'DEV' | 'QA/TEST' | 'LEAD' | 'DM';
+
+export interface Project {
+  id: string;
+  name: string;
+  code: string; // e.g. "RAG-CORE", "EVAL-GW", "PULSE-V1"
+  description: string;
+  teamName: string;
+  status: 'ACTIVE' | 'STAGING' | 'COMPLETED';
+  color: string;
+}
+
 export interface Subtask {
   id: string;
   taskId: string;
@@ -30,7 +49,8 @@ export interface ReviewNote {
 export interface TeamMember {
   id: string;
   name: string;
-  role: string;
+  role: TechnicalRole;
+  squad: string;
   avatar: string;
   email: string;
   color: string;
@@ -39,6 +59,7 @@ export interface TeamMember {
 
 export interface Task {
   id: string;
+  projectId: string; // foreign key to Project.id
   title: string;
   description: string;
   status: TaskStatus;
@@ -68,6 +89,8 @@ export type ActivityActionType =
   | 'REVIEW_NOTE_ADDED'
   | 'BLOCKER_TOGGLED'
   | 'SMART_IMPORT_BATCH'
+  | 'PROJECT_CREATED'
+  | 'MEMBER_ADDED'
   | 'WORKSPACE_RESET';
 
 export interface ActivityLog {
@@ -88,7 +111,10 @@ export interface ActivityLog {
 export interface SmartImportTaskItem {
   title: string;
   description?: string;
+  projectCode?: string; // Optional: "RAG-CORE" | "EVAL-GW" | "PULSE-V1"
   assigneeName?: string;
+  assigneeRole?: TechnicalRole;
+  squad?: string;
   priority?: TaskPriority;
   phase?: string;
   sprint?: string;
