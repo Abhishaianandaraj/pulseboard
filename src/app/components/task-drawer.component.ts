@@ -227,7 +227,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict } from '../models/task.mo
             <div class="subtasks-section">
               <div class="section-title-row">
                 <h4 class="section-title">
-                  Checklist Subtasks ({{ getCompletedCount(task) }}/{{ task.subtasks?.length || 0 }})
+                  Checklist Subtasks ({{ getCompletedCount(task) }}/{{ task.subtasks.length || 0 }})
                 </h4>
               </div>
 
