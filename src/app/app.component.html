@@ -1,0 +1,729 @@
+<div class="pulse-layout" [class.sidebar-collapsed]="isSidebarCollapsed()">
+  <!-- COLLAPSIBLE LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-wrap">
+        <div class="brand-avatar">⚡</div>
+        <div class="brand-meta">
+          <span class="brand-name">PulseBoard</span>
+          <span class="brand-version">V1 Commercial</span>
+        </div>
+      </div>
+      <button type="button" class="btn-sidebar-toggle" (click)="toggleSidebar()" title="Toggle Sidebar">
+        {{ isSidebarCollapsed() ? '→' : '←' }}
+      </button>
+    </div>
+
+    <!-- Navigation Section: Views -->
+    <div class="sidebar-section">
+      <span class="section-label">METHODOLOGY VIEWS</span>
+      <nav class="nav-list">
+        <button
+          type="button"
+          class="nav-item"
+          [class.active]="store.currentView() === 'BOARD'"
+          (click)="switchView('BOARD')"
+        >
+          <span class="nav-icon">▦</span>
+          <span class="nav-text">Kanban Board</span>
+          <span class="nav-badge">{{ store.tasks().length }}</span>
+        </button>
+
+        <button
+          type="button"
+          class="nav-item"
+          [class.active]="store.currentView() === 'SPRINT'"
+          (click)="switchView('SPRINT')"
+        >
+          <span class="nav-icon">☰</span>
+          <span class="nav-text">Agile Sprint</span>
+          <span class="nav-badge">S24.3</span>
+        </button>
+
+        <button
+          type="button"
+          class="nav-item"
+          [class.active]="store.currentView() === 'TIMELINE'"
+          (click)="switchView('TIMELINE')"
+        >
+          <span class="nav-icon">⇥</span>
+          <span class="nav-text">Waterfall Timeline</span>
+          <span class="nav-badge">{{ store.projectPhases().length }}p</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Team Workload Filters -->
+    <div class="sidebar-section">
+      <div class="section-header-flex">
+        <span class="section-label">TEAM WORKLOAD</span>
+        <button
+          type="button"
+          class="btn-reset-member"
+          *ngIf="store.filterAssigneeId() !== 'ALL'"
+          (click)="setAssigneeFilter('ALL')"
+        >
+          Reset
+        </button>
+      </div>
+      <div class="team-list custom-scroll">
+        @for (member of store.teamMembers(); track member.id) {
+          <button
+            type="button"
+            class="team-item"
+            [class.active]="store.filterAssigneeId() === member.id"
+            (click)="setAssigneeFilter(member.id)"
+          >
+            <div class="member-dot-wrap">
+              <span class="member-avatar" [style.background-color]="member.color">{{ member.avatar }}</span>
+            </div>
+            <div class="member-info">
+              <span class="member-name">{{ member.name }}</span>
+              <span class="member-role">{{ member.role.split(' ')[0] }}</span>
+            </div>
+            <span class="workload-pill" [class.zero-load]="(store.memberWorkloadMap().get(member.id) || 0) === 0">
+              {{ store.memberWorkloadMap().get(member.id) || 0 }}
+            </span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Sidebar Bottom Controls -->
+    <div class="sidebar-footer">
+      <button type="button" class="btn-footer-action" (click)="openActivityDrawer()">
+        <span class="footer-icon">📜</span>
+        <span class="footer-text">Activity Audit Log</span>
+        <span class="audit-counter">{{ store.activityLogs().length }}</span>
+      </button>
+
+      <button type="button" class="btn-footer-action" (click)="store.toggleTheme()">
+        <span class="footer-icon">{{ store.theme() === 'dark' ? '☀️' : '🌙' }}</span>
+        <span class="footer-text">{{ store.theme() === 'dark' ? 'Light Mode' : 'Dark Mode' }}</span>
+      </button>
+
+      <button type="button" class="btn-footer-action btn-danger-action" (click)="store.resetWorkspace()">
+        <span class="footer-icon">↺</span>
+        <span class="footer-text">Reset Workspace</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN WORKSPACE CONTAINER -->
+  <div class="workspace-area">
+    <!-- TOP COMMAND BAR -->
+    <header class="top-command-bar">
+      <!-- Search Box -->
+      <div class="search-wrap">
+        <span class="search-glyph">🔍</span>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Filter tasks, ID, phase, or keywords... (Press / to search)"
+          [ngModel]="store.searchQuery()"
+          (ngModelChange)="store.searchQuery.set($event)"
+        />
+        @if (store.searchQuery()) {
+          <button type="button" class="btn-clear-search" (click)="store.searchQuery.set('')">✕</button>
+        }
+      </div>
+
+      <!-- Priority Filter Pills -->
+      <div class="priority-filter-group">
+        <button
+          type="button"
+          class="priority-chip"
+          [class.active]="store.filterPriority() === 'ALL'"
+          (click)="setPriorityFilter('ALL')"
+        >
+          All
+        </button>
+        <button
+          type="button"
+          class="priority-chip chip-crit"
+          [class.active]="store.filterPriority() === 'CRITICAL'"
+          (click)="setPriorityFilter('CRITICAL')"
+        >
+          Critical
+        </button>
+        <button
+          type="button"
+          class="priority-chip chip-high"
+          [class.active]="store.filterPriority() === 'HIGH'"
+          (click)="setPriorityFilter('HIGH')"
+        >
+          High
+        </button>
+        <button
+          type="button"
+          class="priority-chip chip-med"
+          [class.active]="store.filterPriority() === 'MEDIUM'"
+          (click)="setPriorityFilter('MEDIUM')"
+        >
+          Med
+        </button>
+      </div>
+
+      <!-- Header Actions -->
+      <div class="command-actions">
+        @if (hasActiveFilters()) {
+          <button type="button" class="btn-clear-all" (click)="clearAllFilters()">
+            Clear Filters
+          </button>
+        }
+
+        <button type="button" class="btn btn-smart-import" (click)="openSmartImport()">
+          <span class="btn-icon">✨</span> Smart Import
+        </button>
+
+        <button type="button" class="btn btn-primary" (click)="openNewTaskModal()">
+          <span class="btn-icon">+</span> New Task
+        </button>
+      </div>
+    </header>
+
+    <!-- LEAD RADAR KPI STRIP (4 Compact High-Craft Cards) -->
+    <section class="lead-radar-kpi-strip">
+      <!-- Card 1: Completion Progress -->
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Completion Progress</span>
+          <span class="kpi-tag font-mono">{{ store.doneTasksCount() }}/{{ store.totalTasksCount() }} Done</span>
+        </div>
+        <div class="kpi-value-row">
+          <strong class="kpi-big-number tabular-nums">{{ store.completionProgressPercent() }}%</strong>
+          <span class="kpi-subtext">Sprint target 85%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-bar-fill" [style.width.%]="store.completionProgressPercent()"></div>
+        </div>
+      </div>
+
+      <!-- Card 2: Ready for Server Check (Filterable) -->
+      <div
+        class="kpi-card kpi-clickable card-deployed"
+        [class.active-filter]="store.filterDeployedOnly()"
+        (click)="toggleDeployedFilter()"
+        title="Click to view tasks deployed on staging ready for Lead check"
+      >
+        <div class="kpi-top">
+          <span class="kpi-label">Ready for Server Check</span>
+          <span class="kpi-tag tag-deployed">Lead Inspection</span>
+        </div>
+        <div class="kpi-value-row">
+          <strong class="kpi-big-number text-deployed tabular-nums">{{ store.readyForServerCheckCount() }}</strong>
+          <span class="kpi-subtext">Awaiting sign-off</span>
+        </div>
+        <div class="kpi-status-indicator">
+          <span class="pulse-beacon beacon-deployed"></span>
+          <span class="beacon-label">Staging servers live</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Blocked Items (Filterable) -->
+      <div
+        class="kpi-card kpi-clickable card-blocked"
+        [class.active-filter]="store.filterBlockedOnly()"
+        (click)="toggleBlockedFilter()"
+        title="Click to filter board to blocked items"
+      >
+        <div class="kpi-top">
+          <span class="kpi-label">Blocked Items</span>
+          <span class="kpi-tag tag-blocked">Needs Attention</span>
+        </div>
+        <div class="kpi-value-row">
+          <strong class="kpi-big-number text-blocked tabular-nums">{{ store.blockedCount() }}</strong>
+          <span class="kpi-subtext">Pending infra / quota</span>
+        </div>
+        <div class="kpi-status-indicator">
+          <span class="pulse-beacon beacon-blocked"></span>
+          <span class="beacon-label">Radar alerting manager</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Available Bandwidth -->
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Available Bandwidth</span>
+          <span class="kpi-tag tag-bandwidth">{{ store.availableBandwidthMembers().length }} Free</span>
+        </div>
+        <div class="kpi-value-row">
+          <div class="bandwidth-avatars-row">
+            @if (store.availableBandwidthMembers().length > 0) {
+              @for (member of store.availableBandwidthMembers(); track member.id) {
+                <span
+                  class="member-badge-circle"
+                  [style.background-color]="member.color"
+                  [title]="member.name + ' (' + member.role + ') has 0 active tasks'"
+                >
+                  {{ member.avatar }}
+                </span>
+              }
+              <span class="free-member-name">
+                {{ store.availableBandwidthMembers()[0].name.split(' ')[0] }}
+                @if (store.availableBandwidthMembers().length > 1) {
+                  +{{ store.availableBandwidthMembers().length - 1 }}
+                }
+              </span>
+            } @else {
+              <span class="kpi-subtext italic">All engineers fully loaded</span>
+            }
+          </div>
+        </div>
+        <div class="kpi-status-indicator">
+          <span class="beacon-label text-muted">Ready for next assignment</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- METHODOLOGY VIEWS VIEWPORT -->
+    <main class="viewport-content custom-scroll">
+      <!-- 1. KANBAN BOARD VIEW -->
+      @if (store.currentView() === 'BOARD') {
+        <div class="kanban-grid" cdkDropListGroup>
+          @for (col of statusColumns; track col.status) {
+            <div class="kanban-column" [class.col-deployed-accent]="col.status === 'DEPLOYED'">
+              <div class="col-header">
+                <div class="col-title-group">
+                  <span class="col-dot" [style.background]="col.accentColor"></span>
+                  <h3 class="col-title">{{ col.title }}</h3>
+                  <span class="col-count-bubble">
+                    @switch (col.status) {
+                      @case ('TODO') { {{ store.todoTasks().length }} }
+                      @case ('IN_PROGRESS') { {{ store.inProgressTasks().length }} }
+                      @case ('DEPLOYED') { {{ store.deployedTasks().length }} }
+                      @case ('DONE') { {{ store.doneTasks().length }} }
+                    }
+                  </span>
+                </div>
+                @if (col.status === 'DEPLOYED') {
+                  <span class="lead-check-badge">Lead Check</span>
+                }
+              </div>
+
+              <!-- Drop Zone -->
+              <div
+                [id]="'list-' + col.status"
+                cdkDropList
+                [cdkDropListData]="
+                  col.status === 'TODO' ? store.todoTasks() :
+                  col.status === 'IN_PROGRESS' ? store.inProgressTasks() :
+                  col.status === 'DEPLOYED' ? store.deployedTasks() : store.doneTasks()
+                "
+                [cdkDropListConnectedTo]="dropListIds"
+                (cdkDropListDropped)="onTaskDrop($event)"
+                class="kanban-drop-zone custom-scroll"
+              >
+                @for (task of (
+                  col.status === 'TODO' ? store.todoTasks() :
+                  col.status === 'IN_PROGRESS' ? store.inProgressTasks() :
+                  col.status === 'DEPLOYED' ? store.deployedTasks() : store.doneTasks()
+                ); track task.id) {
+                  <article
+                    cdkDrag
+                    [cdkDragData]="task"
+                    class="task-card"
+                    [class.card-is-blocked]="task.blocked"
+                    [class.card-is-deployed]="task.status === 'DEPLOYED'"
+                    (click)="openTask(task.id)"
+                  >
+                    <!-- Left Priority Accent Strip -->
+                    <div class="card-priority-accent" [attr.data-priority]="task.priority"></div>
+
+                    <div class="card-inner">
+                      <!-- Meta Top: ID, Phase & Priority -->
+                      <div class="card-meta-top">
+                        <span class="card-task-id">{{ task.id }}</span>
+                        <div class="card-tags-right">
+                          <span class="card-phase-tag">{{ task.phase }}</span>
+                          <span class="card-p-badge" [attr.data-priority]="task.priority">{{ task.priority }}</span>
+                        </div>
+                      </div>
+
+                      <!-- Title -->
+                      <h4 class="card-title">{{ task.title }}</h4>
+
+                      <!-- Server Deployed Live Badge -->
+                      @if (task.status === 'DEPLOYED' && task.deployedUrl) {
+                        <div class="card-server-strip">
+                          <span class="server-ping"></span>
+                          <span class="server-link-text">Live on Server</span>
+                        </div>
+                      }
+
+                      <!-- Blocker Callout -->
+                      @if (task.blocked) {
+                        <div class="card-blocker-callout">
+                          <span class="blocker-icon">⚠️</span>
+                          <span class="blocker-desc">{{ task.blockerReason || 'Blocker logged' }}</span>
+                        </div>
+                      }
+
+                      <!-- Footer: Assignee, Checklist progress, Review count, Due date -->
+                      <div class="card-footer-meta">
+                        <div class="card-assignee-badge" [title]="getMember(task.assigneeId).name">
+                          <span class="avatar-mini" [style.background-color]="getMember(task.assigneeId).color">
+                            {{ getMember(task.assigneeId).avatar }}
+                          </span>
+                          <span class="assignee-first-name">{{ getMember(task.assigneeId).name.split(' ')[0] }}</span>
+                        </div>
+
+                        <div class="card-stats-right">
+                          <!-- Subtasks Progress -->
+                          @if (task.subtasks && task.subtasks.length > 0) {
+                            <div class="stat-bubble checklist-bubble" [class.all-done]="getCompletedSubtasks(task) === task.subtasks.length">
+                              <span>☑</span>
+                              <span class="tabular-nums">{{ getCompletedSubtasks(task) }}/{{ task.subtasks.length }}</span>
+                            </div>
+                          }
+
+                          <!-- Lead Review Count -->
+                          @if (task.reviewNotes && task.reviewNotes.length > 0) {
+                            <div class="stat-bubble review-bubble" title="Lead review notes present">
+                              <span>💬</span>
+                              <span class="tabular-nums">{{ task.reviewNotes.length }}</span>
+                            </div>
+                          }
+
+                          <!-- Due Date -->
+                          <div class="stat-bubble due-bubble">
+                            <span>⏱</span>
+                            <span class="tabular-nums">{{ task.dueDate | slice:5:10 }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                } @empty {
+                  <div class="empty-column-box">
+                    <span class="empty-icon">◌</span>
+                    <p class="empty-text">No tasks in column</p>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- 2. AGILE SPRINT LIST VIEW -->
+      @if (store.currentView() === 'SPRINT') {
+        <div class="sprint-view-wrapper">
+          <div class="view-header-card">
+            <div>
+              <h2 class="view-heading">Sprint Backlog & Story Sizing</h2>
+              <p class="view-sub">Grouped by Sprint cadence with direct inline status updates and effort points</p>
+            </div>
+            <div class="header-badges-row">
+              <span class="sprint-pill-highlight">🏃 Sprint 24.3 (Active)</span>
+              <span class="points-pill-highlight">Total Tasks: {{ store.filteredTasks().length }}</span>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 85px;">ID</th>
+                  <th>Task Title</th>
+                  <th style="width: 160px;">Phase</th>
+                  <th style="width: 150px;">Assignee</th>
+                  <th style="width: 100px;">Priority</th>
+                  <th style="width: 80px;">Points</th>
+                  <th style="width: 110px;">Due Date</th>
+                  <th style="width: 160px;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (task of store.filteredTasks(); track task.id) {
+                  <tr (click)="openTask(task.id)" class="table-row" [class.row-blocked]="task.blocked">
+                    <td class="font-mono text-muted">{{ task.id }}</td>
+                    <td>
+                      <div class="title-cell-wrap">
+                        <strong class="table-task-title">{{ task.title }}</strong>
+                        @if (task.blocked) {
+                          <span class="table-badge-blocked">Blocked</span>
+                        }
+                        @if (task.status === 'DEPLOYED') {
+                          <span class="table-badge-deployed">Server Deployed</span>
+                        }
+                      </div>
+                    </td>
+                    <td class="text-secondary">{{ task.phase }}</td>
+                    <td>
+                      <div class="member-table-cell">
+                        <span class="avatar-mini" [style.background-color]="getMember(task.assigneeId).color">
+                          {{ getMember(task.assigneeId).avatar }}
+                        </span>
+                        <span>{{ getMember(task.assigneeId).name }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="card-p-badge" [attr.data-priority]="task.priority">{{ task.priority }}</span>
+                    </td>
+                    <td>
+                      <span class="points-badge tabular-nums">{{ task.effortPoints }} pt</span>
+                    </td>
+                    <td class="tabular-nums text-secondary">{{ task.dueDate }}</td>
+                    <td (click)="$event.stopPropagation()">
+                      <select
+                        class="table-select-status"
+                        [ngModel]="task.status"
+                        (ngModelChange)="store.updateTaskStatus(task.id, $event)"
+                      >
+                        <option value="TODO">To Do</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="DEPLOYED">Deployed to Server</option>
+                        <option value="DONE">Done</option>
+                      </select>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- 3. WATERFALL TIMELINE VIEW -->
+      @if (store.currentView() === 'TIMELINE') {
+        <div class="timeline-view-wrapper">
+          <div class="view-header-card">
+            <div>
+              <h2 class="view-heading">Waterfall Phase Roadmap & Sequential Dependencies</h2>
+              <p class="view-sub">Visual chronological schedule with start-to-due timeline durations</p>
+            </div>
+            <div class="timeline-legend">
+              <span class="legend-item"><span class="box-dot bg-todo"></span> To Do</span>
+              <span class="legend-item"><span class="box-dot bg-prog"></span> In Progress</span>
+              <span class="legend-item"><span class="box-dot bg-dep"></span> Deployed</span>
+              <span class="legend-item"><span class="box-dot bg-done"></span> Done</span>
+            </div>
+          </div>
+
+          <div class="gantt-container">
+            <!-- Timeline Grid Header -->
+            <div class="gantt-header-row">
+              <div class="gantt-col-task">Phase & Deliverable</div>
+              <div class="gantt-col-grid">
+                <span class="gantt-scale-tick">Week 1 (Nov 01 - 07)</span>
+                <span class="gantt-scale-tick">Week 2 (Nov 08 - 14)</span>
+                <span class="gantt-scale-tick">Week 3 (Nov 15 - 21)</span>
+                <span class="gantt-scale-tick">Week 4 (Nov 22 - 28)</span>
+              </div>
+            </div>
+
+            <!-- Grouped by Project Phase -->
+            @for (phase of store.projectPhases(); track phase) {
+              <div class="gantt-phase-block">
+                <div class="gantt-phase-banner">
+                  <span class="phase-pin">📌</span>
+                  <strong>{{ phase }}</strong>
+                </div>
+
+                @for (task of store.filteredTasks(); track task.id) {
+                  @if (task.phase === phase) {
+                    <div class="gantt-item-row" (click)="openTask(task.id)">
+                      <div class="gantt-item-info">
+                        <span class="font-mono text-muted text-xs">{{ task.id }}</span>
+                        <span class="gantt-task-name" [title]="task.title">{{ task.title }}</span>
+                        @if (task.dependencies && task.dependencies.length > 0) {
+                          <span class="dep-pill" [title]="'Depends on ' + task.dependencies.join(', ')">
+                            🔗 {{ task.dependencies[0] }}
+                          </span>
+                        }
+                      </div>
+
+                      <div class="gantt-track-lane">
+                        <!-- Grid lines -->
+                        <div class="gantt-lane-grid">
+                          <div class="grid-lane-cell"></div>
+                          <div class="grid-lane-cell"></div>
+                          <div class="grid-lane-cell"></div>
+                          <div class="grid-lane-cell"></div>
+                        </div>
+
+                        <!-- Proportional Timeline Bar -->
+                        <div
+                          class="gantt-timeline-bar"
+                          [ngStyle]="getTimelineBarStyle(task)"
+                          [attr.data-status]="task.status"
+                          [class.is-blocked]="task.blocked"
+                          [title]="task.title + ' (' + task.startDate + ' to ' + task.dueDate + ')'"
+                        >
+                          <span class="bar-label tabular-nums">
+                            {{ getMember(task.assigneeId).avatar }}: {{ task.dueDate | slice:5:10 }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </main>
+  </div>
+
+  <!-- STANDALONE SLIDE-OVER INSPECTION DRAWER -->
+  <app-task-drawer></app-task-drawer>
+
+  <!-- STANDALONE SMART IMPORT MODAL -->
+  @if (isSmartImportModalOpen()) {
+    <app-import-modal (closeModal)="closeSmartImport()"></app-import-modal>
+  }
+
+  <!-- NEW TASK MODAL -->
+  @if (isNewTaskModalOpen()) {
+    <div class="modal-backdrop" (click)="closeNewTaskModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div>
+            <h3 class="modal-title">Create Engineering Task</h3>
+            <p class="modal-sub">Add a work item directly to the active sprint backlog</p>
+          </div>
+          <button type="button" class="btn-close" (click)="closeNewTaskModal()">✕</button>
+        </div>
+
+        <div class="modal-body custom-scroll">
+          <div class="form-group">
+            <label class="form-label required">Task Title</label>
+            <input
+              type="text"
+              class="form-input"
+              [(ngModel)]="newTaskTitle"
+              placeholder="e.g. Optimize Triton FP8 Dynamic Batching"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Description & Architecture Specs</label>
+            <textarea
+              class="form-textarea"
+              rows="3"
+              [(ngModel)]="newTaskDescription"
+              placeholder="Context, benchmark targets, and acceptance criteria..."
+            ></textarea>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Assignee</label>
+              <select class="form-select" [(ngModel)]="newTaskAssigneeId">
+                @for (member of store.teamMembers(); track member.id) {
+                  <option [value]="member.id">{{ member.name }} ({{ member.role }})</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Priority</label>
+              <select class="form-select" [(ngModel)]="newTaskPriority">
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="CRITICAL">Critical</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Phase</label>
+              <input type="text" class="form-input" [(ngModel)]="newTaskPhase" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Sprint</label>
+              <input type="text" class="form-input" [(ngModel)]="newTaskSprint" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Effort Points</label>
+              <input type="number" min="1" max="21" class="form-input" [(ngModel)]="newTaskEffort" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Due Date</label>
+              <input type="date" class="form-input" [(ngModel)]="newTaskDueDate" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Server / Endpoint Verification URL (Optional)</label>
+            <input
+              type="url"
+              class="form-input"
+              [(ngModel)]="newTaskDeployedUrl"
+              placeholder="https://staging-infer.internal.ai/v1/health"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Initial Subtasks (1 per line)</label>
+            <textarea
+              class="form-textarea"
+              rows="2"
+              [(ngModel)]="newTaskInitialSubtasks"
+              placeholder="Configure Triton Dynamic Batching&#10;Execute p99 latency smoke tests"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeNewTaskModal()">Cancel</button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            [disabled]="!newTaskTitle.trim()"
+            (click)="submitNewTask()"
+          >
+            Create Task
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ACTIVITY AUDIT LOG DRAWER -->
+  @if (isActivityDrawerOpen()) {
+    <div class="drawer-backdrop" (click)="closeActivityDrawer()">
+      <aside class="activity-drawer-panel" (click)="$event.stopPropagation()">
+        <div class="drawer-header">
+          <div>
+            <h3 class="drawer-heading">Activity Audit Trail</h3>
+            <p class="drawer-sub">Zero-spam chronological audit log of all workspace events</p>
+          </div>
+          <button type="button" class="btn-close" (click)="closeActivityDrawer()">✕</button>
+        </div>
+
+        <div class="drawer-body custom-scroll">
+          <div class="activity-timeline">
+            @for (log of store.activityLogs(); track log.id) {
+              <div class="activity-item">
+                <span class="activity-avatar">{{ log.actorAvatar }}</span>
+                <div class="activity-body">
+                  <div class="activity-top-line">
+                    <strong class="activity-actor">{{ log.actor }}</strong>
+                    <span class="activity-time tabular-nums">{{ log.timestamp }}</span>
+                  </div>
+                  <div class="activity-tag-row">
+                    <span class="action-tag" [attr.data-action]="log.action">{{ log.action }}</span>
+                  </div>
+                  <strong class="activity-task-title">{{ log.taskTitle }}</strong>
+                  <p class="activity-details">{{ log.details }}</p>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="drawer-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeActivityDrawer()">
+            Close
+          </button>
+        </div>
+      </aside>
+    </div>
+  }
+</div>

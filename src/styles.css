@@ -1,0 +1,171 @@
+/* PulseBoard V1 Design System - Clean Linear / Microsoft Planner Aesthetics */
+
+:root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* LIGHT THEME (Crisp Microsoft Planner / Linear Canvas) */
+  --bg-canvas: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f1f5f9;
+  --bg-sidebar: #ffffff;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --accent-primary: #2563eb;
+  --accent-primary-hover: #1d4ed8;
+  --accent-light: #eff6ff;
+
+  --status-todo: #64748b;
+  --status-todo-bg: #f1f5f9;
+  --status-todo-text: #475569;
+
+  --status-inprogress: #0284c7;
+  --status-inprogress-bg: #e0f2fe;
+  --status-inprogress-text: #0369a1;
+
+  --status-deployed: #7c3aed;
+  --status-deployed-bg: #ede9fe;
+  --status-deployed-text: #6d28d9;
+
+  --status-done: #10b981;
+  --status-done-bg: #dcfce7;
+  --status-done-text: #15803d;
+
+  --badge-critical-bg: #fee2e2;
+  --badge-critical-text: #b91c1c;
+
+  --badge-high-bg: #ffedd5;
+  --badge-high-text: #c2410c;
+
+  --badge-medium-bg: #eff6ff;
+  --badge-medium-text: #1d4ed8;
+
+  --badge-low-bg: #f1f5f9;
+  --badge-low-text: #475569;
+
+  --badge-done-bg: #dcfce7;
+  --badge-done-text: #15803d;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+}
+
+[data-theme="dark"] {
+  /* DARK THEME (Sleek Linear Obsidian Canvas) */
+  --bg-canvas: #0b0e14;
+  --bg-surface: #131722;
+  --bg-elevated: #1a202e;
+  --bg-sidebar: #0f121a;
+  --border-subtle: #1e2433;
+  --border-strong: #2a3348;
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  --accent-primary: #3b82f6;
+  --accent-primary-hover: #60a5fa;
+  --accent-light: #1e293b;
+
+  --status-todo: #94a3b8;
+  --status-todo-bg: #1e2433;
+  --status-todo-text: #cbd5e1;
+
+  --status-inprogress: #38bdf8;
+  --status-inprogress-bg: #0c4a6e;
+  --status-inprogress-text: #7dd3fc;
+
+  --status-deployed: #a855f7;
+  --status-deployed-bg: #3b0764;
+  --status-deployed-text: #d8b4fe;
+
+  --status-done: #34d399;
+  --status-done-bg: #064e3b;
+  --status-done-text: #6ee7b7;
+
+  --badge-critical-bg: #450a0a;
+  --badge-critical-text: #f87171;
+
+  --badge-high-bg: #431407;
+  --badge-high-text: #fb923c;
+
+  --badge-medium-bg: #172554;
+  --badge-medium-text: #60a5fa;
+
+  --badge-low-bg: #1e2433;
+  --badge-low-text: #94a3b8;
+
+  --badge-done-bg: #064e3b;
+  --badge-done-text: #6ee7b7;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-md: 0 4px 8px -1px rgb(0 0 0 / 0.6);
+  --shadow-lg: 0 12px 20px -3px rgb(0 0 0 / 0.7);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-sans);
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbars */
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Tabular figures for alignment */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* CDK Drag and drop previews */
+.cdk-drag-preview {
+  box-sizing: border-box;
+  border-radius: 10px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.25);
+  background-color: var(--bg-surface) !important;
+  opacity: 0.95;
+  border: 1px solid var(--accent-primary) !important;
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.3;
+  border: 2px dashed var(--accent-primary) !important;
+  border-radius: 10px;
+  min-height: 90px;
+  background: var(--bg-elevated);
+}
+
+.cdk-drag-animating {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.kanban-drop-zone.cdk-drop-list-dragging .task-card:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
