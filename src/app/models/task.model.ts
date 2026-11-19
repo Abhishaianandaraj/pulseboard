@@ -6,6 +6,15 @@ export type MethodologyView = 'BOARD' | 'SPRINT' | 'TIMELINE';
 
 export type ThemeMode = 'light' | 'dark';
 
+export type SystemRole = 'VIEWER' | 'DEV' | 'QA' | 'LEAD' | 'ADMIN';
+
+export type SlipReason =
+  | 'DEPENDENCY_BLOCKED'
+  | 'SCOPE_EXPANDED'
+  | 'PRODUCTION_HOTFIX'
+  | 'UNDERESTIMATED'
+  | null;
+
 export type TechnicalRole =
   | 'AI Engineer'
   | 'Full-Stack Dev'
@@ -14,6 +23,16 @@ export type TechnicalRole =
   | 'Delivery Manager';
 
 export type RoleCategory = 'AI' | 'DEV' | 'QA/TEST' | 'LEAD' | 'DM';
+
+export interface MemberLoadMetric {
+  memberId: string;
+  activePoints: number;
+  reworkCount: number;
+  effectiveLoad: number;
+  capacityBudget: number;
+  status: 'OPTIMAL' | 'NEAR_CAPACITY' | 'OVER_BUDGET';
+  label: string;
+}
 
 export interface Project {
   id: string;
@@ -50,11 +69,13 @@ export interface TeamMember {
   id: string;
   name: string;
   role: TechnicalRole;
+  systemRole: SystemRole;
   squad: string;
   avatar: string;
   email: string;
   color: string;
   department: string;
+  capacityBudget: number; // Sprint budget in points (default: 15)
 }
 
 export interface Task {
@@ -70,6 +91,10 @@ export interface Task {
   assigneeId: string;
   startDate: string;
   dueDate: string;
+  baselineDueDate?: string; // Original committed due date for drift calculation
+  reworkCount: number; // Frequency of 'NEEDS_CHANGES' rejections (+3 penalty each)
+  slipReason?: SlipReason;
+  slipJustification?: string;
   blocked: boolean;
   blockerReason?: string;
   deployedUrl?: string;
@@ -91,7 +116,9 @@ export type ActivityActionType =
   | 'SMART_IMPORT_BATCH'
   | 'PROJECT_CREATED'
   | 'MEMBER_ADDED'
-  | 'WORKSPACE_RESET';
+  | 'WORKSPACE_RESET'
+  | 'REWORK_PENALTY'
+  | 'SLIPPAGE_LOGGED';
 
 export interface ActivityLog {
   id: string;

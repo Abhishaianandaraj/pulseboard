@@ -1673,6 +1673,8 @@
 .action-tag[data-action="SMART_IMPORT_BATCH"] { background: var(--status-deployed-bg); color: var(--status-deployed-text); }
 .action-tag[data-action="PROJECT_CREATED"] { background: var(--accent-light); color: var(--accent-primary); }
 .action-tag[data-action="MEMBER_ADDED"] { background: var(--status-inprogress-bg); color: var(--status-inprogress-text); }
+.action-tag[data-action="REWORK_PENALTY"] { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.action-tag[data-action="SLIPPAGE_LOGGED"] { background: rgba(234, 179, 8, 0.15); color: #eab308; }
 
 .activity-task-title {
   font-size: 12px;
@@ -1683,4 +1685,142 @@
   font-size: 11.5px;
   color: var(--text-secondary);
   line-height: 1.35;
+}
+
+/* --- V2 Active Session Switcher Pill --- */
+.session-persona-pill {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.session-persona-pill:hover {
+  border-color: var(--border-focus);
+  background: var(--bg-elevated);
+}
+.persona-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.persona-details {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.persona-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.persona-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.persona-role-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-canvas);
+  color: var(--accent-primary);
+}
+.persona-role-badge[data-role="LEAD"] { color: #10b981; }
+.persona-role-badge[data-role="QA"] { color: #c026d3; }
+.persona-role-badge[data-role="VIEWER"] { color: #64748b; }
+.persona-dropdown-arrow {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.persona-select-overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+/* --- V2 Capacity & Recovery UI --- */
+.capacity-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--bg-surface);
+}
+.capacity-dot.load-optimal, .capacity-ratio.load-optimal { color: #10b981; background-color: #10b981; }
+.capacity-dot.load-near, .capacity-ratio.load-near { color: #f59e0b; background-color: #f59e0b; }
+.capacity-dot.load-over, .capacity-ratio.load-over { color: #ef4444; background-color: #ef4444; }
+.capacity-ratio {
+  background: transparent !important;
+  font-size: 10px;
+  font-weight: 700;
+}
+.member-squad-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+/* Card Rework & Slip tags */
+.card-rework-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  width: fit-content;
+}
+.card-slip-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  color: #eab308;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.capacity-advisory-box {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.capacity-advisory-box .advisory-icon { font-size: 16px; }
+.capacity-advisory-box .advisory-text {
+  font-size: 12px;
+  color: #ef4444;
+  line-height: 1.45;
 }

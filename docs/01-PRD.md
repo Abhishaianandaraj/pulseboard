@@ -67,6 +67,7 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
 ---
 
 ### FR-01: Corporate SSO Authentication & Session Context
+- **Status:** ✅ Implemented (V2 Milestone 1)
 - **Description:** Provide seamless enterprise single sign-on integration capability (Microsoft Entra ID / OpenID Connect / SAML 2.0) with a local Developer Role Simulation Switcher for instant offline testing and executive demos.
 - **Rationale:** Enterprise deployments require identity-backed audit logs and corporate credential compliance, while local staging environments require rapid role swapping without bouncing through real OAuth redirects.
 - **Acceptance Criteria:**
@@ -78,6 +79,7 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
 ---
 
 ### FR-02: Role-Based Access Control (RBAC) & Project Multi-Tenancy
+- **Status:** ✅ Implemented (V2 Milestone 1)
 - **Description:** Implement a strict RBAC policy engine controlling read, write, deploy, verify, and administrative capabilities across workspace projects.
 - **Roles:**
   - `VIEWER`: Read-only access to boards, timelines, and audit logs.
@@ -93,6 +95,7 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
 ---
 
 ### FR-03: Interactive Dependency Gantt Chart
+- **Status:** ⏳ Scheduled (V2 Milestone 2)
 - **Description:** Elevate the Waterfall view into a full interactive dependency Gantt chart with task-to-task relationship connectors, Critical Path highlighting, and schedule drift indicators.
 - **Acceptance Criteria:**
   1. Tasks support a `dependencies: string[]` array (pointing to predecessor task IDs).
@@ -103,6 +106,7 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
 ---
 
 ### FR-04: Smart Developer Capacity Budget & Recovery Score
+- **Status:** ✅ Implemented (V2 Milestone 1)
 - **Description:** Prevent burnout and unrealistic sprint commitments by calculating developer capacity taking into account active task load, build failures, and rework penalties.
 - **Capacity Formula:**
   $$\text{Effective Load} = \text{Active Story Points} + (\text{Reopened or Failed Builds} \times 3)$$
@@ -117,20 +121,22 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
 ---
 
 ### FR-05: Deadline Slippage & Grace Buffer Protocol
+- **Status:** ✅ Implemented (V2 Milestone 1)
 - **Description:** When an in-progress or deployed task cannot meet its original due date, team members can log a structured, 1-click slippage justification rather than silently editing dates.
 - **Slip Reason Taxonomy:**
-  - `Dependency Blocked` (Waiting on external API, backend service, or upstream PR).
-  - `Scope Expanded` (Unforeseen edge cases or security requirements introduced).
-  - `Production Hotfix` (Diverted to resolve a high-severity live incident).
-  - `Underestimated Effort` (Complex legacy code or model convergence delays).
+  - `DEPENDENCY_BLOCKED` (Waiting on external API, backend service, or upstream PR).
+  - `SCOPE_EXPANDED` (Unforeseen edge cases or security requirements introduced).
+  - `PRODUCTION_HOTFIX` (Diverted to resolve a high-severity live incident).
+  - `UNDERESTIMATED` (Complex legacy code or model convergence delays).
 - **Acceptance Criteria:**
-  1. When extending a task's `dueDate` past its `baselineDueDate`, the drawer prompts for a mandatory **Slip Reason Tag** and a 1-sentence explanation.
+  1. When extending a task's `dueDate` past its `baselineDueDate`, the drawer prompts for a mandatory **Slip Reason Tag** and an optional explanation.
   2. The slippage event is logged to the task history and project audit trail.
   3. The system adjusts next-sprint intake recommendations without applying punitive metrics.
 
 ---
 
 ### FR-06: Tamper-Proof Activity & Security Audit Trail
+- **Status:** 🔄 Active Baseline / Enhanced in Milestone 2
 - **Description:** Maintain an append-only, structured audit log of all critical workspace activities for compliance, security reviews, and retrospective analysis.
 - **Acceptance Criteria:**
   1. Every task status shift, server deployment, verification note, project creation, and member role update records an immutable `ActivityLog` entry.

@@ -20,8 +20,10 @@ export interface Project {
 }
 ```
 
-### 1.2 Team Member Model
+### 1.2 Team Member Model & RBAC Context
 ```typescript
+export type SystemRole = 'VIEWER' | 'DEV' | 'QA' | 'LEAD' | 'ADMIN';
+
 export type TechnicalRole =
   | 'AI Engineer'
   | 'Full-Stack Dev'
@@ -31,13 +33,27 @@ export type TechnicalRole =
 
 export type RoleCategory = 'DEV' | 'QA/TEST' | 'AI' | 'LEAD' | 'DM';
 
+export interface MemberLoadMetric {
+  memberId: string;
+  activePoints: number;
+  reworkCount: number;
+  effectiveLoad: number;
+  capacityBudget: number;
+  status: 'OPTIMAL' | 'NEAR_CAPACITY' | 'OVER_BUDGET';
+  label: string;
+}
+
 export interface TeamMember {
-  id: string;                      // e.g. "mem-1"
+  id: string;                      // e.g. "tm-1"
   name: string;                    // e.g. "Abhishai"
   role: TechnicalRole;
+  systemRole: SystemRole;          // RBAC permission tier
   squad: string;                   // e.g. "Core AI Squad"
   avatar: string;                  // e.g. "AB"
-  activeTaskCount: number;
+  email: string;
+  color: string;
+  department: string;
+  capacityBudget: number;          // Default 15 story points per sprint
 }
 ```
 
@@ -46,34 +62,55 @@ export interface TeamMember {
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DEPLOYED' | 'DONE';
 export type TaskPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
+export type SlipReason =
+  | 'DEPENDENCY_BLOCKED'
+  | 'SCOPE_EXPANDED'
+  | 'PRODUCTION_HOTFIX'
+  | 'UNDERESTIMATED'
+  | null;
+
 export interface Subtask {
   id: string;
+  taskId: string;
   title: string;
   completed: boolean;
+  createdAt: string;
 }
+
+export type ReviewVerdict = 'APPROVED' | 'NEEDS_CHANGES' | 'OBSERVATION';
 
 export interface ReviewNote {
   id: string;
+  taskId: string;
   author: string;
-  role: string;
+  authorAvatar: string;
+  authorRole: 'LEAD' | 'DM' | 'REVIEWER';
+  verdict: ReviewVerdict;
   content: string;
-  createdAt: string;              // ISO 8601
+  timestamp: string;
 }
 
 export interface Task {
-  id: string;                      // e.g. "task-1"
+  id: string;                      // e.g. "PB-101"
   projectId: string;               // Foreign key -> Project.id
   title: string;
   description: string;
   status: TaskStatus;
   priority: TaskPriority;
+  phase: string;
+  sprint: string;
+  effortPoints: number;            // Story points (1, 2, 3, 5, 8, 13)
   assigneeId: string;              // Foreign key -> TeamMember.id
-  phase: string;                   // e.g. "Sprint 1 - Ingestion"
-  dueDate: string;                 // e.g. "2026-11-25"
   startDate: string;               // e.g. "2026-11-18"
-  points: number;                  // Story points (1, 2, 3, 5, 8, 13)
-  isBlocked: boolean;
+  dueDate: string;                 // e.g. "2026-11-25"
+  baselineDueDate?: string;        // Committed schedule baseline for drift tracking
+  reworkCount: number;             // Count of 'NEEDS_CHANGES' reviews (+3 penalty each)
+  slipReason?: SlipReason;         // Grace buffer taxonomy justification
+  slipJustification?: string;      // Detailed context
+  blocked: boolean;
   blockerReason?: string;
+  deployedUrl?: string;
+  dependencies?: string[];
   subtasks: Subtask[];
   reviewNotes: ReviewNote[];
   createdAt: string;               // ISO 8601
@@ -83,14 +120,34 @@ export interface Task {
 
 ### 1.4 Activity Log Model
 ```typescript
+export type ActivityActionType =
+  | 'TASK_CREATED'
+  | 'TASK_UPDATED'
+  | 'TASK_DELETED'
+  | 'STATUS_CHANGED'
+  | 'DEPLOYED_TO_SERVER'
+  | 'REVIEW_NOTE_ADDED'
+  | 'BLOCKER_TOGGLED'
+  | 'SMART_IMPORT_BATCH'
+  | 'PROJECT_CREATED'
+  | 'MEMBER_ADDED'
+  | 'WORKSPACE_RESET'
+  | 'REWORK_PENALTY'
+  | 'SLIPPAGE_LOGGED';
+
 export interface ActivityLog {
   id: string;
-  taskId?: string;
-  taskTitle?: string;
-  action: 'CREATED' | 'MOVED' | 'DEPLOYED' | 'VERIFIED' | 'BLOCKED' | 'UNBLOCKED' | 'NOTE_ADDED';
+  timestamp: string;               // ISO 8601 or display timestamp
   actor: string;
-  timestamp: string;               // ISO 8601
+  actorAvatar: string;
+  action: ActivityActionType;
+  taskId: string;
+  taskTitle: string;
   details: string;
+  statusTransition?: {
+    from: TaskStatus;
+    to: TaskStatus;
+  };
 }
 ```
 

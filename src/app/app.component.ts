@@ -14,7 +14,9 @@ import {
   MethodologyView,
   Subtask,
   TeamMember,
-  TechnicalRole
+  TechnicalRole,
+  SystemRole,
+  MemberLoadMetric
 } from './models/task.model';
 import { TaskDrawerComponent } from './components/task-drawer.component';
 import { ImportModalComponent } from './components/import-modal.component';
@@ -86,7 +88,9 @@ export class AppComponent {
   // New Member Form State
   newMemberName = '';
   newMemberRole: TechnicalRole = 'Full-Stack Dev';
+  newMemberSystemRole: SystemRole = 'DEV';
   newMemberSquad = 'Core AI Squad';
+  newMemberCapacityBudget = 15;
 
   // New Task Form State
   newTaskTitle = '';
@@ -110,14 +114,34 @@ export class AppComponent {
     this.store.currentView.set(view);
   }
 
+  // Persona Role Switcher (FR-01)
+  switchPersona(memberId: string): void {
+    this.store.switchCurrentUser(memberId);
+  }
+
+  getCapacityClass(memberId: string): string {
+    const metric = this.store.getMemberLoadMetric(memberId);
+    if (metric.status === 'OVER_BUDGET') return 'load-over';
+    if (metric.status === 'NEAR_CAPACITY') return 'load-near';
+    return 'load-optimal';
+  }
+
   // Drag and drop handler
   onTaskDrop(event: CdkDragDrop<Task[], Task[], Task>): void {
+    if (!this.store.canEditTasks()) return;
+
     if (event.previousContainer === event.container) {
       const status = event.container.id.replace('list-', '') as TaskStatus;
       this.store.reorderTasksInColumn(status, event.previousIndex, event.currentIndex);
     } else {
       const draggedTask = event.item.data as Task;
       const targetStatus = event.container.id.replace('list-', '') as TaskStatus;
+
+      if (targetStatus === 'DONE' && !this.store.canSignOffDone()) {
+        console.warn('RBAC: Only Tech Lead or Admin can move tasks to DONE.');
+        return;
+      }
+
       this.store.moveTaskBetweenColumns(draggedTask.id, targetStatus, event.currentIndex);
     }
   }
@@ -190,7 +214,9 @@ export class AppComponent {
     this.isAddMemberFormOpen.update(v => !v);
     this.newMemberName = '';
     this.newMemberRole = 'Full-Stack Dev';
+    this.newMemberSystemRole = 'DEV';
     this.newMemberSquad = 'Core AI Squad';
+    this.newMemberCapacityBudget = 15;
   }
 
   submitNewMember(): void {
@@ -198,7 +224,9 @@ export class AppComponent {
     this.store.addTeamMember(
       this.newMemberName,
       this.newMemberRole,
-      this.newMemberSquad
+      this.newMemberSquad,
+      this.newMemberSystemRole,
+      Number(this.newMemberCapacityBudget) || 15
     );
     this.isAddMemberFormOpen.set(false);
   }
@@ -210,6 +238,7 @@ export class AppComponent {
 
   // New Task Modal handlers
   openNewTaskModal(): void {
+    if (!this.store.canCreateTasks()) return;
     this.newTaskTitle = '';
     this.newTaskDescription = '';
     const activeP = this.store.selectedProjectId();
@@ -231,7 +260,7 @@ export class AppComponent {
   }
 
   submitNewTask(): void {
-    if (!this.newTaskTitle.trim()) return;
+    if (!this.newTaskTitle.trim() || !this.store.canCreateTasks()) return;
 
     const subtasks: Subtask[] = this.newTaskInitialSubtasks
       .split('\n')
@@ -256,6 +285,9 @@ export class AppComponent {
       effortPoints: Number(this.newTaskEffort) || 3,
       startDate: this.newTaskStartDate,
       dueDate: this.newTaskDueDate,
+      baselineDueDate: this.newTaskDueDate,
+      reworkCount: 0,
+      slipReason: null,
       deployedUrl: this.newTaskDeployedUrl.trim(),
       subtasks
     });

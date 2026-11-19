@@ -41,51 +41,73 @@ export const INITIAL_TEAM_MEMBERS: TeamMember[] = [
     id: 'tm-1',
     name: 'Abhishai',
     role: 'Full-Stack Dev',
+    systemRole: 'DEV',
     squad: 'Core AI Squad',
     avatar: 'AB',
     email: 'abhishai@pulseboard.internal',
     color: '#2563eb',
-    department: 'Engineering'
+    department: 'Engineering',
+    capacityBudget: 15
   },
   {
     id: 'tm-2',
     name: 'Priya Nair',
     role: 'AI Engineer',
+    systemRole: 'DEV',
     squad: 'Core AI Squad',
     avatar: 'PN',
     email: 'priya.nair@pulseboard.internal',
     color: '#7c3aed',
-    department: 'Applied AI'
+    department: 'Applied AI',
+    capacityBudget: 15
   },
   {
     id: 'tm-3',
     name: 'Karthik R',
     role: 'QA / Test Engineer',
+    systemRole: 'QA',
     squad: 'Platform & QA Squad',
     avatar: 'KR',
     email: 'karthik.r@pulseboard.internal',
     color: '#06b6d4',
-    department: 'Quality Assurance'
+    department: 'Quality Assurance',
+    capacityBudget: 15
   },
   {
     id: 'tm-4',
     name: 'Rahul Verma',
     role: 'Full-Stack Dev',
+    systemRole: 'DEV',
     squad: 'Platform & QA Squad',
     avatar: 'RV',
     email: 'rahul.verma@pulseboard.internal',
     color: '#f59e0b',
-    department: 'Backend & Infra'
+    department: 'Backend & Infra',
+    capacityBudget: 15
   },
   {
     id: 'tm-5',
     name: 'Vikram Rao',
     role: 'Tech Lead',
+    systemRole: 'LEAD',
     squad: 'Core AI Squad',
     avatar: 'VR',
     email: 'vikram.rao@pulseboard.internal',
     color: '#10b981',
-    department: 'Technical Leadership'
+    department: 'Technical Leadership',
+    capacityBudget: 15
+  },
+  {
+    id: 'tm-6',
+    name: 'Sanjay Patel',
+    role: 'Delivery Manager',
+    systemRole: 'VIEWER',
+    squad: 'Core AI Squad',
+    avatar: 'SP',
+    email: 'sanjay.patel@pulseboard.internal',
+    color: '#64748b',
+    department: 'Product Strategy',
+    capacityBudget: 15
   }
 ];
 
@@ -103,6 +125,9 @@ export const INITIAL_TASKS: Task[] = [
     assigneeId: 'tm-2', // Priya Nair (AI Engineer)
     startDate: '2026-11-10',
     dueDate: '2026-11-19',
+    baselineDueDate: '2026-11-19',
+    reworkCount: 0,
+    slipReason: null,
     blocked: false,
     deployedUrl: 'https://staging-infer.internal.ai/v1/health',
     dependencies: [],
@@ -140,6 +165,10 @@ export const INITIAL_TASKS: Task[] = [
     assigneeId: 'tm-1', // Abhishai (Full-Stack & AI Dev)
     startDate: '2026-11-12',
     dueDate: '2026-11-20',
+    baselineDueDate: '2026-11-17',
+    reworkCount: 1,
+    slipReason: 'DEPENDENCY_BLOCKED',
+    slipJustification: 'Waiting on Milvus 2.4 GPU-accelerated index rebuild license unlock from infra IT',
     blocked: true,
     blockerReason: 'Waiting on Milvus 2.4 GPU-accelerated index rebuild license unlock from infra IT',
     dependencies: ['PB-101'],
@@ -148,7 +177,18 @@ export const INITIAL_TASKS: Task[] = [
       { id: 'st-6', taskId: 'PB-102', title: 'Tune alpha parameter in RRF combiner', completed: true, createdAt: '2026-11-14' },
       { id: 'st-7', taskId: 'PB-102', title: 'Implement async batching for chunk tokenization', completed: false, createdAt: '2026-11-15' }
     ],
-    reviewNotes: [],
+    reviewNotes: [
+      {
+        id: 'rn-102',
+        taskId: 'PB-102',
+        author: 'Vikram Rao (Tech Lead)',
+        authorAvatar: 'VR',
+        authorRole: 'LEAD',
+        content: 'Milvus index rebuild failed on CPU fallback node. Rework required to test fallback indexer.',
+        timestamp: 'Yesterday at 04:30 PM',
+        verdict: 'NEEDS_CHANGES'
+      }
+    ],
     createdAt: '2026-11-12T10:00:00Z',
     updatedAt: '2026-11-18T11:30:00Z'
   },
@@ -165,6 +205,9 @@ export const INITIAL_TASKS: Task[] = [
     assigneeId: 'tm-4', // Rahul Verma (Backend Dev)
     startDate: '2026-11-14',
     dueDate: '2026-11-21',
+    baselineDueDate: '2026-11-21',
+    reworkCount: 0,
+    slipReason: null,
     blocked: false,
     deployedUrl: 'https://preview-orchestrator.internal.ai/agents/stream',
     dependencies: ['PB-101'],
@@ -201,6 +244,9 @@ export const INITIAL_TASKS: Task[] = [
     assigneeId: 'tm-3', // Karthik R (QA / Test Engineer)
     startDate: '2026-11-18',
     dueDate: '2026-11-26',
+    baselineDueDate: '2026-11-26',
+    reworkCount: 0,
+    slipReason: null,
     blocked: false,
     dependencies: ['PB-103'],
     subtasks: [
@@ -225,6 +271,9 @@ export const INITIAL_TASKS: Task[] = [
     assigneeId: 'tm-1', // Abhishai
     startDate: '2026-11-01',
     dueDate: '2026-11-08',
+    baselineDueDate: '2026-11-08',
+    reworkCount: 0,
+    slipReason: null,
     blocked: false,
     dependencies: [],
     subtasks: [

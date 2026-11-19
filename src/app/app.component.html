@@ -95,10 +95,27 @@
               <option value="Tech Lead">Tech Lead</option>
               <option value="Delivery Manager">Delivery Manager</option>
             </select>
+            <select class="mini-select" [(ngModel)]="newMemberSystemRole">
+              <option value="DEV">Role: DEV</option>
+              <option value="QA">Role: QA</option>
+              <option value="LEAD">Role: LEAD</option>
+              <option value="VIEWER">Role: VIEWER</option>
+              <option value="ADMIN">Role: ADMIN</option>
+            </select>
+          </div>
+          <div class="mini-form-row" style="margin-top: 4px;">
             <select class="mini-select" [(ngModel)]="newMemberSquad">
               <option value="Core AI Squad">Core AI Squad</option>
               <option value="Platform & QA Squad">Platform & QA Squad</option>
             </select>
+            <input
+              type="number"
+              class="mini-input"
+              style="width: 70px;"
+              placeholder="15 pts"
+              [(ngModel)]="newMemberCapacityBudget"
+              title="Sprint capacity budget in story points"
+            />
           </div>
           <div class="mini-form-buttons">
             <button type="button" class="btn-mini-cancel" (click)="toggleAddMemberForm()">Cancel</button>
@@ -117,6 +134,7 @@
           >
             <div class="member-dot-wrap">
               <span class="member-avatar" [style.background-color]="member.color">{{ member.avatar }}</span>
+              <span class="capacity-dot" [ngClass]="getCapacityClass(member.id)" [title]="store.getMemberLoadMetric(member.id).label"></span>
             </div>
             <div class="member-info">
               <div class="member-name-row">
@@ -125,7 +143,12 @@
                   {{ store.getRoleCategory(member.role) }}
                 </span>
               </div>
-              <span class="member-squad-text">{{ member.squad }}</span>
+              <div class="member-squad-row">
+                <span class="member-squad-text">{{ member.squad }}</span>
+                <span class="capacity-ratio font-mono" [ngClass]="getCapacityClass(member.id)">
+                  {{ store.getMemberLoadMetric(member.id).effectiveLoad }}/{{ member.capacityBudget }}p
+                </span>
+              </div>
             </div>
             <span class="workload-pill" [class.zero-load]="(store.memberWorkloadMap().get(member.id) || 0) === 0">
               {{ store.memberWorkloadMap().get(member.id) || 0 }}
@@ -192,6 +215,29 @@
 
     <!-- TOP COMMAND BAR -->
     <header class="top-command-bar">
+      <!-- Active Session Persona Switcher (FR-01 Corporate SSO / RBAC Simulator) -->
+      <div class="session-persona-pill" title="Click to swap active user session & test RBAC permissions">
+        <span class="persona-avatar" [style.background-color]="store.currentUser().color">{{ store.currentUser().avatar }}</span>
+        <div class="persona-details">
+          <span class="persona-label">ACTIVE:</span>
+          <span class="persona-name">{{ store.currentUser().name }}</span>
+          <span class="persona-role-badge" [attr.data-role]="store.currentUserRole()">[{{ store.currentUserRole() }}]</span>
+        </div>
+        <span class="persona-dropdown-arrow">▾</span>
+        <select
+          class="persona-select-overlay"
+          [ngModel]="store.currentUserId()"
+          (ngModelChange)="switchPersona($event)"
+          title="Switch Active Session Persona"
+        >
+          @for (mem of store.teamMembers(); track mem.id) {
+            <option [value]="mem.id">
+              Viewing as: {{ mem.name }} • {{ mem.role }} [{{ mem.systemRole }}]
+            </option>
+          }
+        </select>
+      </div>
+
       <!-- Search Box -->
       <div class="search-wrap">
         <span class="search-glyph">🔍</span>
@@ -251,11 +297,23 @@
           </button>
         }
 
-        <button type="button" class="btn btn-smart-import" (click)="openSmartImport()">
+        <button
+          type="button"
+          class="btn btn-smart-import"
+          [disabled]="!store.canCreateTasks()"
+          (click)="openSmartImport()"
+          [title]="!store.canCreateTasks() ? 'Viewer session: Read-only' : 'Open AI JSON Smart Ingestion'"
+        >
           <span class="btn-icon">✨</span> Smart Import
         </button>
 
-        <button type="button" class="btn btn-primary" (click)="openNewTaskModal()">
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="!store.canCreateTasks()"
+          (click)="openNewTaskModal()"
+          [title]="!store.canCreateTasks() ? 'Viewer session: Read-only' : 'Create new deliverable'"
+        >
           <span class="btn-icon">+</span> New Task
         </button>
       </div>
@@ -440,6 +498,21 @@
                         <div class="card-blocker-callout">
                           <span class="blocker-icon">⚠️</span>
                           <span class="blocker-desc">{{ task.blockerReason || 'Blocker logged' }}</span>
+                        </div>
+                      }
+
+                      <!-- Rework Penalty Tag (FR-04) -->
+                      @if (task.reworkCount > 0) {
+                        <div class="card-rework-tag" title="Rework recovery overhead (+{{ task.reworkCount * 3 }} pts applied)">
+                          <span class="rework-icon">🔁</span>
+                          <span>{{ task.reworkCount }} Rework (+{{ task.reworkCount * 3 }}p)</span>
+                        </div>
+                      }
+
+                      <!-- Schedule Drift Tag (FR-05) -->
+                      @if (task.slipReason) {
+                        <div class="card-slip-tag" title="Slippage reason logged">
+                          <span>⏱️ {{ task.slipReason }}</span>
                         </div>
                       }
 
@@ -756,6 +829,19 @@
         </div>
 
         <div class="modal-body custom-scroll">
+          <!-- Assignee Capacity Advisory (FR-04) -->
+          @if (store.getMemberLoadMetric(newTaskAssigneeId).status === 'OVER_BUDGET') {
+            <div class="capacity-advisory-box" style="margin-bottom: 14px;">
+              <div class="advisory-icon">⚠️</div>
+              <div class="advisory-text">
+                <strong>Capacity Advisory:</strong>
+                {{ store.assigneeMap().get(newTaskAssigneeId)?.name }} is currently Over Budget
+                ({{ store.getMemberLoadMetric(newTaskAssigneeId).effectiveLoad }}/{{ store.assigneeMap().get(newTaskAssigneeId)?.capacityBudget }} pts)
+                including {{ store.getMemberLoadMetric(newTaskAssigneeId).reworkCount * 3 }} recovery penalty points. Assigning additional points may breach sprint commitments.
+              </div>
+            </div>
+          }
+
           <div class="form-group">
             <label class="form-label required">Project</label>
             <select class="form-select" [(ngModel)]="newTaskProjectId">
@@ -787,11 +873,11 @@
 
           <div class="form-grid-2">
             <div class="form-group">
-              <label class="form-label">Assignee</label>
+              <label class="form-label">Assignee & Live Capacity</label>
               <select class="form-select" [(ngModel)]="newTaskAssigneeId">
                 @for (member of store.teamMembers(); track member.id) {
                   <option [value]="member.id">
-                    {{ member.name }} • {{ member.role }} ({{ member.squad }})
+                    {{ member.name }} • {{ store.getMemberLoadMetric(member.id).effectiveLoad }}/{{ member.capacityBudget }} pts ({{ store.getMemberLoadMetric(member.id).label }})
                   </option>
                 }
               </select>

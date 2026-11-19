@@ -12,7 +12,10 @@ import {
   ReviewVerdict,
   ThemeMode,
   TechnicalRole,
-  RoleCategory
+  RoleCategory,
+  SystemRole,
+  SlipReason,
+  MemberLoadMetric
 } from '../models/task.model';
 import {
   INITIAL_PROJECTS,
@@ -27,6 +30,7 @@ const STORAGE_KEY_TASKS = 'pulseboard_v1_tasks';
 const STORAGE_KEY_LOGS = 'pulseboard_v1_logs';
 const STORAGE_KEY_THEME = 'pulseboard_v1_theme';
 const STORAGE_KEY_ACTIVE_PROJECT = 'pulseboard_v1_active_project';
+const STORAGE_KEY_CURRENT_USER = 'pulseboard_v1_current_user';
 
 @Injectable({
   providedIn: 'root'
@@ -34,11 +38,30 @@ const STORAGE_KEY_ACTIVE_PROJECT = 'pulseboard_v1_active_project';
 export class TaskStoreService {
   // --- Core State Signals ---
   readonly projects = signal<Project[]>(this.loadFromStorage(STORAGE_KEY_PROJECTS, INITIAL_PROJECTS));
-  readonly teamMembers = signal<TeamMember[]>(this.loadFromStorage(STORAGE_KEY_MEMBERS, INITIAL_TEAM_MEMBERS));
-  readonly tasks = signal<Task[]>(this.loadFromStorage(STORAGE_KEY_TASKS, INITIAL_TASKS));
+  readonly teamMembers = signal<TeamMember[]>(this.loadMembersWithDefaults());
+  readonly tasks = signal<Task[]>(this.loadTasksWithDefaults());
   readonly activityLogs = signal<ActivityLog[]>(this.loadFromStorage(STORAGE_KEY_LOGS, INITIAL_LOGS));
   readonly currentView = signal<MethodologyView>('BOARD');
   readonly theme = signal<ThemeMode>(this.loadTheme());
+
+  // --- Active Session & RBAC Context ---
+  readonly currentUserId = signal<string>(this.loadCurrentUser());
+
+  readonly currentUser = computed<TeamMember>(() => {
+    const id = this.currentUserId();
+    return this.teamMembers().find((m: TeamMember) => m.id === id) || this.teamMembers()[0];
+  });
+
+  readonly currentUserRole = computed<SystemRole>(() => {
+    return this.currentUser()?.systemRole || 'DEV';
+  });
+
+  // RBAC Permission Computeds
+  readonly canCreateTasks = computed(() => this.currentUserRole() !== 'VIEWER');
+  readonly canEditTasks = computed(() => this.currentUserRole() !== 'VIEWER');
+  readonly canSignOffDone = computed(() => this.currentUserRole() === 'LEAD' || this.currentUserRole() === 'ADMIN');
+  readonly canApproveReview = computed(() => this.currentUserRole() === 'LEAD' || this.currentUserRole() === 'ADMIN');
+  readonly isViewer = computed(() => this.currentUserRole() === 'VIEWER');
 
   // --- Project Workspace Filter ---
   readonly selectedProjectId = signal<string>(this.loadActiveProject());
@@ -80,6 +103,57 @@ export class TaskStoreService {
     if (pId === 'ALL') return null;
     return this.projectMap().get(pId) || null;
   });
+
+  // --- Computed: Member Load Metrics & Recovery Scores (FR-04) ---
+  // Formula: Effective Load = Active Story Points + (Reopened or Failed Builds * 3 pt Recovery Penalty)
+  readonly memberLoadMetrics = computed(() => {
+    const map = new Map<string, MemberLoadMetric>();
+    const tasks = this.tasks();
+
+    for (const member of this.teamMembers()) {
+      const activeTasks = tasks.filter((t: Task) => t.assigneeId === member.id && t.status !== 'DONE');
+      const activePoints = activeTasks.reduce((sum, t) => sum + (Number(t.effortPoints) || 0), 0);
+      const reworkCount = activeTasks.reduce((sum, t) => sum + (Number(t.reworkCount) || 0), 0);
+      const effectiveLoad = activePoints + (reworkCount * 3);
+      const budget = member.capacityBudget || 15;
+
+      let status: 'OPTIMAL' | 'NEAR_CAPACITY' | 'OVER_BUDGET' = 'OPTIMAL';
+      let label = 'Optimal';
+      if (effectiveLoad > budget) {
+        status = 'OVER_BUDGET';
+        label = 'Over Budget';
+      } else if (effectiveLoad > budget * 0.75) {
+        status = 'NEAR_CAPACITY';
+        label = 'Near Capacity';
+      }
+
+      map.set(member.id, {
+        memberId: member.id,
+        activePoints,
+        reworkCount,
+        effectiveLoad,
+        capacityBudget: budget,
+        status,
+        label: reworkCount > 0 ? `${label} · ${reworkCount} Rework` : label
+      });
+    }
+
+    return map;
+  });
+
+  getMemberLoadMetric(memberId: string): MemberLoadMetric {
+    const metric = this.memberLoadMetrics().get(memberId);
+    if (metric) return metric;
+    return {
+      memberId,
+      activePoints: 0,
+      reworkCount: 0,
+      effectiveLoad: 0,
+      capacityBudget: 15,
+      status: 'OPTIMAL',
+      label: 'Optimal'
+    };
+  }
 
   // --- Computed: Filtered Tasks List (Project + Keyword + Assignee + Priority + Blocked/Deployed) ---
   readonly filteredTasks = computed(() => {
@@ -212,6 +286,13 @@ export class TaskStoreService {
       } catch (e) {}
     });
 
+    // Auto-persist current user
+    effect(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY_CURRENT_USER, this.currentUserId());
+      } catch (e) {}
+    });
+
     // Auto-persist projects
     effect(() => {
       try {
@@ -241,6 +322,21 @@ export class TaskStoreService {
     });
   }
 
+  // --- Session Persona Switcher (FR-01 Simulation) ---
+  switchCurrentUser(userId: string): void {
+    const member = this.teamMembers().find((m: TeamMember) => m.id === userId);
+    if (!member) return;
+    this.currentUserId.set(userId);
+    this.recordActivity({
+      actor: member.name,
+      actorAvatar: member.avatar,
+      action: 'STATUS_CHANGED',
+      taskId: 'AUTH-CTX',
+      taskTitle: `Session Persona: ${member.name} [${member.systemRole}]`,
+      details: `Active session swapped to ${member.name} (${member.role} • ${member.systemRole} permissions active)`
+    });
+  }
+
   // --- Project Workspace Switcher ---
   selectProject(projectId: string): void {
     this.selectedProjectId.set(projectId);
@@ -264,9 +360,10 @@ export class TaskStoreService {
     this.projects.update((prev: Project[]) => [...prev, project]);
     this.selectedProjectId.set(project.id);
 
+    const actor = this.currentUser();
     this.recordActivity({
-      actor: 'Vikram Rao',
-      actorAvatar: 'VR',
+      actor: actor.name,
+      actorAvatar: actor.avatar,
       action: 'PROJECT_CREATED',
       taskId: project.code,
       taskTitle: `New Project [${project.code}] Created`,
@@ -277,7 +374,13 @@ export class TaskStoreService {
   }
 
   // --- Team Member Management ---
-  addTeamMember(name: string, role: TechnicalRole = 'Full-Stack Dev', squad: string = 'Core AI Squad'): TeamMember {
+  addTeamMember(
+    name: string,
+    role: TechnicalRole = 'Full-Stack Dev',
+    squad: string = 'Core AI Squad',
+    systemRole: SystemRole = 'DEV',
+    capacityBudget: number = 15
+  ): TeamMember {
     const nextId = `tm-${Date.now()}`;
     const initials = name
       .trim()
@@ -293,22 +396,25 @@ export class TaskStoreService {
       id: nextId,
       name: name.trim(),
       role,
+      systemRole,
       squad,
       avatar: initials,
       email: `${name.toLowerCase().replace(/\s+/g, '.')}@pulseboard.internal`,
       color,
-      department: squad.includes('QA') ? 'Quality Assurance' : 'Engineering'
+      department: squad.includes('QA') ? 'Quality Assurance' : 'Engineering',
+      capacityBudget
     };
 
     this.teamMembers.update((prev: TeamMember[]) => [...prev, newMember]);
 
+    const actor = this.currentUser();
     this.recordActivity({
-      actor: 'Vikram Rao',
-      actorAvatar: 'VR',
+      actor: actor.name,
+      actorAvatar: actor.avatar,
       action: 'MEMBER_ADDED',
       taskId: newMember.id,
       taskTitle: `Team Member Added: ${newMember.name}`,
-      details: `Registered ${newMember.name} as ${newMember.role} in ${newMember.squad}`
+      details: `Registered ${newMember.name} as ${newMember.role} (${newMember.systemRole}) in ${newMember.squad}`
     });
 
     return newMember;
@@ -341,7 +447,12 @@ export class TaskStoreService {
   }
 
   // --- Task CRUD Methods ---
-  async createTask(newTaskData: Partial<Task>): Promise<Task> {
+  async createTask(newTaskData: Partial<Task>): Promise<Task | null> {
+    if (!this.canCreateTasks()) {
+      console.warn('RBAC: Viewer session cannot create tasks.');
+      return null;
+    }
+
     const nextNum = Math.max(
       100,
       ...this.tasks().map((t: Task) => {
@@ -353,12 +464,14 @@ export class TaskStoreService {
     const defaultMember = this.teamMembers()[0];
     const assigneeId = newTaskData.assigneeId || defaultMember.id;
 
-    // Use task's projectId or fall back to selected project (or first project if ALL)
     let projectId = newTaskData.projectId;
     if (!projectId || projectId === 'ALL') {
       const activeP = this.selectedProjectId();
       projectId = activeP !== 'ALL' ? activeP : (this.projects()[0]?.id || 'proj-1');
     }
+
+    const dueDate = newTaskData.dueDate || new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0];
+    const baselineDueDate = newTaskData.baselineDueDate || dueDate;
 
     const task: Task = {
       id: `PB-${nextNum}`,
@@ -372,7 +485,11 @@ export class TaskStoreService {
       effortPoints: Number(newTaskData.effortPoints) || 3,
       assigneeId,
       startDate: newTaskData.startDate || new Date().toISOString().split('T')[0],
-      dueDate: newTaskData.dueDate || new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
+      dueDate,
+      baselineDueDate,
+      reworkCount: 0,
+      slipReason: null,
+      slipJustification: '',
       blocked: newTaskData.blocked || false,
       blockerReason: newTaskData.blockerReason || '',
       deployedUrl: newTaskData.deployedUrl?.trim() || '',
@@ -387,9 +504,10 @@ export class TaskStoreService {
 
     const member = this.assigneeMap().get(assigneeId);
     const proj = this.projectMap().get(projectId);
+    const actor = this.currentUser();
     this.recordActivity({
-      actor: 'Vikram Rao',
-      actorAvatar: 'VR',
+      actor: actor.name,
+      actorAvatar: actor.avatar,
       action: 'TASK_CREATED',
       taskId: task.id,
       taskTitle: task.title,
@@ -400,19 +518,37 @@ export class TaskStoreService {
   }
 
   async updateTask(updated: Task): Promise<void> {
+    if (!this.canEditTasks()) {
+      console.warn('RBAC: Viewer session cannot edit tasks.');
+      return;
+    }
+
     const currentList = this.tasks();
     const old = currentList.find((t: Task) => t.id === updated.id);
 
+    // Auto-detect slippage if dueDate shifted past baselineDueDate
+    const baseline = updated.baselineDueDate || updated.dueDate;
+    let slipReason = updated.slipReason;
+    if (updated.dueDate > baseline && !slipReason) {
+      slipReason = 'UNDERESTIMATED';
+    }
+
+    const preparedTask: Task = {
+      ...updated,
+      slipReason,
+      updatedAt: new Date().toISOString()
+    };
+
     this.tasks.update((prev: Task[]) =>
-      prev.map((t: Task) => (t.id === updated.id ? { ...updated, updatedAt: new Date().toISOString() } : t))
+      prev.map((t: Task) => (t.id === preparedTask.id ? preparedTask : t))
     );
 
     if (old && old.status !== updated.status) {
       const isDeployed = updated.status === 'DEPLOYED';
-      const member = this.assigneeMap().get(updated.assigneeId);
+      const actor = this.currentUser();
       this.recordActivity({
-        actor: member?.name || 'Engineer',
-        actorAvatar: member?.avatar || 'AI',
+        actor: actor.name,
+        actorAvatar: actor.avatar,
         action: isDeployed ? 'DEPLOYED_TO_SERVER' : 'STATUS_CHANGED',
         taskId: updated.id,
         taskTitle: updated.title,
@@ -425,6 +561,11 @@ export class TaskStoreService {
   }
 
   async deleteTask(taskId: string): Promise<void> {
+    if (!this.canEditTasks()) {
+      console.warn('RBAC: Viewer session cannot delete tasks.');
+      return;
+    }
+
     const task = this.tasks().find((t: Task) => t.id === taskId);
     this.tasks.update((prev: Task[]) => prev.filter((t: Task) => t.id !== taskId));
 
@@ -433,9 +574,10 @@ export class TaskStoreService {
     }
 
     if (task) {
+      const actor = this.currentUser();
       this.recordActivity({
-        actor: 'Vikram Rao',
-        actorAvatar: 'VR',
+        actor: actor.name,
+        actorAvatar: actor.avatar,
         action: 'TASK_DELETED',
         taskId: task.id,
         taskTitle: task.title,
@@ -445,6 +587,16 @@ export class TaskStoreService {
   }
 
   async updateTaskStatus(taskId: string, newStatus: TaskStatus): Promise<void> {
+    if (!this.canEditTasks()) {
+      console.warn('RBAC: Viewer session cannot change task status.');
+      return;
+    }
+
+    if (newStatus === 'DONE' && !this.canSignOffDone()) {
+      console.warn('RBAC: Only Tech Lead or Admin can move tasks to DONE.');
+      return;
+    }
+
     const task = this.tasks().find((t: Task) => t.id === taskId);
     if (!task || task.status === newStatus) return;
 
@@ -453,10 +605,10 @@ export class TaskStoreService {
       prev.map((t: Task) => (t.id === taskId ? { ...t, status: newStatus, updatedAt: new Date().toISOString() } : t))
     );
 
-    const member = this.assigneeMap().get(task.assigneeId);
+    const actor = this.currentUser();
     this.recordActivity({
-      actor: member?.name || 'Vikram Rao',
-      actorAvatar: member?.avatar || 'VR',
+      actor: actor.name,
+      actorAvatar: actor.avatar,
       action: newStatus === 'DEPLOYED' ? 'DEPLOYED_TO_SERVER' : 'STATUS_CHANGED',
       taskId: task.id,
       taskTitle: task.title,
@@ -469,6 +621,8 @@ export class TaskStoreService {
 
   // Drag and Drop within same column
   reorderTasksInColumn(status: TaskStatus, previousIndex: number, currentIndex: number): void {
+    if (!this.canEditTasks()) return;
+
     const all = [...this.tasks()];
     const columnTasks = all.filter((t: Task) => t.status === status);
     if (!columnTasks[previousIndex] || !columnTasks[currentIndex]) return;
@@ -482,6 +636,13 @@ export class TaskStoreService {
 
   // Drag and Drop across columns
   moveTaskBetweenColumns(taskId: string, targetStatus: TaskStatus, targetIndex: number): void {
+    if (!this.canEditTasks()) return;
+
+    if (targetStatus === 'DONE' && !this.canSignOffDone()) {
+      console.warn('RBAC: Only Tech Lead or Admin can sign off tasks to DONE.');
+      return;
+    }
+
     const task = this.tasks().find((t: Task) => t.id === taskId);
     if (!task) return;
 
@@ -499,10 +660,10 @@ export class TaskStoreService {
     targetColumn.splice(targetIndex, 0, updated);
     this.tasks.set([...otherColumns, ...targetColumn]);
 
-    const member = this.assigneeMap().get(task.assigneeId);
+    const actor = this.currentUser();
     this.recordActivity({
-      actor: member?.name || 'Engineer',
-      actorAvatar: member?.avatar || 'AI',
+      actor: actor.name,
+      actorAvatar: actor.avatar,
       action: targetStatus === 'DEPLOYED' ? 'DEPLOYED_TO_SERVER' : 'STATUS_CHANGED',
       taskId: task.id,
       taskTitle: task.title,
@@ -515,6 +676,8 @@ export class TaskStoreService {
 
   // Toggle Blocker
   toggleBlocked(taskId: string, reason?: string): void {
+    if (!this.canEditTasks()) return;
+
     const task = this.tasks().find((t: Task) => t.id === taskId);
     if (!task) return;
 
@@ -533,10 +696,10 @@ export class TaskStoreService {
       })
     );
 
-    const member = this.assigneeMap().get(task.assigneeId);
+    const actor = this.currentUser();
     this.recordActivity({
-      actor: member?.name || 'Lead',
-      actorAvatar: member?.avatar || 'VR',
+      actor: actor.name,
+      actorAvatar: actor.avatar,
       action: 'BLOCKER_TOGGLED',
       taskId: task.id,
       taskTitle: task.title,
@@ -548,8 +711,16 @@ export class TaskStoreService {
 
   // Add Server Review & Verification Note
   addReviewNote(taskId: string, note: { author: string; authorAvatar: string; authorRole: 'LEAD' | 'DM' | 'REVIEWER'; verdict: ReviewVerdict; content: string }): void {
+    if (!this.canEditTasks()) return;
+
     const task = this.tasks().find((t: Task) => t.id === taskId);
     if (!task) return;
+
+    // Enforce Lead/Admin sign-off permission for APPROVED verdict
+    if (note.verdict === 'APPROVED' && !this.canApproveReview()) {
+      console.warn('RBAC: Only Tech Lead or Admin can approve server deployments.');
+      return;
+    }
 
     const newNote: ReviewNote = {
       id: `rn-${Date.now()}`,
@@ -558,7 +729,15 @@ export class TaskStoreService {
       timestamp: 'Just now'
     };
 
-    const nextStatus = (note.verdict === 'APPROVED' && task.status === 'DEPLOYED') ? 'DONE' : task.status;
+    const isNeedsChanges = note.verdict === 'NEEDS_CHANGES';
+    const newReworkCount = isNeedsChanges ? (task.reworkCount || 0) + 1 : (task.reworkCount || 0);
+
+    // If approved and deployed -> move to DONE. If needs changes and deployed -> return to IN_PROGRESS
+    const nextStatus = (note.verdict === 'APPROVED' && task.status === 'DEPLOYED')
+      ? 'DONE'
+      : (isNeedsChanges && task.status === 'DEPLOYED')
+        ? 'IN_PROGRESS'
+        : task.status;
 
     this.tasks.update((prev: Task[]) =>
       prev.map((t: Task) => {
@@ -566,6 +745,7 @@ export class TaskStoreService {
           return {
             ...t,
             status: nextStatus,
+            reworkCount: newReworkCount,
             reviewNotes: [newNote, ...(t.reviewNotes || [])],
             updatedAt: new Date().toISOString()
           };
@@ -577,15 +757,52 @@ export class TaskStoreService {
     this.recordActivity({
       actor: note.author,
       actorAvatar: note.authorAvatar,
-      action: 'REVIEW_NOTE_ADDED',
+      action: isNeedsChanges ? 'REWORK_PENALTY' : 'REVIEW_NOTE_ADDED',
       taskId: task.id,
       taskTitle: task.title,
-      details: `Lead Verification [${note.verdict}]: "${note.content.substring(0, 65)}..."`
+      details: isNeedsChanges
+        ? `Lead Verification [NEEDS CHANGES]: Rework count incremented to ${newReworkCount} (+3 pt recovery penalty applied). Moved to In Progress.`
+        : `Lead Verification [${note.verdict}]: "${note.content.substring(0, 65)}..."`
+    });
+  }
+
+  // 1-Click Deadline Slippage Grace Protocol (FR-05)
+  logSlippage(taskId: string, slipReason: SlipReason, newDueDate: string, justification?: string): void {
+    if (!this.canEditTasks()) return;
+
+    const task = this.tasks().find((t: Task) => t.id === taskId);
+    if (!task) return;
+
+    const oldDate = task.dueDate;
+    this.tasks.update((prev: Task[]) =>
+      prev.map((t: Task) =>
+        t.id === taskId
+          ? {
+              ...t,
+              dueDate: newDueDate,
+              slipReason,
+              slipJustification: justification || t.slipJustification,
+              updatedAt: new Date().toISOString()
+            }
+          : t
+      )
+    );
+
+    const actor = this.currentUser();
+    this.recordActivity({
+      actor: actor.name,
+      actorAvatar: actor.avatar,
+      action: 'SLIPPAGE_LOGGED',
+      taskId: task.id,
+      taskTitle: task.title,
+      details: `Schedule extension logged: ${oldDate} ➔ ${newDueDate}. Reason: ${slipReason} (${justification || 'No extra notes'})`
     });
   }
 
   // Subtask Checklists
   addSubtask(taskId: string, title: string): void {
+    if (!this.canEditTasks()) return;
+
     const cleanTitle = title.trim();
     if (!cleanTitle) return;
 
@@ -611,6 +828,8 @@ export class TaskStoreService {
   }
 
   toggleSubtask(taskId: string, subtaskId: string): void {
+    if (!this.canEditTasks()) return;
+
     this.tasks.update((prev: Task[]) =>
       prev.map((t: Task) => {
         if (t.id === taskId) {
@@ -625,6 +844,8 @@ export class TaskStoreService {
   }
 
   deleteSubtask(taskId: string, subtaskId: string): void {
+    if (!this.canEditTasks()) return;
+
     this.tasks.update((prev: Task[]) =>
       prev.map((t: Task) => {
         if (t.id === taskId) {
@@ -638,6 +859,10 @@ export class TaskStoreService {
 
   // --- Smart Import Batch Ingestion (Enhanced with Project and Auto-Member creation) ---
   importTasksFromJson(payload: SmartImportPayload): { success: boolean; count: number; error?: string } {
+    if (!this.canCreateTasks()) {
+      return { success: false, count: 0, error: 'RBAC: Viewer session cannot import tasks.' };
+    }
+
     try {
       if (!payload || !Array.isArray(payload.tasks) || payload.tasks.length === 0) {
         return { success: false, count: 0, error: 'JSON must contain a "tasks" array with at least one task.' };
@@ -651,60 +876,80 @@ export class TaskStoreService {
         })
       );
 
-      const projectsList = this.projects();
-      const currentActiveProjectId = this.selectedProjectId();
+      const memberMapByName = new Map<string, TeamMember>();
+      this.teamMembers().forEach((m: TeamMember) => {
+        memberMapByName.set(m.name.toLowerCase().trim(), m);
+      });
 
-      const newTasks: Task[] = payload.tasks.map(item => {
+      const projectMapByCode = new Map<string, Project>();
+      this.projects().forEach((p: Project) => {
+        projectMapByCode.set(p.code.toUpperCase().trim(), p);
+      });
+
+      const newTasks: Task[] = [];
+      const currentProjects = this.projects();
+      const fallbackProjectId = this.selectedProjectId() !== 'ALL'
+        ? this.selectedProjectId()
+        : (currentProjects[0]?.id || 'proj-1');
+
+      for (const item of payload.tasks) {
+        if (!item.title || !item.title.trim()) continue;
+
         maxNum++;
-
-        // 1. Resolve Project
-        let matchedProjectId = currentActiveProjectId !== 'ALL' ? currentActiveProjectId : (projectsList[0]?.id || 'proj-1');
-        if (item.projectCode) {
-          const foundProject = projectsList.find(p => p.code.toLowerCase() === item.projectCode!.toLowerCase());
-          if (foundProject) {
-            matchedProjectId = foundProject.id;
-          }
-        }
-
-        // 2. Resolve Assignee or Auto-Register new team member
-        let assignedMemberId = this.teamMembers()[0]?.id || 'tm-1';
-        if (item.assigneeName && item.assigneeName.trim()) {
-          const nameClean = item.assigneeName.trim();
-          let existingMember = this.teamMembers().find(
-            (m: TeamMember) => m.name.toLowerCase().includes(nameClean.toLowerCase())
-          );
-
-          if (!existingMember) {
-            // Auto-create new team member
-            const newRole: TechnicalRole = item.assigneeRole || 'Full-Stack Dev';
-            const newSquad = item.squad || (item.projectCode === 'EVAL-GW' ? 'Platform & QA Squad' : 'Core AI Squad');
-            existingMember = this.addTeamMember(nameClean, newRole, newSquad);
-          }
-          assignedMemberId = existingMember.id;
-        }
-
         const taskId = `PB-${maxNum}`;
-        const subtasks = (item.subtasks || []).map((stTitle: string, idx: number) => ({
-          id: `st-imp-${maxNum}-${idx}`,
+
+        let assigneeId = this.teamMembers()[0]?.id || 'tm-1';
+        if (item.assigneeName && item.assigneeName.trim()) {
+          const cleanName = item.assigneeName.trim();
+          const lookupKey = cleanName.toLowerCase();
+
+          if (memberMapByName.has(lookupKey)) {
+            assigneeId = memberMapByName.get(lookupKey)!.id;
+          } else {
+            const role: TechnicalRole = item.assigneeRole || 'Full-Stack Dev';
+            const squad = item.squad || 'Core AI Squad';
+            const systemRole: SystemRole = role === 'Tech Lead' ? 'LEAD' : role === 'QA / Test Engineer' ? 'QA' : 'DEV';
+            const newMember = this.addTeamMember(cleanName, role, squad, systemRole, 15);
+            memberMapByName.set(lookupKey, newMember);
+            assigneeId = newMember.id;
+          }
+        }
+
+        let taskProjectId = fallbackProjectId;
+        if (item.projectCode && item.projectCode.trim()) {
+          const cleanCode = item.projectCode.trim().toUpperCase();
+          if (projectMapByCode.has(cleanCode)) {
+            taskProjectId = projectMapByCode.get(cleanCode)!.id;
+          }
+        }
+
+        const subtasks = (item.subtasks || []).map((subTitle: string, idx: number) => ({
+          id: `st-${Date.now()}-${maxNum}-${idx}`,
           taskId,
-          title: stTitle,
+          title: typeof subTitle === 'string' ? subTitle : (subTitle as any).title || 'Subtask step',
           completed: false,
           createdAt: new Date().toISOString().split('T')[0]
         }));
 
-        return {
+        const dueDate = item.dueDate || new Date(Date.now() + 6 * 86400000).toISOString().split('T')[0];
+
+        const task: Task = {
           id: taskId,
-          projectId: matchedProjectId,
-          title: item.title?.trim() || 'AI Imported Task',
-          description: item.description?.trim() || 'Extracted from meeting action items.',
-          status: 'TODO' as TaskStatus,
+          projectId: taskProjectId,
+          title: item.title.trim(),
+          description: item.description?.trim() || '',
+          status: 'TODO',
           priority: item.priority || 'MEDIUM',
-          phase: item.phase?.trim() || 'Phase 1: Knowledge Core',
-          sprint: item.sprint?.trim() || 'Sprint 24.3',
+          phase: item.phase || 'Sprint Backlog',
+          sprint: item.sprint || 'Sprint 24.3',
           effortPoints: Number(item.effortPoints) || 3,
-          assigneeId: assignedMemberId,
+          assigneeId,
           startDate: item.startDate || new Date().toISOString().split('T')[0],
-          dueDate: item.dueDate || new Date(Date.now() + 6 * 86400000).toISOString().split('T')[0],
+          dueDate,
+          baselineDueDate: dueDate,
+          reworkCount: 0,
+          slipReason: null,
+          slipJustification: '',
           blocked: false,
           deployedUrl: item.deployedUrl?.trim() || '',
           dependencies: [],
@@ -713,13 +958,20 @@ export class TaskStoreService {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
-      });
+
+        newTasks.push(task);
+      }
+
+      if (newTasks.length === 0) {
+        return { success: false, count: 0, error: 'No valid task items could be parsed.' };
+      }
 
       this.tasks.update((prev: Task[]) => [...newTasks, ...prev]);
 
+      const actor = this.currentUser();
       this.recordActivity({
-        actor: 'Vikram Rao',
-        actorAvatar: 'VR',
+        actor: actor.name,
+        actorAvatar: actor.avatar,
         action: 'SMART_IMPORT_BATCH',
         taskId: `PB-${maxNum}`,
         taskTitle: `Batch Ingestion (${newTasks.length} tasks)`,
@@ -739,6 +991,7 @@ export class TaskStoreService {
     this.tasks.set(INITIAL_TASKS);
     this.activityLogs.set(INITIAL_LOGS);
     this.selectedProjectId.set('ALL');
+    this.currentUserId.set('tm-1');
     this.searchQuery.set('');
     this.filterAssigneeId.set('ALL');
     this.filterPriority.set('ALL');
@@ -752,8 +1005,8 @@ export class TaskStoreService {
       actorAvatar: 'VR',
       action: 'WORKSPACE_RESET',
       taskId: 'SYS-0',
-      taskTitle: 'PulseBoard V1 Workspace Reset',
-      details: 'Restored multi-project workspace, squads, and cross-functional team demo state.'
+      taskTitle: 'PulseBoard V2 Workspace Reset',
+      details: 'Restored multi-project workspace, squads, capacity budgets, and cross-functional team demo state.'
     });
   }
 
@@ -777,6 +1030,33 @@ export class TaskStoreService {
       console.warn(`Failed to read ${key} from localStorage`, e);
     }
     return fallback;
+  }
+
+  private loadMembersWithDefaults(): TeamMember[] {
+    const members = this.loadFromStorage<TeamMember[]>(STORAGE_KEY_MEMBERS, INITIAL_TEAM_MEMBERS);
+    return members.map((m: TeamMember) => ({
+      ...m,
+      capacityBudget: m.capacityBudget || 15,
+      systemRole: m.systemRole || (m.role === 'Tech Lead' ? 'LEAD' : m.role === 'QA / Test Engineer' ? 'QA' : m.role === 'Delivery Manager' ? 'VIEWER' : 'DEV')
+    }));
+  }
+
+  private loadTasksWithDefaults(): Task[] {
+    const tasks = this.loadFromStorage<Task[]>(STORAGE_KEY_TASKS, INITIAL_TASKS);
+    return tasks.map((t: Task) => ({
+      ...t,
+      baselineDueDate: t.baselineDueDate || t.dueDate,
+      reworkCount: t.reworkCount || 0,
+      slipReason: t.slipReason || null
+    }));
+  }
+
+  private loadCurrentUser(): string {
+    try {
+      const user = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
+      if (user) return user;
+    } catch (e) {}
+    return 'tm-1'; // Abhishai (DEV)
   }
 
   private loadTheme(): ThemeMode {
