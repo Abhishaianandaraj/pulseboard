@@ -105,40 +105,29 @@ To instantly convey technical specialization across Kanban cards, sprint tables,
 
 ---
 
-## 4. Specification of the 5 Core V2 Screens
+## 4. Multi-Screen Architecture & Dedicated Page Routes
 
-### Screen 1: "My Day" Focus Hub
-- **Purpose:** Personalized, high-velocity view tailored to the active logged-in engineer.
-- **Key Elements:**
-  - Tasks assigned to the active user partitioned into *Urgent / Blocked*, *In Progress*, and *Ready for Server Verification*.
-  - Daily personal capacity indicator (`Active Story Points / 15 pt Budget`).
-  - Quick action buttons: *Log Progress*, *Flag Blocker*, *Deploy to Staging*.
+PulseBoard features an Angular routing architecture (`provideRouter(routes, withHashLocation())`) with a minimalist global shell (slim left navigation rail + compact top bar with active project selector and user profile pill):
 
-### Screen 2: Multi-Methodology Delivery Workspace
-- **Purpose:** Primary engineering hub offering fluid switching between 3 delivery views:
-  1. **Kanban Board:** 4 columns (`To Do`, `In Progress`, `Deployed to Server`, `Done`) with smooth `@angular/cdk` drag-and-drop. Dragging into `DEPLOYED` triggers a staging toast.
-  2. **Agile Sprint View:** Compact, tabular view grouped by sprint or priority with inline status dropdowns, story point counters, and assignee badges.
-  3. **Waterfall Gantt:** Sequential timeline mapping start dates to due dates with interactive dependency connectors and Critical Path highlights.
+| Route | Standalone Component | Purpose & View Structure |
+|---|---|---|
+| `/login` | `LoginComponent` | Minimalist Linear-style authentication screen with Corporate SSO action and 1-click Quick Workspace Role Entry demo cards. |
+| `/my-day` | `MyDayComponent` | Focused daily personal landing hub featuring greeting, personal workload health bar, My Active Tasks with 1-click progression, and Needs Attention review queue. |
+| `/workspace` | `WorkspaceComponent` | Decluttered execution workspace with generous whitespace housing Kanban Board, Agile Sprint Table, and Key Path Gantt. |
+| `/projects` | `ProjectsComponent` | Visual directory of all project workspaces (`RAG-CORE`, `EVAL-GW`, `PULSE-V1`) with completion health, bottleneck indicators, squad members, and 1-click workspace opening. |
+| `/governance` | `GovernanceComponent` | Dedicated full-page governance console with 3 clean horizontal tabs (`Team & Access`, `Delivery Bottlenecks`, `Audit Log`) with CSV/JSON export. |
 
-### Screen 3: Deep Deployment Cycle Drawer
-- **Purpose:** Slide-over modal for thorough task inspection, subtask tracking, and Lead/QA server sign-off.
-- **Key Elements:**
-  - Task metadata header (Project code chip, editable title, priority badge).
-  - Subtask interactive checklist with progress bar.
-  - Blocker toggle with reason input.
-  - **Server Review & Verification Panel:** Appends lead sign-off notes, records deployment commit hashes, and displays staging verification logs.
+---
 
-### Screen 4: Squad & RBAC Console
-- **Purpose:** Lead and Admin command center for team allocation and permission oversight.
-- **Key Elements:**
-  - Squad member roster with real-time capacity budget dials (`Optimal`, `Near Capacity`, `Over Budget`).
-  - Inline `+ Add Member` form with instant role and squad assignment.
-  - Multi-tenancy Project Switcher with project status badges and quick creation modal.
-  - Active RBAC role simulator toggle for staging validation.
+## 5. Plain-Language Translations & Approachable Microcopy
 
-### Screen 5: Cycle-Time Analytics
-- **Purpose:** Zero-spam engineering intelligence replacing noisy email notifications.
-- **Key Elements:**
-  - Lead time and cycle time distributions across projects.
-  - Rework penalty trends (frequency of tasks moved back from `DEPLOYED` to `IN_PROGRESS`).
-  - Grace buffer slippage analytics categorized by reason (`Dependency Blocked`, `Scope Expanded`, etc.).
+PulseBoard replaces technical jargon and raw mathematical formulas with calm, human-friendly status labels and helpful state badges:
+
+| Domain / Concept | Raw Technical Jargon | Plain-Language Humanized Label | Microcopy & Tooltip Behavior |
+|---|---|---|---|
+| **Capacity (Optimal)** | `OPTIMAL (<= 75% load)` | **"Comfortable Pace"** | Green status dot; tooltip shows `Active Pts + 3pt Recovery Buffer`. |
+| **Capacity (Near Limit)** | `NEAR_CAPACITY (> 75%)` | **"Near Capacity"** | Amber status dot; encourages team balancing. |
+| **Capacity (Rework Penalty)**| `OVER_BUDGET (Rework > 0)` | **"Overloaded · Fixing Failed Build"** | Red alert indicator with breakdown of recovery penalty points. |
+| **Gantt CPM Sequence** | `Critical Path (Zero Slack)` | **"Key Path"** | Marked with `🔥 Key Path` pill and distinct orange glow. |
+| **Baseline Schedule Drift** | `Slippage Variance (+N days)` | **"Schedule Shift"** | Translucent baseline shadow bar displaying original committed date. |
+| **Permission Barrier** | `403 Forbidden / Not Lead` | **"Awaiting Lead Sign-Off"** | Calm state badge indicating deliverable is staged on server awaiting verification. |

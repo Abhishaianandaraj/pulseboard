@@ -40,15 +40,22 @@ Every release candidate, pull request, and staging deployment must execute and s
 - [x] **Audit Trail Search & Multi-Filter:** Filters chronological ledger by Actor, Action Type, or free text keywords without page reload.
 - [x] **Compliance Export:** 1-click CSV (`pulseboard_audit_trail_YYYY-MM-DD.csv`) and JSON exports generate sanitized provenance files for compliance archives.
 
-### 1.5 Smart JSON Import Engine
+### 1.5 Multi-Screen Routing & Auth Guard Verification
+- [x] **Route Protection Gate:** Unauthenticated direct access to `/my-day`, `/workspace`, `/projects`, or `/governance` redirects reliably to `/login`.
+- [x] **Corporate SSO & Quick Persona Entry:** 1-click login as `Abhishai [DEV]`, `Vikram Rao [LEAD]`, `Karthik R [QA]`, or `Sanjay Patel [VIEWER]` authenticates session and lands on `/my-day`.
+- [x] **Sign Out Session Invalidation:** Clicking `Sign Out` invalidates `sessionStorage` and returns the user to the centered login screen.
+- [x] **GitHub Pages Hash Routing:** Direct deep-link refreshes on `/#/workspace` or `/#/projects` resolve with zero 404 HTTP errors via `withHashLocation()`.
+- [x] **Approachable Microcopy Parity:** All views render humanized labels (`"Comfortable Pace"`, `"Near Capacity"`, `"Overloaded · Fixing Failed Build"`, `"Key Path"`, `"Schedule Shift"`, `"Awaiting Lead Sign-Off"`).
+
+### 1.6 Smart JSON Import Engine
 - [x] **Syntax Error Handling:** Malformed JSON triggers immediate red border and syntax error notification without app crash.
 - [x] **Auto-Member Registration:** JSON referencing an unknown assignee name automatically adds the member with the supplied or default role (`Full-Stack Dev`) and displays the new member in the sidebar.
 - [x] **Project Mapping:** Tasks with `projectCode: "EVAL-GW"` correctly link to the `EVAL-GW` project ID upon import.
 - [x] **Batch Import Performance:** Importing a payload of 20 tasks executes in < 150ms with instantaneous Signal state reactivity.
 
-### 1.6 Theme & UI Parity Gate
-- [x] **Light Mode Verification:** All surfaces, cards, modals, and drawers render high-contrast `#f8fafc` canvas with `#ffffff` cards and `#e2e8f0` subtle borders.
-- [x] **Dark Mode Verification:** All surfaces, cards, modals, and drawers render obsidian `#0b0e14` canvas with `#11151f` cards and `#1e2433` borders.
+### 1.7 Theme & UI Parity Gate
+- [x] **Light Mode Verification:** All surfaces, cards, modals, and drawers render high-contrast `#f8fafc` canvas with `#ffffff` cards and `#e2e8f0` subtle borders across all 5 pages.
+- [x] **Dark Mode Verification:** All surfaces, cards, modals, and drawers render obsidian `#0b0e14` canvas with `#11151f` cards and `#1e2433` borders across all 5 pages.
 - [x] **Zero Hardcoded Colors:** No inline hardcoded hex colors bypass the semantic CSS variable engine.
 - [x] **Production Build Check:** `npx ng build --configuration production --base-href=/pulseboard/` completes with 0 errors and 0 budget warnings.
 
@@ -57,6 +64,13 @@ Every release candidate, pull request, and staging deployment must execute and s
 ## 2. Release Changelog
 
 ### `v2.0.0-alpha` (In Development)
+- **V2 Milestone 4 Delivered (Multi-Screen Architecture & Approachable Microcopy — `FR-07`):**
+  - **Modular Standalone Pages:** Refactored single-screen application into 5 dedicated screen components: `LoginComponent` (`/login`), `MyDayComponent` (`/my-day`), `WorkspaceComponent` (`/workspace`), `ProjectsComponent` (`/projects`), and `GovernanceComponent` (`/governance`).
+  - **Angular Router & Auth Guard:** Configured `provideRouter(routes, withHashLocation())` for GitHub Pages static hosting parity and implemented functional `authGuard` backed by `sessionStorage` persistence.
+  - **Minimalist Global Shell:** Decluttered `AppComponent` into a slim 210px left navigation rail (`My Day`, `Workspace`, `Projects`, `Governance`) and a compact 48px top bar with active project selector, theme toggle, user profile pill, and `Sign Out` button.
+  - **Approachable Microcopy Translations:** Replaced raw formulas with humanized status labels (`"Comfortable Pace"`, `"Near Capacity"`, `"Overloaded · Fixing Failed Build"`, `"Key Path"`, `"Schedule Shift"`, `"Awaiting Lead Sign-Off"`).
+  - **Personal Focus Hub (`MyDayComponent`):** Delivered focused daily landing screen with warm greeting, personal workload health bar, 1-click active task progression (`Start Working` -> `Deploy to Server` -> `Verify & Close`), and attention queues.
+  - **Project Directory Hub (`ProjectsComponent`):** Delivered visual project cards featuring completion percentage, deliverable metrics, squad avatars, and 1-click workspace opening.
 - **V2 Milestone 3 Delivered (Governance Console, Cycle-Time Analytics & Audit Trail — `FR-06`):**
   - **Quad-Methodology View Navigation:** Added `Governance & Audit` navigation to both the Collapsible Sidebar and the Top Command Bar pill switcher, enabling seamless navigation across `Board`, `Sprint`, `Gantt`, and `Governance`.
   - **Squad & RBAC Matrix View:** Interactive roster featuring live Squad assignment, Technical Role tags, System Permission Tier dropdowns (`VIEWER`, `DEV`, `QA`, `LEAD`, `ADMIN`), and live Capacity Budget bars displaying active story points vs. rework penalties. Restricted editing to `LEAD` / `ADMIN` with automated `MEMBER_ROLE_UPDATED` audit events.

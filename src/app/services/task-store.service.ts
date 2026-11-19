@@ -36,6 +36,7 @@ const STORAGE_KEY_LOGS = 'pulseboard_v1_logs';
 const STORAGE_KEY_THEME = 'pulseboard_v1_theme';
 const STORAGE_KEY_ACTIVE_PROJECT = 'pulseboard_v1_active_project';
 const STORAGE_KEY_CURRENT_USER = 'pulseboard_v1_current_user';
+const STORAGE_KEY_AUTH = 'pulseboard_v1_auth';
 
 @Injectable({
   providedIn: 'root'
@@ -50,6 +51,7 @@ export class TaskStoreService {
   readonly theme = signal<ThemeMode>(this.loadTheme());
 
   // --- Active Session & RBAC Context ---
+  readonly isAuthenticated = signal<boolean>(this.loadAuthStatus());
   readonly currentUserId = signal<string>(this.loadCurrentUser());
 
   readonly currentUser = computed<TeamMember>(() => {
@@ -124,10 +126,10 @@ export class TaskStoreService {
       const budget = member.capacityBudget || 15;
 
       let status: 'OPTIMAL' | 'NEAR_CAPACITY' | 'OVER_BUDGET' = 'OPTIMAL';
-      let label = 'Optimal';
+      let label = 'Comfortable Pace';
       if (effectiveLoad > budget) {
         status = 'OVER_BUDGET';
-        label = 'Over Budget';
+        label = reworkCount > 0 ? 'Overloaded · Fixing Failed Build' : 'Overloaded';
       } else if (effectiveLoad > budget * 0.75) {
         status = 'NEAR_CAPACITY';
         label = 'Near Capacity';
@@ -140,7 +142,7 @@ export class TaskStoreService {
         effectiveLoad,
         capacityBudget: budget,
         status,
-        label: reworkCount > 0 ? `${label} · ${reworkCount} Rework` : label
+        label
       });
     }
 
@@ -532,6 +534,21 @@ export class TaskStoreService {
       taskTitle: `Session Persona: ${member.name} [${member.systemRole}]`,
       details: `Active session swapped to ${member.name} (${member.role} • ${member.systemRole} permissions active)`
     });
+  }
+
+  loginWithPersona(memberId: string): void {
+    this.switchCurrentUser(memberId);
+    this.isAuthenticated.set(true);
+    try {
+      sessionStorage.setItem(STORAGE_KEY_AUTH, 'true');
+    } catch (e) {}
+  }
+
+  logout(): void {
+    this.isAuthenticated.set(false);
+    try {
+      sessionStorage.setItem(STORAGE_KEY_AUTH, 'false');
+    } catch (e) {}
   }
 
   // --- Project Workspace Switcher ---
@@ -1501,5 +1518,13 @@ export class TaskStoreService {
       if (active) return active;
     } catch (e) {}
     return 'ALL';
+  }
+
+  private loadAuthStatus(): boolean {
+    try {
+      const val = sessionStorage.getItem(STORAGE_KEY_AUTH);
+      return val !== 'false';
+    } catch (e) {}
+    return true;
   }
 }

@@ -143,3 +143,20 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
   1. **Squad & RBAC Matrix View:** Interactive roster displaying all team members, Squads, Technical Roles, System Permission Tiers (`VIEWER`, `DEV`, `QA`, `LEAD`, `ADMIN`), and live Capacity Budget bars with rework penalty breakdowns. Allows `LEAD` / `ADMIN` sessions to modify system roles and sprint capacity allocations live with instant audit trail logging (`MEMBER_ROLE_UPDATED`), while `DEV` and `VIEWER` sessions operate in read-only mode.
   2. **Cycle-Time & Bottleneck Telemetry:** Executive metrics cards displaying Average Lead Sign-Off Wait Time (hours staged in `DEPLOYED` awaiting review), Rework Recovery Overhead points (+3 points per rejected build), and Total Drifted Deliverables. Includes comparative project failure rate bars (`RAG-CORE`, `EVAL-GW`, `PULSE-V1`) and visual root cause distribution of deadline slippage.
   3. **Immutable Security Audit Trail Ledger:** Chronological tamper-proof ledger with `"LOCKED · APPEND-ONLY"` compliance seal, real-time multi-dimensional filtering (by Actor, Action Type, or keyword), and 1-click **Export CSV** and **Export JSON** buttons for corporate compliance and SOC2 auditing.
+
+---
+
+### FR-07: Minimalist Multi-Screen Architecture & Approachable Microcopy
+- **Status:** ✅ Implemented (V2 Milestone 4)
+- **Description:** Refactor PulseBoard from a single-screen prototype into a clean, minimalist multi-screen Angular application using `@angular/router` with hash routing (`provideRouter(routes, withHashLocation())`) compatible with GitHub Pages `/pulseboard/` and dedicated standalone page components.
+- **Dedicated Screen Routes:**
+  1. `/login` -> `LoginComponent`: Centered Linear-style corporate entry with SSO and 1-click demo persona cards.
+  2. `/my-day` -> `MyDayComponent`: Focused daily personal queue with greeting, workload pace bar, 1-click task progression, and review queues.
+  3. `/workspace` -> `WorkspaceComponent`: Decluttered delivery space housing Kanban Board, Agile Sprint, and Key Path Gantt.
+  4. `/projects` -> `ProjectsComponent`: Visual directory of all project workspaces, squad allocations, and completion health.
+  5. `/governance` -> `GovernanceComponent`: Full-page governance suite with Team & Access, Delivery Bottlenecks, and Audit Trail tabs.
+- **Approachable Microcopy Translations:**
+  - `"Comfortable Pace"` (Optimal), `"Near Capacity"` (Near Limit), `"Overloaded · Fixing Failed Build"` (Over Budget with Rework penalties).
+  - Critical Path rebranded as `"Key Path"`.
+  - Baseline Drift rebranded as `"Schedule Shift"`.
+  - Permission states rendered as calm status badges (e.g. `"Awaiting Lead Sign-Off"`).
