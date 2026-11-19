@@ -50,6 +50,18 @@
           <span class="nav-text">Waterfall Timeline</span>
           <span class="nav-badge">{{ store.projectPhases().length }}p</span>
         </button>
+
+        <button
+          type="button"
+          class="nav-item nav-item-gov"
+          [class.active]="store.currentView() === 'GOVERNANCE'"
+          (click)="switchView('GOVERNANCE')"
+          title="Squad RBAC Governance, Bottleneck Telemetry & Immutable Audit Trail"
+        >
+          <span class="nav-icon">🛡️</span>
+          <span class="nav-text">Governance & Audit</span>
+          <span class="nav-badge-gov">V2</span>
+        </button>
       </nav>
     </div>
 
@@ -236,6 +248,46 @@
             </option>
           }
         </select>
+      </div>
+
+      <!-- Quick View Switcher Tabs (Board, Sprint, Gantt, Governance) -->
+      <div class="top-view-switcher">
+        <button
+          type="button"
+          class="top-view-btn"
+          [class.active]="store.currentView() === 'BOARD'"
+          (click)="switchView('BOARD')"
+          title="Kanban Board View"
+        >
+          ▦ Board
+        </button>
+        <button
+          type="button"
+          class="top-view-btn"
+          [class.active]="store.currentView() === 'SPRINT'"
+          (click)="switchView('SPRINT')"
+          title="Agile Sprint Table"
+        >
+          ☰ Sprint
+        </button>
+        <button
+          type="button"
+          class="top-view-btn"
+          [class.active]="store.currentView() === 'TIMELINE'"
+          (click)="switchView('TIMELINE')"
+          title="Interactive Dependency Gantt Chart"
+        >
+          ⇥ Gantt
+        </button>
+        <button
+          type="button"
+          class="top-view-btn btn-top-gov"
+          [class.active]="store.currentView() === 'GOVERNANCE'"
+          (click)="switchView('GOVERNANCE')"
+          title="Governance Console, Analytics & Security Audit"
+        >
+          🛡️ Governance
+        </button>
       </div>
 
       <!-- Search Box -->
@@ -848,6 +900,480 @@
               </div>
             </div>
           </div>
+        </div>
+      }
+
+      <!-- 4. GOVERNANCE CONSOLE, BOTTLENECK ANALYTICS & AUDIT TRAIL (FR-06) -->
+      @if (store.currentView() === 'GOVERNANCE') {
+        <div class="gov-view-wrapper">
+          <!-- Governance Console Header & Sub-Tab Switcher -->
+          <div class="gov-header-card">
+            <div class="gov-header-title-col">
+              <div class="gov-title-row">
+                <span class="gov-shield-icon">🛡️</span>
+                <h2 class="view-heading">Engineering Governance & Delivery Assurance Console</h2>
+                <span class="gov-version-pill">V2 Milestone 3</span>
+              </div>
+              <p class="view-sub">Squad RBAC matrix, cycle-time telemetry, rework recovery overhead & tamper-proof audit trail</p>
+            </div>
+
+            <!-- Sub-tab Navigation Buttons -->
+            <div class="gov-subtabs">
+              <button
+                type="button"
+                class="btn-gov-subtab"
+                [class.active]="governanceSubTab() === 'RBAC_MATRIX'"
+                (click)="setGovernanceTab('RBAC_MATRIX')"
+              >
+                👥 Squad & RBAC Matrix
+              </button>
+              <button
+                type="button"
+                class="btn-gov-subtab"
+                [class.active]="governanceSubTab() === 'ANALYTICS'"
+                (click)="setGovernanceTab('ANALYTICS')"
+              >
+                📊 Cycle-Time & Bottlenecks
+              </button>
+              <button
+                type="button"
+                class="btn-gov-subtab"
+                [class.active]="governanceSubTab() === 'AUDIT_TRAIL'"
+                (click)="setGovernanceTab('AUDIT_TRAIL')"
+              >
+                📜 Immutable Audit Trail
+                <span class="audit-badge-pill">{{ store.activityLogs().length }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- SUB-VIEW 1: SQUAD & RBAC MATRIX -->
+          @if (governanceSubTab() === 'RBAC_MATRIX') {
+            <div class="gov-panel">
+              <!-- RBAC Context Guidance Banner -->
+              <div class="gov-rbac-banner" [class.is-lead]="store.canManageGovernance()">
+                <div class="rbac-banner-icon">{{ store.canManageGovernance() ? '⚡' : '🔒' }}</div>
+                <div class="rbac-banner-text">
+                  @if (store.canManageGovernance()) {
+                    <strong>Lead / Admin Authority Active</strong>
+                    <p>You have full administrative authorization to calibrate engineer sprint capacity budgets and modify system RBAC permission tiers. Changes are cryptographically locked to the audit log.</p>
+                  } @else {
+                    <strong>Read-Only Governance Mode (Viewing as {{ store.currentUserRole() }})</strong>
+                    <p>System roles and sprint capacity allocations are locked. Switch session persona in the top command bar to a Lead (Vikram Rao) or Admin to edit privileges.</p>
+                  }
+                </div>
+              </div>
+
+              <!-- Squad & Members Table -->
+              <div class="gov-table-card">
+                <table class="gov-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 220px;">Team Member</th>
+                      <th style="width: 170px;">Squad</th>
+                      <th style="width: 160px;">Technical Role</th>
+                      <th style="width: 160px;">System Permission Tier</th>
+                      <th style="width: 130px;">Sprint Budget</th>
+                      <th>Effective Load &amp; Rework Recovery</th>
+                      <th style="width: 120px;">Load Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (member of store.teamMembers(); track member.id) {
+                      @let metric = store.getMemberLoadMetric(member.id);
+                      <tr class="gov-table-row">
+                        <!-- Member Info -->
+                        <td>
+                          <div class="gov-member-cell">
+                            <span class="avatar-mini" [style.background-color]="member.color">{{ member.avatar }}</span>
+                            <div class="gov-member-meta">
+                              <strong class="gov-member-name">{{ member.name }}</strong>
+                              <span class="gov-member-email text-muted">{{ member.email }}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <!-- Squad -->
+                        <td>
+                          <span class="gov-squad-badge">{{ member.squad }}</span>
+                        </td>
+
+                        <!-- Technical Role -->
+                        <td>
+                          <span class="role-badge" [attr.data-role]="store.getRoleCategory(member.role)">
+                            {{ member.role }}
+                          </span>
+                        </td>
+
+                        <!-- System Permission Level -->
+                        <td>
+                          @if (store.canManageGovernance()) {
+                            <select
+                              class="gov-select-role"
+                              [value]="member.systemRole"
+                              (change)="onUpdateMemberSystemRole(member.id, $event)"
+                              title="Update System Permission Tier"
+                            >
+                              <option value="VIEWER">VIEWER (Read-only)</option>
+                              <option value="DEV">DEV (Standard)</option>
+                              <option value="QA">QA (Verification)</option>
+                              <option value="LEAD">LEAD (Sign-Off & Scope)</option>
+                              <option value="ADMIN">ADMIN (Full Admin)</option>
+                            </select>
+                          } @else {
+                            <span class="gov-perm-badge" [attr.data-perm]="member.systemRole">
+                              {{ member.systemRole }}
+                            </span>
+                          }
+                        </td>
+
+                        <!-- Capacity Budget Input -->
+                        <td>
+                          @if (store.canManageGovernance()) {
+                            <div class="budget-input-wrap">
+                              <input
+                                type="number"
+                                class="gov-input-budget"
+                                [value]="member.capacityBudget"
+                                min="5"
+                                max="40"
+                                (change)="onUpdateMemberBudget(member.id, $event)"
+                                title="Set sprint budget in story points (5-40)"
+                              />
+                              <span class="budget-pts-unit">pts</span>
+                            </div>
+                          } @else {
+                            <span class="font-mono text-secondary">{{ member.capacityBudget }} pts</span>
+                          }
+                        </td>
+
+                        <!-- Effective Load & Rework Recovery Bar -->
+                        <td>
+                          <div class="gov-load-bar-wrap">
+                            <div class="gov-load-bar-track">
+                              <div
+                                class="gov-load-bar-fill"
+                                [class.fill-optimal]="metric.status === 'OPTIMAL'"
+                                [class.fill-near]="metric.status === 'NEAR_CAPACITY'"
+                                [class.fill-over]="metric.status === 'OVER_BUDGET'"
+                                [style.width.%]="Math.min(100, (metric.effectiveLoad / member.capacityBudget) * 100)"
+                              ></div>
+                            </div>
+                            <div class="gov-load-breakdown">
+                              <span class="load-numbers font-mono">
+                                {{ metric.effectiveLoad }} / {{ member.capacityBudget }} pts
+                              </span>
+                              <span class="load-formula-tag" [class.has-penalty]="metric.reworkCount > 0">
+                                {{ metric.activePoints }} active
+                                @if (metric.reworkCount > 0) {
+                                  + {{ metric.reworkCount * 3 }} rework penalty
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <!-- Status Badge -->
+                        <td>
+                          <span
+                            class="gov-status-pill"
+                            [class.pill-optimal]="metric.status === 'OPTIMAL'"
+                            [class.pill-near]="metric.status === 'NEAR_CAPACITY'"
+                            [class.pill-over]="metric.status === 'OVER_BUDGET'"
+                          >
+                            {{ metric.label }}
+                          </span>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          <!-- SUB-VIEW 2: CYCLE-TIME & BOTTLENECK ANALYTICS -->
+          @if (governanceSubTab() === 'ANALYTICS') {
+            <div class="gov-panel">
+              <!-- KPI Metric Cards Grid -->
+              <div class="gov-metrics-grid">
+                <!-- Card 1: Lead Sign-off Wait Time -->
+                <div class="gov-metric-card">
+                  <div class="metric-top-row">
+                    <span class="metric-card-label">Avg Lead Sign-Off Wait Time</span>
+                    <span class="metric-tag tag-healthy">Target &lt; 24h</span>
+                  </div>
+                  <div class="metric-hero-val">
+                    <strong class="metric-huge-num tabular-nums">{{ store.cycleTimeMetrics().avgLeadSignOffHours }}</strong>
+                    <span class="metric-unit">hours</span>
+                  </div>
+                  <p class="metric-footer-note">Average elapsed duration tasks spend staged in DEPLOYED awaiting Tech Lead inspection &amp; verification note.</p>
+                </div>
+
+                <!-- Card 2: Rework Recovery Overhead -->
+                <div class="gov-metric-card">
+                  <div class="metric-top-row">
+                    <span class="metric-card-label">Rework Recovery Overhead</span>
+                    <span class="metric-tag tag-rework">+3 pts / rejection</span>
+                  </div>
+                  <div class="metric-hero-val">
+                    <strong class="metric-huge-num text-rework tabular-nums">{{ store.cycleTimeMetrics().totalReworkOverheadPoints }}</strong>
+                    <span class="metric-unit">points</span>
+                  </div>
+                  <p class="metric-footer-note">Cumulative sprint bandwidth absorbed by automated rework penalties on rejected builds across all squads.</p>
+                </div>
+
+                <!-- Card 3: Total Slippage Events -->
+                <div class="gov-metric-card">
+                  <div class="metric-top-row">
+                    <span class="metric-card-label">Slipped Deliverables</span>
+                    <span class="metric-tag tag-drift">Grace Protocol</span>
+                  </div>
+                  <div class="metric-hero-val">
+                    <strong class="metric-huge-num text-drift tabular-nums">{{ store.cycleTimeMetrics().totalDriftedTasks }}</strong>
+                    <span class="metric-unit">tasks</span>
+                  </div>
+                  <p class="metric-footer-note">Tasks with baseline due dates adjusted via structured slippage justifications without punitive penalization.</p>
+                </div>
+              </div>
+
+              <!-- Two In-Depth Analysis Panels -->
+              <div class="gov-analytics-split">
+                <!-- Panel 1: Rework Rate & Quality Bottlenecks by Project -->
+                <div class="gov-subcard">
+                  <div class="subcard-header">
+                    <div>
+                      <h3 class="subcard-title">Project Quality &amp; Rework Bottleneck Telemetry</h3>
+                      <p class="subcard-sub">Comparative failure rate, deployed staging items, and rework overhead points</p>
+                    </div>
+                  </div>
+
+                  <div class="project-bottleneck-list">
+                    @for (item of store.cycleTimeMetrics().projectBreakdowns; track item.projectId) {
+                      <div class="project-bottleneck-row">
+                        <div class="p-row-header">
+                          <div class="p-row-code-wrap">
+                            <span class="proj-table-badge" [style.color]="item.color">{{ item.projectCode }}</span>
+                            <strong class="p-row-name">{{ item.projectName }}</strong>
+                          </div>
+                          <div class="p-row-kpis font-mono">
+                            <span class="p-kpi-pill">{{ item.deployedTasks }} Deployed</span>
+                            <span class="p-kpi-pill p-kpi-rework">{{ item.totalReworkCount }} Rework ({{ item.reworkOverheadPoints }}p)</span>
+                            <span class="p-kpi-pill">{{ item.avgSignOffWaitHours }}h Avg Wait</span>
+                          </div>
+                        </div>
+
+                        <div class="p-bar-track">
+                          <div
+                            class="p-bar-fill"
+                            [style.background]="item.color"
+                            [style.width.%]="Math.max(5, item.reworkRate)"
+                          ></div>
+                        </div>
+                        <div class="p-bar-footer text-xs text-muted">
+                          <span>Rework Rate: <strong class="text-primary">{{ item.reworkRate }}%</strong> of tasks required revision</span>
+                          <span>{{ item.totalTasks }} Total Deliverables</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Panel 2: Slippage Taxonomy Distribution -->
+                <div class="gov-subcard">
+                  <div class="subcard-header">
+                    <div>
+                      <h3 class="subcard-title">Deadline Slippage Root Cause Distribution</h3>
+                      <p class="subcard-sub">Taxonomy breakdown logged through the Deadline Grace Protocol (FR-05)</p>
+                    </div>
+                  </div>
+
+                  <div class="slippage-taxonomy-list">
+                    @for (slip of store.cycleTimeMetrics().slippageBreakdowns; track slip.reason) {
+                      <div class="slip-breakdown-item">
+                        <div class="slip-item-top">
+                          <div class="slip-reason-label-wrap">
+                            <span class="slip-bullet-icon">
+                              @switch (slip.reason) {
+                                @case ('DEPENDENCY_BLOCKED') { 🔗 }
+                                @case ('SCOPE_EXPANDED') { 📐 }
+                                @case ('PRODUCTION_HOTFIX') { 🔥 }
+                                @case ('UNDERESTIMATED') { ⏱️ }
+                              }
+                            </span>
+                            <strong class="slip-label">{{ slip.label }}</strong>
+                          </div>
+                          <div class="slip-stats font-mono">
+                            <span class="slip-count">{{ slip.count }} task(s)</span>
+                            <span class="slip-pct">({{ slip.percentage }}%)</span>
+                          </div>
+                        </div>
+
+                        <div class="slip-bar-track">
+                          <div
+                            class="slip-bar-fill"
+                            [attr.data-reason]="slip.reason"
+                            [style.width.%]="Math.max(4, slip.percentage)"
+                          ></div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- SUB-VIEW 3: IMMUTABLE SECURITY AUDIT TRAIL -->
+          @if (governanceSubTab() === 'AUDIT_TRAIL') {
+            <div class="gov-panel">
+              <!-- Security Compliance Header Bar -->
+              <div class="audit-control-bar">
+                <div class="audit-security-seal">
+                  <span class="seal-icon">🔒</span>
+                  <div class="seal-text">
+                    <div class="seal-title-row">
+                      <strong class="seal-title">LOCKED · APPEND-ONLY AUDIT LEDGER</strong>
+                      <span class="compliance-badge">SOC2 / ISO 27001 Ready</span>
+                    </div>
+                    <p class="seal-desc">Every status change, blocker toggle, verification note, date shift, and policy calibration is immutably logged with actor provenance.</p>
+                  </div>
+                </div>
+
+                <!-- Compliance Export Buttons -->
+                <div class="audit-export-actions">
+                  <button
+                    type="button"
+                    class="btn-export-audit btn-export-csv"
+                    (click)="exportAuditCsv()"
+                    title="Export full tamper-proof audit trail as CSV for compliance"
+                  >
+                    📥 Export CSV
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-export-audit btn-export-json"
+                    (click)="exportAuditJson()"
+                    title="Export raw structured audit payload as JSON"
+                  >
+                    📥 Export JSON
+                  </button>
+                </div>
+              </div>
+
+              <!-- Filter Bar for Audit Records -->
+              <div class="audit-filter-row">
+                <!-- Search Filter -->
+                <div class="audit-search-wrap">
+                  <span class="search-glyph">🔍</span>
+                  <input
+                    type="text"
+                    class="audit-search-input"
+                    placeholder="Search audit trail by actor, task ID, action, or details..."
+                    [ngModel]="auditSearchQuery()"
+                    (ngModelChange)="auditSearchQuery.set($event)"
+                  />
+                  @if (auditSearchQuery()) {
+                    <button type="button" class="btn-clear-search" (click)="auditSearchQuery.set('')">✕</button>
+                  }
+                </div>
+
+                <!-- Actor Filter -->
+                <div class="audit-filter-item">
+                  <label class="filter-mini-label">Actor:</label>
+                  <select
+                    class="audit-select"
+                    [ngModel]="auditActorFilter()"
+                    (ngModelChange)="auditActorFilter.set($event)"
+                  >
+                    <option value="ALL">All Actors ({{ store.activityLogs().length }})</option>
+                    @for (member of store.teamMembers(); track member.id) {
+                      <option [value]="member.name">{{ member.name }}</option>
+                    }
+                  </select>
+                </div>
+
+                <!-- Action Type Filter -->
+                <div class="audit-filter-item">
+                  <label class="filter-mini-label">Action:</label>
+                  <select
+                    class="audit-select"
+                    [ngModel]="auditActionFilter()"
+                    (ngModelChange)="auditActionFilter.set($event)"
+                  >
+                    <option value="ALL">All Action Types</option>
+                    <option value="STATUS_CHANGED">STATUS_CHANGED</option>
+                    <option value="REWORK_PENALTY">REWORK_PENALTY</option>
+                    <option value="SLIPPAGE_LOGGED">SLIPPAGE_LOGGED</option>
+                    <option value="CASCADE_SHIFT_DATES">CASCADE_SHIFT_DATES</option>
+                    <option value="MEMBER_ROLE_UPDATED">MEMBER_ROLE_UPDATED</option>
+                    <option value="DEPLOYED_TO_SERVER">DEPLOYED_TO_SERVER</option>
+                    <option value="REVIEW_NOTE_ADDED">REVIEW_NOTE_ADDED</option>
+                    <option value="BLOCKER_TOGGLED">BLOCKER_TOGGLED</option>
+                    <option value="TASK_CREATED">TASK_CREATED</option>
+                    <option value="SMART_IMPORT_BATCH">SMART_IMPORT_BATCH</option>
+                  </select>
+                </div>
+
+                <span class="audit-results-count font-mono text-muted">
+                  Showing {{ filteredAuditLogs().length }} of {{ store.activityLogs().length }} records
+                </span>
+              </div>
+
+              <!-- Audit Trail Data Table -->
+              <div class="gov-table-card">
+                <table class="gov-table audit-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 100px;">Log ID</th>
+                      <th style="width: 160px;">Timestamp</th>
+                      <th style="width: 170px;">Actor</th>
+                      <th style="width: 180px;">Action Type</th>
+                      <th style="width: 220px;">Target Deliverable</th>
+                      <th>Audit Details &amp; Provenance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (log of filteredAuditLogs(); track log.id) {
+                      <tr class="gov-table-row">
+                        <td class="font-mono text-muted text-xs">{{ log.id }}</td>
+                        <td class="tabular-nums text-secondary text-xs">{{ log.timestamp }}</td>
+                        <td>
+                          <div class="audit-actor-cell">
+                            <span class="avatar-mini" style="background-color: var(--color-primary)">{{ log.actorAvatar }}</span>
+                            <span class="actor-name font-semibold">{{ log.actor }}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span class="audit-action-chip" [attr.data-action]="log.action">
+                            {{ log.action }}
+                          </span>
+                        </td>
+                        <td>
+                          <div class="audit-target-cell">
+                            <strong class="target-title text-truncate" [title]="log.taskTitle">{{ log.taskTitle }}</strong>
+                            @if (log.taskId) {
+                              <span class="font-mono text-muted text-xs">{{ log.taskId }}</span>
+                            }
+                          </div>
+                        </td>
+                        <td>
+                          <div class="audit-details-cell">
+                            <span class="details-text">{{ log.details }}</span>
+                            @if (log.statusTransition) {
+                              <span class="transition-pill font-mono">
+                                {{ log.statusTransition.from }} → {{ log.statusTransition.to }}
+                              </span>
+                            }
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
         </div>
       }
     </main>

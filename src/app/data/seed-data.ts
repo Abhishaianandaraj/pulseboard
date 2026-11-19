@@ -443,6 +443,46 @@ export const INITIAL_LOGS: ActivityLog[] = [
     taskId: 'PB-103',
     taskTitle: 'Streaming Function Calling Protocol for Multi-Agent Orchestrator',
     details: 'Approved server preview on preview-orchestrator.internal.ai'
+  },
+  {
+    id: 'act-5',
+    timestamp: 'Yesterday at 6:15 PM',
+    actor: 'Vikram Rao',
+    actorAvatar: 'VR',
+    action: 'REWORK_PENALTY',
+    taskId: 'PB-104',
+    taskTitle: 'Red-Team Adversarial Jailbreak Suite for Gemini Guardrails',
+    details: 'Flagged NEEDS_CHANGES: Incomplete coverage of indirect prompt injection. Imposed +3 rework recovery penalty points.'
+  },
+  {
+    id: 'act-6',
+    timestamp: 'Today at 09:30 AM',
+    actor: 'Abhishai',
+    actorAvatar: 'AB',
+    action: 'SLIPPAGE_LOGGED',
+    taskId: 'PB-102',
+    taskTitle: 'Hybrid Vector Search + BM25 Reranking Pipeline',
+    details: 'Schedule drifted +2 days. Reason: DEPENDENCY_BLOCKED (Milvus 2.4 GPU license unlock).'
+  },
+  {
+    id: 'act-7',
+    timestamp: 'Today at 10:45 AM',
+    actor: 'Vikram Rao',
+    actorAvatar: 'VR',
+    action: 'MEMBER_ROLE_UPDATED',
+    taskId: 'tm-3',
+    taskTitle: 'Governance & RBAC Policy Update',
+    details: 'Updated Karthik R (QA / Test Engineer) system role to QA with capacity budget 15 pts.'
+  },
+  {
+    id: 'act-8',
+    timestamp: 'Today at 11:20 AM',
+    actor: 'Vikram Rao',
+    actorAvatar: 'VR',
+    action: 'CASCADE_SHIFT_DATES',
+    taskId: 'PB-106',
+    taskTitle: 'Automated Dependency Cascade Shift',
+    details: 'Shifted downstream deliverable start date to align with upstream PB-102 completion.'
   }
 ];
 

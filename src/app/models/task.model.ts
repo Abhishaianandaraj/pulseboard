@@ -2,7 +2,7 @@ export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DEPLOYED' | 'DONE';
 
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
-export type MethodologyView = 'BOARD' | 'SPRINT' | 'TIMELINE';
+export type MethodologyView = 'BOARD' | 'SPRINT' | 'TIMELINE' | 'GOVERNANCE';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -138,7 +138,37 @@ export type ActivityActionType =
   | 'REWORK_PENALTY'
   | 'SLIPPAGE_LOGGED'
   | 'DEPENDENCY_UPDATED'
-  | 'CASCADE_SHIFT_DATES';
+  | 'CASCADE_SHIFT_DATES'
+  | 'MEMBER_ROLE_UPDATED';
+
+export interface ProjectBottleneckMetric {
+  projectId: string;
+  projectName: string;
+  projectCode: string;
+  color: string;
+  totalTasks: number;
+  deployedTasks: number;
+  reworkTasks: number;
+  totalReworkCount: number;
+  reworkRate: number; // percentage (0-100)
+  reworkOverheadPoints: number; // reworkCount * 3
+  avgSignOffWaitHours: number;
+}
+
+export interface SlippageReasonBreakdown {
+  reason: NonNullable<SlipReason>;
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+export interface CycleTimeMetrics {
+  avgLeadSignOffHours: number;
+  totalReworkOverheadPoints: number;
+  totalDriftedTasks: number;
+  projectBreakdowns: ProjectBottleneckMetric[];
+  slippageBreakdowns: SlippageReasonBreakdown[];
+}
 
 export interface ActivityLog {
   id: string;

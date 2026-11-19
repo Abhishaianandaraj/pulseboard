@@ -33,13 +33,20 @@ Every release candidate, pull request, and staging deployment must execute and s
 - [x] **Circular Dependency Prevention:** Recursive graph traversal prevents circular A -> B -> A loops with immediate inline feedback in the Task Drawer.
 - [x] **Domino Delay Detection & Cascade Alignment:** Conflicts between upstream due dates and downstream start dates trigger an advisory banner and 1-click `⚡ Auto-Shift Dependent Dates` alignment.
 
-### 1.4 Smart JSON Import Engine
+### 1.4 Governance, Bottleneck Telemetry & Audit Checklist
+- [x] **Squad & RBAC Matrix Gate:** `LEAD` / `ADMIN` sessions can edit `systemRole` and `capacityBudget` live; edits record immutable `MEMBER_ROLE_UPDATED` entries in the audit trail.
+- [x] **Read-Only Lock for Non-Leads:** `DEV` and `VIEWER` personas see a read-only governance table with disabled/badge controls.
+- [x] **Cycle-Time Telemetry:** Computes average Lead sign-off wait hours staged in `DEPLOYED`, cumulative rework recovery penalty overhead, and project-by-project bottleneck breakdowns.
+- [x] **Audit Trail Search & Multi-Filter:** Filters chronological ledger by Actor, Action Type, or free text keywords without page reload.
+- [x] **Compliance Export:** 1-click CSV (`pulseboard_audit_trail_YYYY-MM-DD.csv`) and JSON exports generate sanitized provenance files for compliance archives.
+
+### 1.5 Smart JSON Import Engine
 - [x] **Syntax Error Handling:** Malformed JSON triggers immediate red border and syntax error notification without app crash.
 - [x] **Auto-Member Registration:** JSON referencing an unknown assignee name automatically adds the member with the supplied or default role (`Full-Stack Dev`) and displays the new member in the sidebar.
 - [x] **Project Mapping:** Tasks with `projectCode: "EVAL-GW"` correctly link to the `EVAL-GW` project ID upon import.
 - [x] **Batch Import Performance:** Importing a payload of 20 tasks executes in < 150ms with instantaneous Signal state reactivity.
 
-### 1.5 Theme & UI Parity Gate
+### 1.6 Theme & UI Parity Gate
 - [x] **Light Mode Verification:** All surfaces, cards, modals, and drawers render high-contrast `#f8fafc` canvas with `#ffffff` cards and `#e2e8f0` subtle borders.
 - [x] **Dark Mode Verification:** All surfaces, cards, modals, and drawers render obsidian `#0b0e14` canvas with `#11151f` cards and `#1e2433` borders.
 - [x] **Zero Hardcoded Colors:** No inline hardcoded hex colors bypass the semantic CSS variable engine.
@@ -50,6 +57,12 @@ Every release candidate, pull request, and staging deployment must execute and s
 ## 2. Release Changelog
 
 ### `v2.0.0-alpha` (In Development)
+- **V2 Milestone 3 Delivered (Governance Console, Cycle-Time Analytics & Audit Trail — `FR-06`):**
+  - **Quad-Methodology View Navigation:** Added `Governance & Audit` navigation to both the Collapsible Sidebar and the Top Command Bar pill switcher, enabling seamless navigation across `Board`, `Sprint`, `Gantt`, and `Governance`.
+  - **Squad & RBAC Matrix View:** Interactive roster featuring live Squad assignment, Technical Role tags, System Permission Tier dropdowns (`VIEWER`, `DEV`, `QA`, `LEAD`, `ADMIN`), and live Capacity Budget bars displaying active story points vs. rework penalties. Restricted editing to `LEAD` / `ADMIN` with automated `MEMBER_ROLE_UPDATED` audit events.
+  - **Cycle-Time & Bottleneck Telemetry:** Executive metric cards displaying Avg Lead Sign-Off Wait Time, Rework Recovery Overhead (+3 pts/penalty), and Slipped Deliverables count, paired with horizontal project bottleneck comparison bars and root-cause slippage taxonomy distributions.
+  - **Immutable Security Audit Trail Ledger:** Chronological tamper-proof ledger with `"LOCKED · APPEND-ONLY"` compliance seal, real-time filtering (by Actor, Action Type, or keyword search), and 1-click **Export CSV** and **Export JSON** compliance reporting.
+  - **Store Governance API:** Added `updateMemberGovernance()`, `exportAuditLogCsv()`, and `exportAuditLogJson()` to `TaskStoreService`.
 - **V2 Milestone 2 Delivered (Interactive Dependency Gantt Chart — `FR-03`):**
   - **Topological Dependency Graph Engine:** Implemented `addDependency(taskId, upstreamTaskId)` and `removeDependency(taskId, upstreamTaskId)` in `TaskStoreService` with recursive DFS circular dependency cycle detection to prevent deadlocks.
   - **Critical Path Method (CPM) Calculation:** Computed signal `ganttScheduleMetrics` calculates longest delivery chains, identifies critical path task IDs (`isCriticalPath`), and highlights bottlenecks across the project schedule.

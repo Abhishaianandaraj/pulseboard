@@ -136,10 +136,10 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
 
 ---
 
-### FR-06: Tamper-Proof Activity & Security Audit Trail
-- **Status:** 🔄 Active Baseline / Enhanced in Milestone 2
-- **Description:** Maintain an append-only, structured audit log of all critical workspace activities for compliance, security reviews, and retrospective analysis.
-- **Acceptance Criteria:**
-  1. Every task status shift, server deployment, verification note, project creation, and member role update records an immutable `ActivityLog` entry.
-  2. Log entries record timestamp (ISO 8601), actor ID, actor role, IP/session simulator token, action type, and JSON change delta.
-  3. Audit log drawer provides real-time search, filter by project, filter by actor, and 1-click JSON export for compliance archives.
+### FR-06: Governance Console, Cycle-Time Analytics & Tamper-Proof Audit Trail
+- **Status:** ✅ Implemented (V2 Milestone 3)
+- **Description:** Maintain an enterprise-grade governance control center featuring live Squad RBAC policy calibration, cycle-time & bottleneck telemetry, and an append-only, filterable security audit trail with compliance export.
+- **Acceptance Criteria & Implemented Features:**
+  1. **Squad & RBAC Matrix View:** Interactive roster displaying all team members, Squads, Technical Roles, System Permission Tiers (`VIEWER`, `DEV`, `QA`, `LEAD`, `ADMIN`), and live Capacity Budget bars with rework penalty breakdowns. Allows `LEAD` / `ADMIN` sessions to modify system roles and sprint capacity allocations live with instant audit trail logging (`MEMBER_ROLE_UPDATED`), while `DEV` and `VIEWER` sessions operate in read-only mode.
+  2. **Cycle-Time & Bottleneck Telemetry:** Executive metrics cards displaying Average Lead Sign-Off Wait Time (hours staged in `DEPLOYED` awaiting review), Rework Recovery Overhead points (+3 points per rejected build), and Total Drifted Deliverables. Includes comparative project failure rate bars (`RAG-CORE`, `EVAL-GW`, `PULSE-V1`) and visual root cause distribution of deadline slippage.
+  3. **Immutable Security Audit Trail Ledger:** Chronological tamper-proof ledger with `"LOCKED · APPEND-ONLY"` compliance seal, real-time multi-dimensional filtering (by Actor, Action Type, or keyword), and 1-click **Export CSV** and **Export JSON** buttons for corporate compliance and SOC2 auditing.

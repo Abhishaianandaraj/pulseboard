@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -16,7 +16,9 @@ import {
   TeamMember,
   TechnicalRole,
   SystemRole,
-  MemberLoadMetric
+  MemberLoadMetric,
+  ActivityLog,
+  ActivityActionType
 } from './models/task.model';
 import { TaskDrawerComponent } from './components/task-drawer.component';
 import { ImportModalComponent } from './components/import-modal.component';
@@ -36,6 +38,7 @@ import { ImportModalComponent } from './components/import-modal.component';
 })
 export class AppComponent {
   protected readonly store = inject(TaskStoreService);
+  protected readonly Math = Math;
 
   readonly statusColumns: Array<{
     status: TaskStatus;
@@ -112,6 +115,59 @@ export class AppComponent {
 
   switchView(view: MethodologyView): void {
     this.store.currentView.set(view);
+  }
+
+  // --- Governance & Audit Console (FR-06) ---
+  readonly governanceSubTab = signal<'RBAC_MATRIX' | 'ANALYTICS' | 'AUDIT_TRAIL'>('RBAC_MATRIX');
+  readonly auditActorFilter = signal<string>('ALL');
+  readonly auditActionFilter = signal<string>('ALL');
+  readonly auditSearchQuery = signal<string>('');
+
+  setGovernanceTab(tab: 'RBAC_MATRIX' | 'ANALYTICS' | 'AUDIT_TRAIL'): void {
+    this.governanceSubTab.set(tab);
+  }
+
+  readonly filteredAuditLogs = computed(() => {
+    const logs = this.store.activityLogs();
+    const actor = this.auditActorFilter();
+    const action = this.auditActionFilter();
+    const q = this.auditSearchQuery().trim().toLowerCase();
+
+    return logs.filter((log: ActivityLog) => {
+      if (actor !== 'ALL' && log.actor !== actor) return false;
+      if (action !== 'ALL' && log.action !== action) return false;
+      if (q) {
+        const text = `${log.actor} ${log.action} ${log.taskTitle || ''} ${log.details || ''} ${log.taskId || ''}`.toLowerCase();
+        if (!text.includes(q)) return false;
+      }
+      return true;
+    });
+  });
+
+  onUpdateMemberSystemRole(memberId: string, event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const newRole = select.value as SystemRole;
+    const member = this.store.teamMembers().find(m => m.id === memberId);
+    if (member) {
+      this.store.updateMemberGovernance(memberId, newRole, member.capacityBudget);
+    }
+  }
+
+  onUpdateMemberBudget(memberId: string, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const newBudget = Number(input.value) || 15;
+    const member = this.store.teamMembers().find(m => m.id === memberId);
+    if (member) {
+      this.store.updateMemberGovernance(memberId, member.systemRole, newBudget);
+    }
+  }
+
+  exportAuditCsv(): void {
+    this.store.exportAuditLogCsv();
+  }
+
+  exportAuditJson(): void {
+    this.store.exportAuditLogJson();
   }
 
   // Persona Role Switcher (FR-01)
