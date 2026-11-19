@@ -17,6 +17,8 @@ export interface Project {
   description: string;
   teamName: string;                // e.g. "Core AI Squad"
   status: 'ACTIVE' | 'STAGING' | 'COMPLETED';
+  color?: string;
+  memberIds: string[];             // Explicit list of assigned squad member IDs (governs project isolation)
 }
 ```
 
@@ -100,7 +102,8 @@ export interface Task {
   phase: string;
   sprint: string;
   effortPoints: number;            // Story points (1, 2, 3, 5, 8, 13)
-  assigneeId: string;              // Foreign key -> TeamMember.id
+  assigneeIds: string[];           // Foreign keys -> TeamMember.id (multi-assignee support)
+  assigneeId?: string;             // Legacy single assignee backward compatibility
   startDate: string;               // e.g. "2026-11-18"
   dueDate: string;                 // e.g. "2026-11-25"
   baselineDueDate?: string;        // Committed schedule baseline for drift tracking
@@ -345,3 +348,32 @@ The Smart JSON Import endpoint/parser accepts structured payloads directly gener
 | `POST` | `/api/import/json` | Ingest batch JSON with auto-member registration | `DEV`, `QA`, `LEAD`, `ADMIN` |
 | `GET` | `/api/audit-logs` | Retrieve immutable activity audit records | `VIEWER` or higher |
 | `GET` | `/api/members/capacity` | Fetch sprint capacity budgets & effective loads | `VIEWER` or higher |
+
+---
+
+## 5. Multi-Assignee Capacity Splitting & Authorization Contract
+
+### 5.1 Multi-Assignee Load Splitting Formula
+For deliverables assigned to multiple engineers (`assigneeIds.length > 1`), story points are divided equally among co-assignees using ceiling arithmetic:
+$$\text{Assigned Load Points} = \left\lceil \frac{\text{effortPoints}}{\max(1, |\text{task.assigneeIds}|)} \right\rceil$$
+
+Total Effective Load per engineer across all assigned deliverables is calculated as:
+$$\text{Effective Load} = \sum_{t \in \text{ActiveTasks}} \left\lceil \frac{t.\text{effortPoints}}{\max(1, |t.\text{assigneeIds}|)} \right\rceil + (t.\text{reworkCount} \times 3)$$
+
+### 5.2 Project Isolation Query Rule
+- For `DEV` and `QA` sessions:
+  $$\text{Visible Projects} = \{ p \in \text{Projects} \mid \text{currentUserId} \in p.\text{memberIds} \}$$
+- For `LEAD`, `ADMIN`, `VIEWER` sessions:
+  $$\text{Visible Projects} = \text{Projects} \quad (\text{portfolio-wide access})$$
+
+### 5.3 Task Ownership Mutability Contract
+```typescript
+function canEditTask(task: Task, user: TeamMember): boolean {
+  if (['LEAD', 'ADMIN'].includes(user.systemRole)) return true;
+  if (user.systemRole === 'VIEWER') return false;
+  const assignees = task.assigneeIds && task.assigneeIds.length > 0
+    ? task.assigneeIds
+    : (task.assigneeId ? [task.assigneeId] : []);
+  return assignees.length === 0 || assignees.includes(user.id);
+}
+```

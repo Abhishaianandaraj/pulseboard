@@ -61,7 +61,12 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
         <div class="my-day-col">
           <div class="section-card-header">
             <div class="card-title-group">
-              <span class="section-icon">🎯</span>
+              <span class="section-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </span>
               <h2 class="section-title">My Active Tasks</h2>
               <span class="section-count-badge">{{ myActiveTasks().length }}</span>
             </div>
@@ -94,10 +99,15 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
                     <div class="task-meta-left">
                       <span class="task-due-date font-mono text-muted text-xs">Due {{ task.dueDate }}</span>
                       @if (task.subtasks.length > 0) {
-                        <span class="checklist-badge text-xs">
+                        <span class="checklist-badge text-xs font-mono">
                           ☑ {{ getCompletedSubtasks(task) }}/{{ task.subtasks.length }}
                         </span>
                       }
+                      <div class="avatar-stack">
+                        @for (m of store.getTaskMembers(task); track m.id) {
+                          <span class="avatar-stack-item" [style.background-color]="m.color" [title]="m.name">{{ m.avatar }}</span>
+                        }
+                      </div>
                     </div>
 
                     <!-- 1-Click Status Progression Action -->
@@ -108,7 +118,7 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
                         </button>
                       } @else if (task.status === 'IN_PROGRESS') {
                         <button type="button" class="btn-progression btn-deploy" (click)="advanceStatus(task, 'DEPLOYED')">
-                          🚀 Deploy to Server
+                          Deploy to Server
                         </button>
                       } @else if (task.status === 'DEPLOYED') {
                         @if (store.canSignOffDone()) {
@@ -116,7 +126,7 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
                             ✓ Verify &amp; Close
                           </button>
                         } @else {
-                          <span class="waiting-lead-tag">⏳ Awaiting Lead Sign-Off</span>
+                          <span class="waiting-lead-tag">Awaiting Lead Sign-Off</span>
                         }
                       }
                     </div>
@@ -126,7 +136,7 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
             </div>
           } @else {
             <div class="empty-state-box">
-              <span class="empty-icon">🎉</span>
+              <span class="empty-icon">✓</span>
               <strong>All caught up!</strong>
               <p>You have zero pending tasks on your active board. Head to the workspace to pick up new work.</p>
               <button type="button" class="btn-empty-action" (click)="goToWorkspace()">Explore Workspace</button>
@@ -140,7 +150,13 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
           <div class="attention-card">
             <div class="section-card-header">
               <div class="card-title-group">
-                <span class="section-icon">⚠️</span>
+                <span class="section-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                </span>
                 <h2 class="section-title">Needs My Attention</h2>
                 <span class="section-count-badge attention-badge">{{ attentionItems().length }}</span>
               </div>
@@ -166,7 +182,7 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
               </div>
             } @else {
               <div class="calm-box">
-                <span>✨ No urgent blockers or pending reviews requiring your action.</span>
+                <span>No urgent blockers or pending reviews requiring your action.</span>
               </div>
             }
           </div>
@@ -175,7 +191,11 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
           <div class="pulse-feed-card">
             <div class="section-card-header">
               <div class="card-title-group">
-                <span class="section-icon">⚡</span>
+                <span class="section-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                  </svg>
+                </span>
                 <h2 class="section-title">Recent Project Pulse</h2>
               </div>
             </div>
@@ -736,12 +756,20 @@ export class MyDayComponent {
 
   readonly myActiveTasks = computed(() => {
     const curId = this.store.currentUserId();
-    return this.store.tasks().filter(t => t.assigneeId === curId && t.status !== 'DONE');
+    const visibleProjIds = new Set(this.store.visibleProjects().map(p => p.id));
+    return this.store.tasks().filter((t: Task) => {
+      if (!visibleProjIds.has(t.projectId)) return false;
+      const assignees = (t.assigneeIds && t.assigneeIds.length > 0)
+        ? t.assigneeIds
+        : (t.assigneeId ? [t.assigneeId] : []);
+      return assignees.includes(curId) && t.status !== 'DONE';
+    });
   });
 
   readonly attentionItems = computed(() => {
     const curUser = this.store.currentUser();
-    const tasks = this.store.tasks();
+    const visibleProjIds = new Set(this.store.visibleProjects().map(p => p.id));
+    const tasks = this.store.tasks().filter(t => visibleProjIds.has(t.projectId));
 
     if (curUser.systemRole === 'LEAD' || curUser.systemRole === 'ADMIN') {
       return tasks.filter(t => t.status === 'DEPLOYED');
@@ -749,7 +777,12 @@ export class MyDayComponent {
     if (curUser.systemRole === 'QA') {
       return tasks.filter(t => t.status === 'DEPLOYED' || (t.blocked && t.status !== 'DONE'));
     }
-    return tasks.filter(t => t.assigneeId === curUser.id && (t.blocked || (t.reworkCount > 0 && t.status !== 'DONE')));
+    return tasks.filter(t => {
+      const assignees = (t.assigneeIds && t.assigneeIds.length > 0)
+        ? t.assigneeIds
+        : (t.assigneeId ? [t.assigneeId] : []);
+      return assignees.includes(curUser.id) && (t.blocked || (t.reworkCount > 0 && t.status !== 'DONE'));
+    });
   });
 
   readonly recentLogs = computed(() => {
@@ -760,7 +793,8 @@ export class MyDayComponent {
     return this.store.projectMap().get(projectId);
   }
 
-  getMemberName(memberId: string): string {
+  getMemberName(memberId?: string): string {
+    if (!memberId) return 'Team';
     return this.store.assigneeMap().get(memberId)?.name || 'Team';
   }
 

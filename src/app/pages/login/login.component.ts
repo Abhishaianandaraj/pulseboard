@@ -12,14 +12,18 @@ import { TeamMember } from '../../models/task.model';
     <div class="login-wrapper">
       <div class="login-theme-bar">
         <button type="button" class="btn-theme-toggle" (click)="store.toggleTheme()" [title]="'Switch to ' + (store.theme() === 'dark' ? 'Light' : 'Dark') + ' Mode'">
-          {{ store.theme() === 'dark' ? '☀️ Light' : '🌙 Dark' }}
+          {{ store.theme() === 'dark' ? 'Light Mode' : 'Dark Mode' }}
         </button>
       </div>
 
       <div class="login-card">
         <div class="login-brand-header">
           <div class="brand-badge-row">
-            <div class="brand-logo-icon">⚡</div>
+            <div class="brand-logo-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+            </div>
             <span class="brand-version-chip">PulseBoard V2</span>
           </div>
           <h1 class="login-title">Welcome to PulseBoard</h1>
@@ -29,7 +33,12 @@ import { TeamMember } from '../../models/task.model';
         <!-- Corporate SSO Action -->
         <div class="sso-section">
           <button type="button" class="btn-sso-primary" (click)="loginAs(store.currentUser().id)">
-            <span class="sso-key-icon">🔑</span>
+            <span class="sso-key-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </span>
             <span class="sso-text">Continue with Corporate SSO</span>
             <span class="sso-actor-pill">{{ store.currentUser().name.split(' ')[0] }}</span>
           </button>

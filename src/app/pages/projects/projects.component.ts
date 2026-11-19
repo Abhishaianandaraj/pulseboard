@@ -22,16 +22,16 @@ import { Project, Task, TeamMember } from '../../models/task.model';
         </button>
       </div>
 
-      <!-- Project Cards Grid -->
+      <!-- Project Cards Grid (Scoped to user visible projects) -->
       <div class="projects-grid">
-        @for (proj of store.projects(); track proj.id) {
+        @for (proj of store.visibleProjects(); track proj.id) {
           @let pTasks = getProjectTasks(proj.id);
           @let doneCount = getDoneCount(pTasks);
           @let deployedCount = getDeployedCount(pTasks);
           @let blockedCount = getBlockedCount(pTasks);
           @let totalPoints = getTotalPoints(pTasks);
           @let progress = pTasks.length > 0 ? Math.round((doneCount / pTasks.length) * 100) : 0;
-          @let squadMembers = getProjectSquadMembers(pTasks);
+          @let squadMembers = getProjectSquadMembers(proj, pTasks);
 
           <div class="project-card">
             <!-- Card Header -->
@@ -50,7 +50,11 @@ import { Project, Task, TeamMember } from '../../models/task.model';
 
             <!-- Squad Tag -->
             <div class="proj-squad-row">
-              <span class="squad-icon">🛡️</span>
+              <span class="squad-icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+              </span>
               <span class="squad-name">{{ proj.teamName }}</span>
             </div>
 
@@ -514,9 +518,14 @@ export class ProjectsComponent {
     return tasks.reduce((sum, t) => sum + (Number(t.effortPoints) || 0), 0);
   }
 
-  getProjectSquadMembers(tasks: Task[]): TeamMember[] {
-    const assigneeIds = new Set(tasks.map(t => t.assigneeId));
-    return this.store.teamMembers().filter(m => assigneeIds.has(m.id));
+  getProjectSquadMembers(proj: Project, tasks: Task[]): TeamMember[] {
+    const map = this.store.assigneeMap();
+    const ids = new Set<string>(proj.memberIds || []);
+    tasks.forEach(t => {
+      const assignees = (t.assigneeIds && t.assigneeIds.length > 0) ? t.assigneeIds : (t.assigneeId ? [t.assigneeId] : []);
+      assignees.forEach(id => ids.add(id));
+    });
+    return Array.from(ids).map(id => map.get(id)).filter((m): m is TeamMember => !!m);
   }
 
   openWorkspace(projectId: string): void {

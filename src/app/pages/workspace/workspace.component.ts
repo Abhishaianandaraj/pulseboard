@@ -31,7 +31,13 @@ import { ImportModalComponent } from '../../components/import-modal.component';
               [class.active]="store.currentView() === 'BOARD'"
               (click)="switchView('BOARD')"
             >
-              ▦ Board
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="9"></rect>
+                <rect x="14" y="3" width="7" height="5"></rect>
+                <rect x="14" y="12" width="7" height="9"></rect>
+                <rect x="3" y="16" width="7" height="5"></rect>
+              </svg>
+              <span>Board</span>
             </button>
             <button
               type="button"
@@ -39,7 +45,15 @@ import { ImportModalComponent } from '../../components/import-modal.component';
               [class.active]="store.currentView() === 'SPRINT'"
               (click)="switchView('SPRINT')"
             >
-              ☰ Sprint
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </svg>
+              <span>Sprint</span>
             </button>
             <button
               type="button"
@@ -47,13 +61,23 @@ import { ImportModalComponent } from '../../components/import-modal.component';
               [class.active]="store.currentView() === 'TIMELINE'"
               (click)="switchView('TIMELINE')"
             >
-              ⇥ Gantt
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="4" y1="6" x2="16" y2="6"></line>
+                <line x1="8" y1="12" x2="20" y2="12"></line>
+                <line x1="6" y1="18" x2="14" y2="18"></line>
+              </svg>
+              <span>Gantt</span>
             </button>
           </div>
 
           <!-- Search Input -->
           <div class="search-box-wrap">
-            <span class="search-icon">🔍</span>
+            <span class="search-icon">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </span>
             <input
               type="text"
               class="search-input"
@@ -110,9 +134,14 @@ import { ImportModalComponent } from '../../components/import-modal.component';
             class="btn-action btn-smart-import"
             [disabled]="!store.canCreateTasks()"
             (click)="openSmartImport()"
-            title="Import AI requirements via structured JSON"
+            title="Import deliverables via structured JSON"
           >
-            ✨ Smart Import
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Smart Import</span>
           </button>
           <button
             type="button"
@@ -172,7 +201,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                       class="task-card"
                       cdkDrag
                       [cdkDragData]="task"
-                      [cdkDragDisabled]="!store.canEditTasks()"
+                      [cdkDragDisabled]="!store.canEditTask(task)"
                       (click)="openTask(task.id)"
                       [class.card-is-blocked]="task.blocked"
                       [class.card-is-deployed]="task.status === 'DEPLOYED'"
@@ -185,6 +214,9 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                           }
                           @if (task.blocked) {
                             <span class="card-blocked-tag">Blocked</span>
+                          }
+                          @if (!store.canEditTask(task)) {
+                            <span class="card-lock-badge" title="Read-only · Teammate task">🔒 Read-only</span>
                           }
                         </div>
                         <span class="card-pts font-mono">{{ task.effortPoints }}p</span>
@@ -205,8 +237,17 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                           }
                         </div>
 
-                        <div class="card-assignee-avatar" [style.background-color]="getMember(task.assigneeId).color" [title]="getMember(task.assigneeId).name">
-                          {{ getMember(task.assigneeId).avatar }}
+                        <!-- Stacked Avatars for Co-Assignees -->
+                        <div class="avatar-stack">
+                          @for (m of store.getTaskMembers(task); track m.id) {
+                            <span
+                              class="avatar-stack-item"
+                              [style.background-color]="m.color"
+                              [title]="m.name + ' (' + m.role + ')'"
+                            >
+                              {{ m.avatar }}
+                            </span>
+                          }
                         </div>
                       </div>
                     </div>
@@ -227,7 +268,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                   <th style="width: 105px;">Project</th>
                   <th>Title</th>
                   <th style="width: 140px;">Phase</th>
-                  <th style="width: 160px;">Assignee</th>
+                  <th style="width: 180px;">Assignees</th>
                   <th style="width: 90px;">Priority</th>
                   <th style="width: 70px;">Points</th>
                   <th style="width: 105px;">Due Date</th>
@@ -249,6 +290,9 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                         @if (task.blocked) {
                           <span class="card-blocked-tag">Blocked</span>
                         }
+                        @if (!store.canEditTask(task)) {
+                          <span class="card-lock-badge">🔒 Read-only</span>
+                        }
                         @if (isCriticalPath(task.id)) {
                           <span class="key-path-tag">Key Path</span>
                         }
@@ -257,10 +301,14 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                     <td class="text-secondary text-xs">{{ task.phase }}</td>
                     <td>
                       <div class="table-member-cell">
-                        <span class="avatar-mini" [style.background-color]="getMember(task.assigneeId).color">
-                          {{ getMember(task.assigneeId).avatar }}
-                        </span>
-                        <span class="text-xs">{{ getMember(task.assigneeId).name }}</span>
+                        <div class="avatar-stack">
+                          @for (m of store.getTaskMembers(task); track m.id) {
+                            <span class="avatar-stack-item" [style.background-color]="m.color" [title]="m.name">
+                              {{ m.avatar }}
+                            </span>
+                          }
+                        </div>
+                        <span class="text-xs text-secondary truncate-names">{{ getTaskAssigneesSummary(task) }}</span>
                       </div>
                     </td>
                     <td>
@@ -273,7 +321,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                         class="sprint-select-status"
                         [ngModel]="task.status"
                         (ngModelChange)="store.updateTaskStatus(task.id, $event)"
-                        [disabled]="!store.canEditTasks()"
+                        [disabled]="!store.canEditTask(task)"
                       >
                         <option value="TODO">To Do</option>
                         <option value="IN_PROGRESS">In Progress</option>
@@ -476,18 +524,36 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                 <div class="form-group">
                   <label class="form-label">Project</label>
                   <select class="form-select" [(ngModel)]="newTaskProjectId">
-                    @for (proj of store.projects(); track proj.id) {
+                    @for (proj of store.visibleProjects(); track proj.id) {
                       <option [value]="proj.id">{{ proj.name }} ({{ proj.code }})</option>
                     }
                   </select>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Assignee</label>
+                  <label class="form-label">Primary Assignee</label>
                   <select class="form-select" [(ngModel)]="newTaskAssigneeId">
                     @for (mem of store.teamMembers(); track mem.id) {
                       <option [value]="mem.id">{{ mem.name }} • {{ mem.role }}</option>
                     }
                   </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Co-Assignees (Points Split Equally)</label>
+                <div class="modal-assignee-pool">
+                  @for (mem of store.teamMembers(); track mem.id) {
+                    <button
+                      type="button"
+                      class="pool-chip-btn"
+                      [class.selected]="isNewTaskAssignee(mem.id)"
+                      (click)="toggleNewTaskAssignee(mem.id)"
+                    >
+                      <span class="chip-avatar-sm" [style.background-color]="mem.color">{{ mem.avatar }}</span>
+                      <span>{{ mem.name }}</span>
+                      <span class="capacity-mini-dot" [attr.data-status]="store.getMemberLoadMetric(mem.id).status"></span>
+                    </button>
+                  }
                 </div>
               </div>
 
@@ -827,6 +893,30 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       border-radius: 3px;
       background: rgba(239, 68, 68, 0.15);
       color: #dc2626;
+    }
+
+    .card-lock-badge {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: var(--bg-hover);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .modal-assignee-pool {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .truncate-names {
+      max-width: 110px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .card-pts {
@@ -1375,10 +1465,35 @@ export class WorkspaceComponent {
   newTaskDescription = '';
   newTaskProjectId = '';
   newTaskAssigneeId = '';
+  newTaskAssigneeIds: string[] = ['tm-1'];
   newTaskPriority: TaskPriority = 'MEDIUM';
   newTaskEffort = 3;
   newTaskDueDate = new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0];
   newTaskInitialSubtasks = '';
+
+  toggleNewTaskAssignee(memberId: string): void {
+    if (this.newTaskAssigneeIds.includes(memberId)) {
+      if (this.newTaskAssigneeIds.length > 1) {
+        this.newTaskAssigneeIds = this.newTaskAssigneeIds.filter(id => id !== memberId);
+      }
+    } else {
+      this.newTaskAssigneeIds = [...this.newTaskAssigneeIds, memberId];
+    }
+    if (!this.newTaskAssigneeIds.includes(this.newTaskAssigneeId)) {
+      this.newTaskAssigneeId = this.newTaskAssigneeIds[0];
+    }
+  }
+
+  isNewTaskAssignee(memberId: string): boolean {
+    return this.newTaskAssigneeIds.includes(memberId);
+  }
+
+  getTaskAssigneesSummary(task: Task): string {
+    const members = this.store.getTaskMembers(task);
+    if (members.length === 0) return 'Unassigned';
+    if (members.length === 1) return members[0].name;
+    return `${members[0].name} +${members.length - 1}`;
+  }
 
   switchView(view: MethodologyView): void {
     this.store.currentView.set(view);
@@ -1415,11 +1530,16 @@ export class WorkspaceComponent {
   onTaskDrop(event: CdkDragDrop<Task[], Task[], Task>): void {
     if (!this.store.canEditTasks()) return;
 
+    const draggedTask = event.item.data as Task;
+    if (!this.store.canEditTask(draggedTask)) {
+      console.warn('Ownership lock: Cannot move teammate task.');
+      return;
+    }
+
     if (event.previousContainer === event.container) {
       const status = event.container.id.replace('list-', '') as TaskStatus;
       this.store.reorderTasksInColumn(status, event.previousIndex, event.currentIndex);
     } else {
-      const draggedTask = event.item.data as Task;
       const targetStatus = event.container.id.replace('list-', '') as TaskStatus;
 
       if (targetStatus === 'DONE' && !this.store.canSignOffDone()) {
@@ -1436,8 +1556,13 @@ export class WorkspaceComponent {
     this.newTaskTitle = '';
     this.newTaskDescription = '';
     const activeP = this.store.selectedProjectId();
-    this.newTaskProjectId = activeP !== 'ALL' ? activeP : (this.store.projects()[0]?.id || 'proj-1');
-    this.newTaskAssigneeId = this.store.teamMembers()[0]?.id || 'tm-1';
+    const visibleProjects = this.store.visibleProjects();
+    this.newTaskProjectId = (activeP !== 'ALL' && visibleProjects.some(p => p.id === activeP))
+      ? activeP
+      : (visibleProjects[0]?.id || 'proj-1');
+    const curId = this.store.currentUserId();
+    this.newTaskAssigneeId = curId;
+    this.newTaskAssigneeIds = [curId];
     this.newTaskPriority = 'MEDIUM';
     this.newTaskEffort = 3;
     this.newTaskDueDate = new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0];
@@ -1464,11 +1589,14 @@ export class WorkspaceComponent {
         createdAt: new Date().toISOString().split('T')[0]
       }));
 
+    const assigneeIds = this.newTaskAssigneeIds.length > 0 ? this.newTaskAssigneeIds : [this.newTaskAssigneeId || 'tm-1'];
+
     this.store.createTask({
       projectId: this.newTaskProjectId,
       title: this.newTaskTitle.trim(),
       description: this.newTaskDescription.trim(),
-      assigneeId: this.newTaskAssigneeId,
+      assigneeIds,
+      assigneeId: assigneeIds[0],
       priority: this.newTaskPriority,
       phase: 'Phase 2: Serving Engine',
       sprint: 'Sprint 24.3',

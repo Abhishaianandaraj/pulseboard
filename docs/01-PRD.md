@@ -160,3 +160,37 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
   - Critical Path rebranded as `"Key Path"`.
   - Baseline Drift rebranded as `"Schedule Shift"`.
   - Permission states rendered as calm status badges (e.g. `"Awaiting Lead Sign-Off"`).
+
+---
+
+### FR-08: Project-Scoped Visibility, Task Ownership Locks & Multi-Assignee Capacity Split
+- **Status:** ✅ Implemented (V2 Milestone 5)
+- **Description:** Enforce strict organizational data boundaries, preventing cross-project information leakage and accidental editing of peer deliverables, while enabling paired-programming and cross-functional squad ownership through multi-assignee story point distribution.
+- **Key Capabilities:**
+  1. **Project Scoped Visibility:**
+     - `Project.memberIds: string[]` specifies assigned squad engineers for each project.
+     - `DEV` and `QA` sessions strictly only see projects where they are explicit members (e.g., Abhishai sees `RAG-CORE` and `PULSE-V1`, but never `EVAL-GW`).
+     - `LEAD`, `ADMIN`, and `VIEWER` (e.g., Sanjay Patel DM) retain portfolio-wide visibility (`canViewAllProjects`).
+     - Workspace views, project tabs, My Day queues, and task searches automatically filter to `visibleProjects`.
+  2. **Task Ownership Locks:**
+     - `canEditTask(task)` rules:
+       - `LEAD` / `ADMIN`: Unrestricted edit access.
+       - `VIEWER`: Strictly read-only across all deliverables.
+       - `DEV` / `QA`: Editable only if the active engineer is an explicit assignee in `task.assigneeIds` (or if unassigned).
+       - If locked, title/priority/status/points/dates inputs and drag-and-drop actions are disabled, and a subtle badge (`🔒 Read-only · Teammate task`) is displayed. Teammates can still view details and append collaborative review/blocker notes.
+  3. **Multi-Assignee (Co-Assignee) Support & Capacity Splitting:**
+     - Tasks support `assigneeIds: string[]` for collaborative engineering deliverables.
+     - Point allocation formula: For each co-assignee, points count toward `effectiveLoad` as $\lceil \text{effortPoints} / \text{assigneeCount} \rceil$.
+     - Interactive multi-select pill selector in drawer with live capacity status dots.
+     - Backwards compatibility with single `assigneeId` and JSON Smart Import (`assigneeNames: string[]` or `assigneeName: string`).
+
+---
+
+### FR-09: Jira + Linear Enterprise UI/UX Overhaul
+- **Status:** ✅ Implemented (V2 Milestone 5)
+- **Description:** Eliminate generic AI aesthetics (neon glow boxes, gradient headers, decorative sparkle emojis) in favor of a crisp, authoritative Jira + Linear product aesthetic.
+- **Key Enhancements:**
+  1. **Typography & Hairline Surfaces:** System font stack (`Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`), crisp 13px base body, 11px uppercase tracked labels, `tabular-nums`. Hairline 1px borders (`#dfe1e6` Light, `#262932` Dark).
+  2. **Jira-Style Issue Cards:** Issue key chip (`PB-101`), subtle priority indicators, subtask completion fraction (`☑ 2/4`), and story point badges (`5p`).
+  3. **Overlapping Stacked Avatars:** `.avatar-stack` and `.avatar-stack-item` pattern for multi-assignee task cards, sprint rows, and detail drawer.
+  4. **Minimalist SVG Icon System:** Zero decorative emojis in core navigation and buttons; pure inline geometric SVG icons across navigation rail, view switchers, search bars, and action modals.

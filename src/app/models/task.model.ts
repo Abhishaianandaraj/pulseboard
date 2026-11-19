@@ -42,6 +42,7 @@ export interface Project {
   teamName: string;
   status: 'ACTIVE' | 'STAGING' | 'COMPLETED';
   color: string;
+  memberIds: string[]; // Explicit list of squad members assigned to this project
 }
 
 export interface Subtask {
@@ -105,7 +106,8 @@ export interface Task {
   phase: string;
   sprint: string;
   effortPoints: number;
-  assigneeId: string;
+  assigneeIds: string[]; // Primary & co-assignee member IDs
+  assigneeId?: string; // Optional alias for backward compatibility
   startDate: string;
   dueDate: string;
   baselineDueDate?: string; // Original committed due date for drift calculation
@@ -190,6 +192,7 @@ export interface SmartImportTaskItem {
   description?: string;
   projectCode?: string; // Optional: "RAG-CORE" | "EVAL-GW" | "PULSE-V1"
   assigneeName?: string;
+  assigneeNames?: string[]; // Multi-assignee support
   assigneeRole?: TechnicalRole;
   squad?: string;
   priority?: TaskPriority;

@@ -131,3 +131,46 @@ PulseBoard replaces technical jargon and raw mathematical formulas with calm, hu
 | **Gantt CPM Sequence** | `Critical Path (Zero Slack)` | **"Key Path"** | Marked with `🔥 Key Path` pill and distinct orange glow. |
 | **Baseline Schedule Drift** | `Slippage Variance (+N days)` | **"Schedule Shift"** | Translucent baseline shadow bar displaying original committed date. |
 | **Permission Barrier** | `403 Forbidden / Not Lead` | **"Awaiting Lead Sign-Off"** | Calm state badge indicating deliverable is staged on server awaiting verification. |
+
+---
+
+## 6. Jira + Linear Visual Overhaul & Enterprise Patterns
+
+PulseBoard adopts Jira and Linear's enterprise product aesthetic, eliminating artificial neon gradients, heavy card drop shadows, and decorative emojis in favor of crisp typography and structural clarity:
+
+### 6.1 Design Tokens & Surface Parity
+- **Light Theme:** Canvas `#f4f5f7`, Card Surface `#ffffff`, Hairline Border `#dfe1e6`, Hover `#ebecf0`.
+- **Dark Theme:** Canvas `#0f1115`, Card Surface `#16181d`, Hairline Border `#262932`, Hover `#1e222b`.
+- **System Typography:** `Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`, 13px base body, 11px uppercase tracked labels (`letter-spacing: 0.04em`), `tabular-nums` for points and dates.
+
+### 6.2 Overlapping Stacked Avatars (`.avatar-stack`)
+For tasks with co-assignees, PulseBoard renders Jira-style overlapping circular avatars:
+```css
+.avatar-stack {
+  display: inline-flex;
+  align-items: center;
+  flex-direction: row-reverse;
+}
+.avatar-stack-item {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-surface);
+  margin-left: -6px;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+```
+
+### 6.3 Task Ownership Lock Indicator
+Deliverables assigned to teammates render a quiet lock indicator:
+- Card chip: `🔒 Read-only · Teammate task`
+- Detail Drawer: Header alert strip clarifying view-only rights with permission to append collaborative review notes.
+- Interaction: Drag-and-drop and property inputs are disabled to prevent accidental modifications.
+
+### 6.4 Minimalist Inline SVG Icons
+All core navigation items, view tabs, search bars, and action modals use clean, geometric 14–18px inline SVG icons rather than decorative emojis.

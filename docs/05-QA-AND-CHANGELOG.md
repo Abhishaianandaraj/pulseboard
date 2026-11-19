@@ -59,11 +59,24 @@ Every release candidate, pull request, and staging deployment must execute and s
 - [x] **Zero Hardcoded Colors:** No inline hardcoded hex colors bypass the semantic CSS variable engine.
 - [x] **Production Build Check:** `npx ng build --configuration production --base-href=/pulseboard/` completes with 0 errors and 0 budget warnings.
 
+### 1.8 Project Scoped Visibility, Task Ownership Locks & Multi-Assignee Gate
+- [x] **Project-Scoped Visibility:** Logging in as `Abhishai [DEV]` scopes project selector and project directory exclusively to `RAG-CORE` and `PULSE-V1`; `EVAL-GW` is completely hidden. Logging in as `Vikram Rao [LEAD]` or `Sanjay Patel [VIEWER]` restores portfolio-wide visibility (`canViewAllProjects`).
+- [x] **Task Ownership Locks:** Tasks assigned to peer squad members display a `🔒 Read-only · Teammate task` badge in Kanban cards and Drawer. Drag-and-drop movement in Kanban and status modification in Drawer are locked for peer tasks, while collaborative review/verification note appending remains open.
+- [x] **Supervisory Override:** `LEAD` and `ADMIN` sessions bypass ownership locks, retaining full authority to edit, reassign, or drag-and-drop any task across projects.
+- [x] **Multi-Assignee Point Splitting:** Active tasks with multiple co-assignees (e.g. `PB-102` with Abhishai + Priya) distribute story points via ceiling arithmetic `ceil(effortPoints / N)` across all assignees' `effectiveLoad` metrics.
+- [x] **Multi-Assignee Pill Selector:** Task Drawer and New Task modal provide interactive co-assignee toggling with member avatars, technical role tags, and live capacity status dots.
+- [x] **Jira/Linear Visual Aesthetic:** All glowing neon borders, gradient text headers, and decorative emojis eliminated in favor of crisp hairline surfaces (`#f4f5f7` canvas / `#ffffff` card / `#dfe1e6` border in Light; `#0f1115` canvas / `#16181d` card / `#262932` border in Dark), issue key chips (`PB-101`), subtask fractions (`☑ 2/4`), and overlapping stacked avatars (`.avatar-stack`).
+
 ---
 
 ## 2. Release Changelog
 
 ### `v2.0.0-alpha` (In Development)
+- **V2 Milestone 5 Delivered (Project Scoped Visibility, Task Ownership Locks, Multi-Assignee & Jira/Linear Overhaul — `FR-08`, `FR-09`):**
+  - **Project-Scoped Visibility (`Project.memberIds`, `visibleProjects()`):** Implemented strict squad-based project isolation. Non-lead roles (`DEV`, `QA`) can only access and view deliverables belonging to projects where their member ID is explicitly listed in `Project.memberIds`. Portfolio leads (`LEAD`, `ADMIN`) and executive delivery managers (`VIEWER`) retain portfolio-wide visibility (`canViewAllProjects`).
+  - **Task Ownership Locks (`canEditTask()`):** Enforced deliverable edit protection. `DEV` and `QA` engineers can only edit, rename, move, or change status on tasks assigned to them (or unassigned tasks). Peer tasks display a `🔒 Read-only · Teammate task` badge and disable card dragging and form inputs, while still permitting teammates to append collaborative review and blocker notes.
+  - **Multi-Assignee Support & Capacity Point Splitting (`Task.assigneeIds`):** Upgraded tasks to support multiple co-assignees (`assigneeIds: string[]`) while retaining `assigneeId` backward compatibility. Enhanced `memberLoadMetrics` signal to divide story points equally using ceiling arithmetic: `ceil(effortPoints / max(1, count))`. Upgraded Task Drawer and New Task modal with an interactive co-assignee pill selector.
+  - **Jira + Linear Enterprise UI Overhaul:** Completely purged generic AI styling (neon glow borders, gradient title text, decorative emojis). Adopted crisp hairline styling, 13px system typography with 11px uppercase tracked labels (`letter-spacing: 0.04em`), tabular numbers, issue key chips (`PB-101`), story point lozenges (`5p`), subtask fraction counters (`☑ 2/4`), overlapping circular stacked avatars (`.avatar-stack`), and clean inline SVG icons across all navigation rails, view tabs, search inputs, and modal headers.
 - **V2 Milestone 4 Delivered (Multi-Screen Architecture & Approachable Microcopy — `FR-07`):**
   - **Modular Standalone Pages:** Refactored single-screen application into 5 dedicated screen components: `LoginComponent` (`/login`), `MyDayComponent` (`/my-day`), `WorkspaceComponent` (`/workspace`), `ProjectsComponent` (`/projects`), and `GovernanceComponent` (`/governance`).
   - **Angular Router & Auth Guard:** Configured `provideRouter(routes, withHashLocation())` for GitHub Pages static hosting parity and implemented functional `authGuard` backed by `sessionStorage` persistence.

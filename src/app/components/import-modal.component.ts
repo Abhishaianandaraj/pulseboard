@@ -14,11 +14,17 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
         <!-- Modal Header -->
         <div class="modal-header">
           <div class="modal-title-row">
-            <span class="ai-spark-icon">✨</span>
+            <span class="modal-icon-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </span>
             <div>
-              <h3 class="modal-title">Smart Import (Multi-Project & AI-Ready JSON)</h3>
+              <h3 class="modal-title">Smart Import (Multi-Project & Structured JSON)</h3>
               <p class="modal-sub">
-                Extract tasks into PulseBoard schema with automatic project linkage and new squad member registration
+                Ingest tasks into PulseBoard schema with automatic project linkage and new squad member registration
               </p>
             </div>
           </div>
@@ -27,19 +33,19 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
 
         <!-- Modal Body -->
         <div class="modal-body custom-scroll">
-          <!-- Step 1: Copy Gemini Prompt Template -->
+          <!-- Step 1: Copy Prompt Template -->
           <div class="step-card">
             <div class="step-info">
               <span class="step-badge">STEP 1</span>
               <div>
-                <strong class="step-title">Copy Gemini / Claude System Prompt</strong>
+                <strong class="step-title">Copy LLM Extraction Prompt</strong>
                 <p class="step-desc">
                   Prompt instructs LLM to output valid JSON matching project codes (RAG-CORE, EVAL-GW, PULSE-V1) and roles.
                 </p>
               </div>
             </div>
             <button type="button" class="btn-copy-prompt" (click)="copyPrompt()">
-              {{ isCopied() ? '✓ Copied to Clipboard!' : '📋 Copy Gemini Prompt' }}
+              {{ isCopied() ? '✓ Copied to Clipboard!' : 'Copy Extraction Prompt' }}
             </button>
           </div>
 
@@ -50,7 +56,7 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
               <strong class="step-title ml-2">Paste Structured JSON</strong>
             </div>
             <button type="button" class="btn-load-sample" (click)="loadSampleJson()">
-              ✨ Load Sample Meeting JSON (1-Click Demo)
+              Load Sample Delivery JSON
             </button>
           </div>
 

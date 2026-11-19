@@ -203,6 +203,16 @@
   border-radius: 50%;
 }
 
+.proj-count-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 1px 5px;
+  border-radius: 8px;
+  color: var(--text-muted);
+}
+
 .top-user-group {
   display: flex;
   align-items: center;

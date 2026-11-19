@@ -17,6 +17,10 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
             <div class="viewer-notice-strip">
               <span>🔒 <strong>Viewer Session:</strong> You have read-only permissions. Switch personas in the top bar to test DEV or LEAD controls.</span>
             </div>
+          } @else if (isReadOnly(task)) {
+            <div class="ownership-lock-badge">
+              <span>🔒 <strong>Read-Only · Teammate Task:</strong> You are viewing a deliverable assigned to a teammate. You may inspect details and add review notes, but property modifications are locked to assignees and Tech Leads.</span>
+            </div>
           }
 
           <!-- Drawer Header -->
@@ -48,7 +52,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
               <input
                 type="text"
                 class="input-title"
-                [disabled]="store.isViewer()"
+                [disabled]="isReadOnly(task)"
                 [ngModel]="task.title"
                 (ngModelChange)="updateField('title', $event)"
                 placeholder="Engineering task summary..."
@@ -62,7 +66,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                 <button
                   type="button"
                   class="status-btn"
-                  [disabled]="store.isViewer()"
+                  [disabled]="isReadOnly(task)"
                   [class.active]="task.status === 'TODO'"
                   (click)="setStatus('TODO')"
                 >
@@ -71,7 +75,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                 <button
                   type="button"
                   class="status-btn"
-                  [disabled]="store.isViewer()"
+                  [disabled]="isReadOnly(task)"
                   [class.active]="task.status === 'IN_PROGRESS'"
                   (click)="setStatus('IN_PROGRESS')"
                 >
@@ -80,16 +84,16 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                 <button
                   type="button"
                   class="status-btn btn-deployed"
-                  [disabled]="store.isViewer()"
+                  [disabled]="isReadOnly(task)"
                   [class.active]="task.status === 'DEPLOYED'"
                   (click)="setStatus('DEPLOYED')"
                 >
-                  🚀 Deployed
+                  Deployed
                 </button>
                 <button
                   type="button"
                   class="status-btn btn-done"
-                  [disabled]="store.isViewer() || (!store.canSignOffDone() && task.status !== 'DONE')"
+                  [disabled]="isReadOnly(task) || (!store.canSignOffDone() && task.status !== 'DONE')"
                   [class.active]="task.status === 'DONE'"
                   (click)="setStatus('DONE')"
                   [title]="!store.canSignOffDone() ? 'Requires Tech Lead or Admin sign-off' : 'Mark task as Done'"
@@ -100,16 +104,18 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
             </div>
 
             <!-- Assignee Capacity Advisory Banner (FR-04) -->
-            @if (store.getMemberLoadMetric(task.assigneeId).status === 'OVER_BUDGET') {
-              <div class="capacity-advisory-box">
-                <div class="advisory-icon">⚠️</div>
-                <div class="advisory-text">
-                  <strong>Capacity Advisory:</strong>
-                  {{ store.assigneeMap().get(task.assigneeId)?.name }} is currently Over Budget
-                  ({{ store.getMemberLoadMetric(task.assigneeId).effectiveLoad }}/{{ store.assigneeMap().get(task.assigneeId)?.capacityBudget }} pts)
-                  including {{ store.getMemberLoadMetric(task.assigneeId).reworkCount * 3 }} recovery penalty points. Additional story points may impact delivery.
+            @for (m of store.getTaskMembers(task); track m.id) {
+              @if (store.getMemberLoadMetric(m.id).status === 'OVER_BUDGET') {
+                <div class="capacity-advisory-box">
+                  <div class="advisory-icon">⚠️</div>
+                  <div class="advisory-text">
+                    <strong>Capacity Advisory:</strong>
+                    {{ m.name }} is currently Over Budget
+                    ({{ store.getMemberLoadMetric(m.id).effectiveLoad }}/{{ m.capacityBudget }} pts)
+                    including {{ store.getMemberLoadMetric(m.id).reworkCount * 3 }} recovery penalty points.
+                  </div>
                 </div>
-              </div>
+              }
             }
 
             <!-- Metadata Grid -->
@@ -118,7 +124,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                 <label class="field-label">Project Workspace</label>
                 <select
                   class="select-input"
-                  [disabled]="store.isViewer()"
+                  [disabled]="isReadOnly(task)"
                   [ngModel]="task.projectId"
                   (ngModelChange)="updateField('projectId', $event)"
                 >
@@ -128,27 +134,52 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                 </select>
               </div>
 
-              <div class="field-group">
-                <label class="field-label">Assignee & Live Capacity</label>
-                <select
-                  class="select-input"
-                  [disabled]="store.isViewer()"
-                  [ngModel]="task.assigneeId"
-                  (ngModelChange)="updateField('assigneeId', $event)"
-                >
-                  @for (member of store.teamMembers(); track member.id) {
-                    <option [value]="member.id">
-                      {{ member.name }} • {{ store.getMemberLoadMetric(member.id).effectiveLoad }}/{{ member.capacityBudget }} pts ({{ store.getMemberLoadMetric(member.id).label }})
-                    </option>
+              <div class="field-group full-width-span">
+                <label class="field-label">Assignees & Co-Assignees (Points Split Equally)</label>
+                <div class="assignee-picker-box">
+                  <!-- Selected Member Chips -->
+                  <div class="selected-assignees-wrap">
+                    @for (m of store.getTaskMembers(task); track m.id) {
+                      <span class="assignee-chip" [style.border-color]="m.color">
+                        <span class="chip-avatar" [style.background-color]="m.color">{{ m.avatar }}</span>
+                        <span class="chip-name">{{ m.name }}</span>
+                        <span class="chip-role">({{ m.role }})</span>
+                        <span class="capacity-dot" [attr.data-status]="store.getMemberLoadMetric(m.id).status" [title]="store.getMemberLoadMetric(m.id).label + ' (' + store.getMemberLoadMetric(m.id).effectiveLoad + '/' + m.capacityBudget + ' pts)'"></span>
+                        @if (!isReadOnly(task) && store.getTaskMembers(task).length > 1) {
+                          <button type="button" class="btn-remove-assignee" (click)="removeAssignee(task, m.id)" title="Remove co-assignee">✕</button>
+                        }
+                      </span>
+                    }
+                  </div>
+
+                  <!-- Member Selection Pool -->
+                  @if (!isReadOnly(task)) {
+                    <div class="assignee-select-pool">
+                      <span class="pool-label">Toggle squad co-assignees:</span>
+                      <div class="pool-chips">
+                        @for (member of store.teamMembers(); track member.id) {
+                          <button
+                            type="button"
+                            class="pool-chip-btn"
+                            [class.selected]="isTaskAssignee(task, member.id)"
+                            (click)="toggleTaskAssignee(task, member.id)"
+                          >
+                            <span class="chip-avatar-sm" [style.background-color]="member.color">{{ member.avatar }}</span>
+                            <span>{{ member.name }}</span>
+                            <span class="capacity-mini-dot" [attr.data-status]="store.getMemberLoadMetric(member.id).status"></span>
+                          </button>
+                        }
+                      </div>
+                    </div>
                   }
-                </select>
+                </div>
               </div>
 
               <div class="field-group">
                 <label class="field-label">Priority</label>
                 <select
                   class="select-input"
-                  [disabled]="store.isViewer()"
+                  [disabled]="isReadOnly(task)"
                   [ngModel]="task.priority"
                   (ngModelChange)="updateField('priority', $event)"
                 >
@@ -164,7 +195,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                 <input
                   type="text"
                   class="text-input"
-                  [disabled]="store.isViewer()"
+                  [disabled]="isReadOnly(task)"
                   [ngModel]="task.phase"
                   (ngModelChange)="updateField('phase', $event)"
                 />
@@ -175,7 +206,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                 <input
                   type="text"
                   class="text-input"
-                  [disabled]="store.isViewer()"
+                  [disabled]="isReadOnly(task)"
                   [ngModel]="task.sprint"
                   (ngModelChange)="updateField('sprint', $event)"
                 />
@@ -188,7 +219,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                   min="1"
                   max="21"
                   class="text-input"
-                  [disabled]="store.isViewer()"
+                  [disabled]="isReadOnly(task)"
                   [ngModel]="task.effortPoints"
                   (ngModelChange)="updateField('effortPoints', +$event)"
                 />
@@ -199,7 +230,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                 <input
                   type="date"
                   class="text-input"
-                  [disabled]="store.isViewer()"
+                  [disabled]="isReadOnly(task)"
                   [ngModel]="task.baselineDueDate || task.dueDate"
                   (ngModelChange)="updateField('baselineDueDate', $event)"
                 />
@@ -210,7 +241,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                 <input
                   type="date"
                   class="text-input"
-                  [disabled]="store.isViewer()"
+                  [disabled]="isReadOnly(task)"
                   [ngModel]="task.dueDate"
                   (ngModelChange)="onDueDateChange(task, $event)"
                 />
@@ -613,6 +644,138 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
       font-size: 11.5px;
       font-weight: 500;
     }
+    .ownership-lock-badge {
+      background: var(--bg-hover);
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+    .full-width-span {
+      grid-column: 1 / -1;
+    }
+    .assignee-picker-box {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .selected-assignees-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .assignee-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 3px 10px 3px 4px;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+    .chip-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .chip-name {
+      font-weight: 600;
+    }
+    .chip-role {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .capacity-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+    .capacity-dot[data-status="NEAR_CAPACITY"] { background: #f59e0b; }
+    .capacity-dot[data-status="OVER_BUDGET"] { background: #ef4444; }
+    .btn-remove-assignee {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 11px;
+      padding: 0 2px;
+      line-height: 1;
+    }
+    .btn-remove-assignee:hover { color: #ef4444; }
+    .assignee-select-pool {
+      border-top: 1px dashed var(--border-subtle);
+      padding-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .pool-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .pool-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .pool-chip-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .pool-chip-btn:hover {
+      border-color: var(--accent-primary);
+      color: var(--text-primary);
+    }
+    .pool-chip-btn.selected {
+      background: rgba(59, 130, 246, 0.12);
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+      font-weight: 600;
+    }
+    .chip-avatar-sm {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 8px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .capacity-mini-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+    .capacity-mini-dot[data-status="NEAR_CAPACITY"] { background: #f59e0b; }
+    .capacity-mini-dot[data-status="OVER_BUDGET"] { background: #ef4444; }
 
     .drawer-header {
       padding: 16px 24px;
@@ -1303,6 +1466,47 @@ export class TaskDrawerComponent {
 
   selectedUpstreamId = '';
   dependencyError = '';
+
+  isReadOnly(task: Task | null | undefined): boolean {
+    return !this.store.canEditTask(task);
+  }
+
+  isTaskAssignee(task: Task, memberId: string): boolean {
+    const assignees = (task.assigneeIds && task.assigneeIds.length > 0)
+      ? task.assigneeIds
+      : (task.assigneeId ? [task.assigneeId] : []);
+    return assignees.includes(memberId);
+  }
+
+  toggleTaskAssignee(task: Task, memberId: string): void {
+    if (this.isReadOnly(task)) return;
+    const current = (task.assigneeIds && task.assigneeIds.length > 0)
+      ? [...task.assigneeIds]
+      : (task.assigneeId ? [task.assigneeId] : []);
+
+    let updated: string[];
+    if (current.includes(memberId)) {
+      if (current.length === 1) {
+        // Keep at least one assignee
+        return;
+      }
+      updated = current.filter(id => id !== memberId);
+    } else {
+      updated = [...current, memberId];
+    }
+    this.store.updateTaskAssignees(task.id, updated);
+  }
+
+  removeAssignee(task: Task, memberId: string): void {
+    if (this.isReadOnly(task)) return;
+    const current = (task.assigneeIds && task.assigneeIds.length > 0)
+      ? [...task.assigneeIds]
+      : (task.assigneeId ? [task.assigneeId] : []);
+
+    if (current.length <= 1) return;
+    const updated = current.filter(id => id !== memberId);
+    this.store.updateTaskAssignees(task.id, updated);
+  }
 
   close(): void {
     this.store.closeTaskDrawer();

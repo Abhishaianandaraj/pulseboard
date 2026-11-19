@@ -43,7 +43,7 @@ const STORAGE_KEY_AUTH = 'pulseboard_v1_auth';
 })
 export class TaskStoreService {
   // --- Core State Signals ---
-  readonly projects = signal<Project[]>(this.loadFromStorage(STORAGE_KEY_PROJECTS, INITIAL_PROJECTS));
+  readonly projects = signal<Project[]>(this.loadProjectsWithDefaults());
   readonly teamMembers = signal<TeamMember[]>(this.loadMembersWithDefaults());
   readonly tasks = signal<Task[]>(this.loadTasksWithDefaults());
   readonly activityLogs = signal<ActivityLog[]>(this.loadFromStorage(STORAGE_KEY_LOGS, INITIAL_LOGS));
@@ -71,8 +71,35 @@ export class TaskStoreService {
   readonly canManageGovernance = computed(() => this.currentUserRole() === 'LEAD' || this.currentUserRole() === 'ADMIN');
   readonly isViewer = computed(() => this.currentUserRole() === 'VIEWER');
 
+  // Lead / Admin / Viewer can see all projects in portfolio; Dev and QA only see assigned projects
+  readonly canViewAllProjects = computed(() =>
+    ['LEAD', 'ADMIN', 'VIEWER'].includes(this.currentUserRole())
+  );
+
+  readonly visibleProjects = computed<Project[]>(() => {
+    if (this.canViewAllProjects()) {
+      return this.projects();
+    }
+    const curId = this.currentUserId();
+    return this.projects().filter((p: Project) => (p.memberIds || []).includes(curId));
+  });
+
   // --- Project Workspace Filter ---
   readonly selectedProjectId = signal<string>(this.loadActiveProject());
+
+  // Task Ownership & Access Control Lock
+  canEditTask(task: Task | null | undefined): boolean {
+    if (!task) return false;
+    const role = this.currentUserRole();
+    if (role === 'LEAD' || role === 'ADMIN') return true;
+    if (role === 'VIEWER') return false;
+    // DEV or QA: editable only if current user is an assignee or task is unassigned
+    const curId = this.currentUserId();
+    const assignees = (task.assigneeIds && task.assigneeIds.length > 0)
+      ? task.assigneeIds
+      : (task.assigneeId ? [task.assigneeId] : []);
+    return assignees.length === 0 || assignees.includes(curId);
+  }
 
   // --- Search & Filter Signals ---
   readonly searchQuery = signal<string>('');
@@ -114,13 +141,23 @@ export class TaskStoreService {
 
   // --- Computed: Member Load Metrics & Recovery Scores (FR-04) ---
   // Formula: Effective Load = Active Story Points + (Reopened or Failed Builds * 3 pt Recovery Penalty)
+  // Multi-assignees split points: Math.ceil(effortPoints / coAssigneesCount)
   readonly memberLoadMetrics = computed(() => {
     const map = new Map<string, MemberLoadMetric>();
     const tasks = this.tasks();
 
     for (const member of this.teamMembers()) {
-      const activeTasks = tasks.filter((t: Task) => t.assigneeId === member.id && t.status !== 'DONE');
-      const activePoints = activeTasks.reduce((sum, t) => sum + (Number(t.effortPoints) || 0), 0);
+      const activeTasks = tasks.filter((t: Task) => {
+        const assignees = (t.assigneeIds && t.assigneeIds.length > 0)
+          ? t.assigneeIds
+          : (t.assigneeId ? [t.assigneeId] : []);
+        return assignees.includes(member.id) && t.status !== 'DONE';
+      });
+      const activePoints = activeTasks.reduce((sum, t) => {
+        const assignees = (t.assigneeIds && t.assigneeIds.length > 0) ? t.assigneeIds : [t.assigneeId || member.id];
+        const split = Math.ceil((Number(t.effortPoints) || 0) / Math.max(1, assignees.length));
+        return sum + split;
+      }, 0);
       const reworkCount = activeTasks.reduce((sum, t) => sum + (Number(t.reworkCount) || 0), 0);
       const effectiveLoad = activePoints + (reworkCount * 3);
       const budget = member.capacityBudget || 15;
@@ -163,6 +200,15 @@ export class TaskStoreService {
     };
   }
 
+  getTaskMembers(task: Task | null | undefined): TeamMember[] {
+    if (!task) return [];
+    const map = this.assigneeMap();
+    const ids = (task.assigneeIds && task.assigneeIds.length > 0)
+      ? task.assigneeIds
+      : (task.assigneeId ? [task.assigneeId] : []);
+    return ids.map(id => map.get(id)).filter((m): m is TeamMember => !!m);
+  }
+
   // --- Computed: Filtered Tasks List (Project + Keyword + Assignee + Priority + Blocked/Deployed) ---
   readonly filteredTasks = computed(() => {
     const activeProject = this.selectedProjectId();
@@ -171,10 +217,13 @@ export class TaskStoreService {
     const priority = this.filterPriority();
     const blockedOnly = this.filterBlockedOnly();
     const deployedOnly = this.filterDeployedOnly();
-    const map = this.assigneeMap();
     const pMap = this.projectMap();
+    const visibleProjectIds = new Set(this.visibleProjects().map(p => p.id));
 
     return this.tasks().filter((task: Task) => {
+      // 0. Project Visibility Scoping
+      if (!visibleProjectIds.has(task.projectId)) return false;
+
       // 1. Project Filter
       if (activeProject !== 'ALL' && task.projectId !== activeProject) return false;
 
@@ -183,7 +232,12 @@ export class TaskStoreService {
       if (deployedOnly && task.status !== 'DEPLOYED') return false;
 
       // 3. Assignee & Priority
-      if (assignee !== 'ALL' && task.assigneeId !== assignee) return false;
+      if (assignee !== 'ALL') {
+        const assignees = (task.assigneeIds && task.assigneeIds.length > 0)
+          ? task.assigneeIds
+          : (task.assigneeId ? [task.assigneeId] : []);
+        if (!assignees.includes(assignee)) return false;
+      }
       if (priority !== 'ALL' && task.priority !== priority) return false;
 
       // 4. Query text search
@@ -194,8 +248,8 @@ export class TaskStoreService {
         const phaseMatch = (task.phase || '').toLowerCase().includes(query);
         const proj = pMap.get(task.projectId);
         const projCodeMatch = proj ? proj.code.toLowerCase().includes(query) : false;
-        const assigneeObj = map.get(task.assigneeId);
-        const nameMatch = assigneeObj ? assigneeObj.name.toLowerCase().includes(query) : false;
+        const taskMembers = this.getTaskMembers(task);
+        const nameMatch = taskMembers.some(m => m.name.toLowerCase().includes(query));
 
         if (!titleMatch && !descMatch && !idMatch && !phaseMatch && !projCodeMatch && !nameMatch) {
           return false;
@@ -209,8 +263,10 @@ export class TaskStoreService {
   // --- Computed: Tasks scope for current project (before search/assignee filters) ---
   readonly currentProjectTasks = computed(() => {
     const activeProject = this.selectedProjectId();
-    if (activeProject === 'ALL') return this.tasks();
-    return this.tasks().filter((t: Task) => t.projectId === activeProject);
+    const visibleProjectIds = new Set(this.visibleProjects().map(p => p.id));
+    const allowedTasks = this.tasks().filter((t: Task) => visibleProjectIds.has(t.projectId));
+    if (activeProject === 'ALL') return allowedTasks;
+    return allowedTasks.filter((t: Task) => t.projectId === activeProject);
   });
 
   // --- Computed: Kanban Workflow Columns ---
@@ -240,11 +296,13 @@ export class TaskStoreService {
   // Available bandwidth: Team members with 0 active tasks in the active scope
   readonly availableBandwidthMembers = computed(() => {
     const all = this.teamMembers();
-    const busyIds = new Set(
-      this.currentProjectTasks()
-        .filter((t: Task) => t.status === 'TODO' || t.status === 'IN_PROGRESS')
-        .map((t: Task) => t.assigneeId)
-    );
+    const busyIds = new Set<string>();
+    this.currentProjectTasks()
+      .filter((t: Task) => t.status === 'TODO' || t.status === 'IN_PROGRESS')
+      .forEach((t: Task) => {
+        const assignees = (t.assigneeIds && t.assigneeIds.length > 0) ? t.assigneeIds : (t.assigneeId ? [t.assigneeId] : []);
+        assignees.forEach(id => busyIds.add(id));
+      });
     return all.filter((m: TeamMember) => !busyIds.has(m.id));
   });
 
@@ -254,8 +312,11 @@ export class TaskStoreService {
     this.teamMembers().forEach((m: TeamMember) => map.set(m.id, 0));
     this.currentProjectTasks().forEach((t: Task) => {
       if (t.status !== 'DONE') {
-        const current = map.get(t.assigneeId) || 0;
-        map.set(t.assigneeId, current + 1);
+        const assignees = (t.assigneeIds && t.assigneeIds.length > 0) ? t.assigneeIds : (t.assigneeId ? [t.assigneeId] : []);
+        assignees.forEach(id => {
+          const current = map.get(id) || 0;
+          map.set(id, current + 1);
+        });
       }
     });
     return map;
@@ -560,6 +621,9 @@ export class TaskStoreService {
     const nextId = `proj-${Date.now()}`;
     const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'];
     const color = colors[this.projects().length % colors.length];
+    const currentMemberId = this.currentUserId();
+    const leadIds = this.teamMembers().filter(m => m.systemRole === 'LEAD' || m.systemRole === 'ADMIN').map(m => m.id);
+    const memberIds = Array.from(new Set([currentMemberId, ...leadIds]));
 
     const project: Project = {
       id: nextId,
@@ -568,7 +632,8 @@ export class TaskStoreService {
       teamName: teamName.trim(),
       description: description.trim() || `Workspace project for ${teamName}`,
       status: 'ACTIVE',
-      color
+      color,
+      memberIds
     };
 
     this.projects.update((prev: Project[]) => [...prev, project]);
@@ -752,7 +817,10 @@ export class TaskStoreService {
     ) + 1;
 
     const defaultMember = this.teamMembers()[0];
-    const assigneeId = newTaskData.assigneeId || defaultMember.id;
+    const assigneeIds = (Array.isArray(newTaskData.assigneeIds) && newTaskData.assigneeIds.length > 0)
+      ? newTaskData.assigneeIds
+      : [newTaskData.assigneeId || defaultMember.id];
+    const assigneeId = newTaskData.assigneeId || assigneeIds[0];
 
     let projectId = newTaskData.projectId;
     if (!projectId || projectId === 'ALL') {
@@ -773,6 +841,7 @@ export class TaskStoreService {
       phase: newTaskData.phase?.trim() || 'Phase 1: Knowledge Core',
       sprint: newTaskData.sprint?.trim() || 'Sprint 24.3',
       effortPoints: Number(newTaskData.effortPoints) || 3,
+      assigneeIds,
       assigneeId,
       startDate: newTaskData.startDate || new Date().toISOString().split('T')[0],
       dueDate,
@@ -807,6 +876,34 @@ export class TaskStoreService {
     return task;
   }
 
+  async updateTaskAssignees(taskId: string, assigneeIds: string[]): Promise<boolean> {
+    const task = this.tasks().find(t => t.id === taskId);
+    if (!task || !this.canEditTask(task)) return false;
+
+    const cleanIds = assigneeIds.filter(id => id && this.assigneeMap().has(id));
+    const primaryId = cleanIds[0] || task.assigneeId || 'tm-1';
+
+    this.tasks.update((prev: Task[]) =>
+      prev.map((t: Task) =>
+        t.id === taskId
+          ? { ...t, assigneeIds: cleanIds, assigneeId: primaryId, updatedAt: new Date().toISOString() }
+          : t
+      )
+    );
+
+    const actor = this.currentUser();
+    this.recordActivity({
+      actor: actor.name,
+      actorAvatar: actor.avatar,
+      action: 'TASK_UPDATED',
+      taskId: task.id,
+      taskTitle: task.title,
+      details: `Updated assignees: ${cleanIds.map(id => this.assigneeMap().get(id)?.name || id).join(', ')}`
+    });
+
+    return true;
+  }
+
   async updateTask(updated: Task): Promise<void> {
     if (!this.canEditTasks()) {
       console.warn('RBAC: Viewer session cannot edit tasks.');
@@ -815,6 +912,11 @@ export class TaskStoreService {
 
     const currentList = this.tasks();
     const old = currentList.find((t: Task) => t.id === updated.id);
+
+    if (old && !this.canEditTask(old)) {
+      console.warn('Ownership lock: Cannot edit task owned by teammate.');
+      return;
+    }
 
     // Auto-detect slippage if dueDate shifted past baselineDueDate
     const baseline = updated.baselineDueDate || updated.dueDate;
@@ -857,23 +959,28 @@ export class TaskStoreService {
     }
 
     const task = this.tasks().find((t: Task) => t.id === taskId);
+    if (!task) return;
+
+    if (!this.canEditTask(task)) {
+      console.warn('Ownership lock: Cannot delete task owned by teammate.');
+      return;
+    }
+
     this.tasks.update((prev: Task[]) => prev.filter((t: Task) => t.id !== taskId));
 
     if (this.selectedTaskId() === taskId) {
       this.selectedTaskId.set(null);
     }
 
-    if (task) {
-      const actor = this.currentUser();
-      this.recordActivity({
-        actor: actor.name,
-        actorAvatar: actor.avatar,
-        action: 'TASK_DELETED',
-        taskId: task.id,
-        taskTitle: task.title,
-        details: `Deleted task [${task.id}] from project backlog`
-      });
-    }
+    const actor = this.currentUser();
+    this.recordActivity({
+      actor: actor.name,
+      actorAvatar: actor.avatar,
+      action: 'TASK_DELETED',
+      taskId: task.id,
+      taskTitle: task.title,
+      details: `Deleted task [${task.id}] from project backlog`
+    });
   }
 
   async updateTaskStatus(taskId: string, newStatus: TaskStatus): Promise<void> {
@@ -889,6 +996,11 @@ export class TaskStoreService {
 
     const task = this.tasks().find((t: Task) => t.id === taskId);
     if (!task || task.status === newStatus) return;
+
+    if (!this.canEditTask(task)) {
+      console.warn('Ownership lock: Cannot change status of task owned by teammate.');
+      return;
+    }
 
     const oldStatus = task.status;
     this.tasks.update((prev: Task[]) =>
@@ -928,13 +1040,18 @@ export class TaskStoreService {
   moveTaskBetweenColumns(taskId: string, targetStatus: TaskStatus, targetIndex: number): void {
     if (!this.canEditTasks()) return;
 
+    const task = this.tasks().find((t: Task) => t.id === taskId);
+    if (!task) return;
+
+    if (!this.canEditTask(task)) {
+      console.warn('Ownership lock: Cannot move card owned by teammate.');
+      return;
+    }
+
     if (targetStatus === 'DONE' && !this.canSignOffDone()) {
       console.warn('RBAC: Only Tech Lead or Admin can sign off tasks to DONE.');
       return;
     }
-
-    const task = this.tasks().find((t: Task) => t.id === taskId);
-    if (!task) return;
 
     const oldStatus = task.status;
     const updated: Task = {
@@ -1301,7 +1418,7 @@ export class TaskStoreService {
     );
   }
 
-  // --- Smart Import Batch Ingestion (Enhanced with Project and Auto-Member creation) ---
+  // --- Smart Import Batch Ingestion (Enhanced with Project, Multi-Assignees and Auto-Member creation) ---
   importTasksFromJson(payload: SmartImportPayload): { success: boolean; count: number; error?: string } {
     if (!this.canCreateTasks()) {
       return { success: false, count: 0, error: 'RBAC: Viewer session cannot import tasks.' };
@@ -1342,22 +1459,37 @@ export class TaskStoreService {
         maxNum++;
         const taskId = `PB-${maxNum}`;
 
-        let assigneeId = this.teamMembers()[0]?.id || 'tm-1';
-        if (item.assigneeName && item.assigneeName.trim()) {
-          const cleanName = item.assigneeName.trim();
+        const rawNames: string[] = [];
+        if (Array.isArray(item.assigneeNames) && item.assigneeNames.length > 0) {
+          rawNames.push(...item.assigneeNames);
+        } else if (item.assigneeName && item.assigneeName.trim()) {
+          rawNames.push(item.assigneeName.trim());
+        }
+
+        const resolvedIds: string[] = [];
+        for (const rawName of rawNames) {
+          const cleanName = rawName.trim();
+          if (!cleanName) continue;
           const lookupKey = cleanName.toLowerCase();
 
           if (memberMapByName.has(lookupKey)) {
-            assigneeId = memberMapByName.get(lookupKey)!.id;
+            resolvedIds.push(memberMapByName.get(lookupKey)!.id);
           } else {
             const role: TechnicalRole = item.assigneeRole || 'Full-Stack Dev';
             const squad = item.squad || 'Core AI Squad';
             const systemRole: SystemRole = role === 'Tech Lead' ? 'LEAD' : role === 'QA / Test Engineer' ? 'QA' : 'DEV';
             const newMember = this.addTeamMember(cleanName, role, squad, systemRole, 15);
             memberMapByName.set(lookupKey, newMember);
-            assigneeId = newMember.id;
+            resolvedIds.push(newMember.id);
           }
         }
+
+        if (resolvedIds.length === 0) {
+          resolvedIds.push(this.teamMembers()[0]?.id || 'tm-1');
+        }
+
+        const assigneeIds = resolvedIds;
+        const assigneeId = resolvedIds[0];
 
         let taskProjectId = fallbackProjectId;
         if (item.projectCode && item.projectCode.trim()) {
@@ -1387,6 +1519,7 @@ export class TaskStoreService {
           phase: item.phase || 'Sprint Backlog',
           sprint: item.sprint || 'Sprint 24.3',
           effortPoints: Number(item.effortPoints) || 3,
+          assigneeIds,
           assigneeId,
           startDate: item.startDate || new Date().toISOString().split('T')[0],
           dueDate,
@@ -1476,6 +1609,19 @@ export class TaskStoreService {
     return fallback;
   }
 
+  private loadProjectsWithDefaults(): Project[] {
+    const projects = this.loadFromStorage<Project[]>(STORAGE_KEY_PROJECTS, INITIAL_PROJECTS);
+    return projects.map((p: Project) => {
+      const init = INITIAL_PROJECTS.find(ip => ip.id === p.id);
+      return {
+        ...p,
+        memberIds: (Array.isArray(p.memberIds) && p.memberIds.length > 0)
+          ? p.memberIds
+          : (init?.memberIds || ['tm-1', 'tm-2', 'tm-3', 'tm-4', 'tm-5', 'tm-6'])
+      };
+    });
+  }
+
   private loadMembersWithDefaults(): TeamMember[] {
     const members = this.loadFromStorage<TeamMember[]>(STORAGE_KEY_MEMBERS, INITIAL_TEAM_MEMBERS);
     return members.map((m: TeamMember) => ({
@@ -1487,13 +1633,22 @@ export class TaskStoreService {
 
   private loadTasksWithDefaults(): Task[] {
     const tasks = this.loadFromStorage<Task[]>(STORAGE_KEY_TASKS, INITIAL_TASKS);
-    return tasks.map((t: Task) => ({
-      ...t,
-      baselineDueDate: t.baselineDueDate || t.dueDate,
-      reworkCount: t.reworkCount || 0,
-      slipReason: t.slipReason || null,
-      dependencies: Array.isArray(t.dependencies) ? t.dependencies : []
-    }));
+    return tasks.map((t: Task) => {
+      const init = INITIAL_TASKS.find(it => it.id === t.id);
+      const assigneeIds = (Array.isArray(t.assigneeIds) && t.assigneeIds.length > 0)
+        ? t.assigneeIds
+        : (init?.assigneeIds || (t.assigneeId ? [t.assigneeId] : ['tm-1']));
+      const assigneeId = t.assigneeId || assigneeIds[0] || 'tm-1';
+      return {
+        ...t,
+        assigneeIds,
+        assigneeId,
+        baselineDueDate: t.baselineDueDate || t.dueDate,
+        reworkCount: t.reworkCount || 0,
+        slipReason: t.slipReason || null,
+        dependencies: Array.isArray(t.dependencies) ? t.dependencies : []
+      };
+    });
   }
 
   private loadCurrentUser(): string {

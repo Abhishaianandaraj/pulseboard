@@ -14,7 +14,8 @@ export const INITIAL_PROJECTS: Project[] = [
     description: 'High-throughput hybrid retrieval (dense + sparse Milvus) with streaming function calling orchestrator.',
     teamName: 'Core AI Squad',
     status: 'ACTIVE',
-    color: '#3b82f6'
+    color: '#3b82f6',
+    memberIds: ['tm-1', 'tm-2', 'tm-3', 'tm-5', 'tm-6']
   },
   {
     id: 'proj-2',
@@ -23,7 +24,8 @@ export const INITIAL_PROJECTS: Project[] = [
     description: 'Real-time toxicity, PII masking, latency telemetry & automated adversarial red-team benchmarks.',
     teamName: 'Platform & QA Squad',
     status: 'STAGING',
-    color: '#8b5cf6'
+    color: '#8b5cf6',
+    memberIds: ['tm-2', 'tm-3', 'tm-4', 'tm-5', 'tm-6']
   },
   {
     id: 'proj-3',
@@ -32,7 +34,8 @@ export const INITIAL_PROJECTS: Project[] = [
     description: 'Lightweight, zero-license-wall engineering task & deployment verification board.',
     teamName: 'Core AI Squad',
     status: 'ACTIVE',
-    color: '#10b981'
+    color: '#10b981',
+    memberIds: ['tm-1', 'tm-2', 'tm-5', 'tm-6']
   }
 ];
 
@@ -122,7 +125,8 @@ export const INITIAL_TASKS: Task[] = [
     phase: 'Phase 2: Serving Engine',
     sprint: 'Sprint 24.3',
     effortPoints: 8,
-    assigneeId: 'tm-2', // Priya Nair (AI Engineer)
+    assigneeIds: ['tm-2'], // Priya Nair (AI Engineer)
+    assigneeId: 'tm-2',
     startDate: '2026-11-10',
     dueDate: '2026-11-19',
     baselineDueDate: '2026-11-19',
@@ -162,7 +166,8 @@ export const INITIAL_TASKS: Task[] = [
     phase: 'Phase 1: Knowledge Core',
     sprint: 'Sprint 24.3',
     effortPoints: 5,
-    assigneeId: 'tm-1', // Abhishai (Full-Stack & AI Dev)
+    assigneeIds: ['tm-1', 'tm-2'], // Co-assigned: Abhishai + Priya Nair
+    assigneeId: 'tm-1',
     startDate: '2026-11-12',
     dueDate: '2026-11-20',
     baselineDueDate: '2026-11-17',
@@ -202,7 +207,8 @@ export const INITIAL_TASKS: Task[] = [
     phase: 'Phase 2: Serving Engine',
     sprint: 'Sprint 24.3',
     effortPoints: 5,
-    assigneeId: 'tm-4', // Rahul Verma (Backend Dev)
+    assigneeIds: ['tm-4', 'tm-3'], // Co-assigned: Rahul Verma + Karthik R
+    assigneeId: 'tm-4',
     startDate: '2026-11-14',
     dueDate: '2026-11-21',
     baselineDueDate: '2026-11-21',
@@ -241,7 +247,8 @@ export const INITIAL_TASKS: Task[] = [
     phase: 'Phase 3: Security & Governance',
     sprint: 'Sprint 24.4',
     effortPoints: 5,
-    assigneeId: 'tm-3', // Karthik R (QA / Test Engineer)
+    assigneeIds: ['tm-3'], // Karthik R (QA / Test Engineer)
+    assigneeId: 'tm-3',
     startDate: '2026-11-18',
     dueDate: '2026-11-26',
     baselineDueDate: '2026-11-26',
@@ -268,7 +275,8 @@ export const INITIAL_TASKS: Task[] = [
     phase: 'Phase 1: Architecture Core',
     sprint: 'Sprint 24.2',
     effortPoints: 5,
-    assigneeId: 'tm-1', // Abhishai
+    assigneeIds: ['tm-1'], // Abhishai
+    assigneeId: 'tm-1',
     startDate: '2026-11-01',
     dueDate: '2026-11-08',
     baselineDueDate: '2026-11-08',
@@ -305,7 +313,8 @@ export const INITIAL_TASKS: Task[] = [
     phase: 'Phase 2: Serving Engine',
     sprint: 'Sprint 24.3',
     effortPoints: 3,
-    assigneeId: 'tm-2', // Priya Nair
+    assigneeIds: ['tm-2'], // Priya Nair
+    assigneeId: 'tm-2',
     startDate: '2026-11-18', // Overlaps with PB-102 dueDate (2026-11-20), triggering domino delay detection
     dueDate: '2026-11-25',
     baselineDueDate: '2026-11-25',
@@ -331,7 +340,8 @@ export const INITIAL_TASKS: Task[] = [
     phase: 'Phase 3: Security & Governance',
     sprint: 'Sprint 24.4',
     effortPoints: 5,
-    assigneeId: 'tm-4', // Rahul Verma
+    assigneeIds: ['tm-4'], // Rahul Verma
+    assigneeId: 'tm-4',
     startDate: '2026-11-24',
     dueDate: '2026-11-30',
     baselineDueDate: '2026-11-30',
@@ -357,7 +367,8 @@ export const INITIAL_TASKS: Task[] = [
     phase: 'Phase 2: Delivery Engine',
     sprint: 'Sprint 24.3',
     effortPoints: 5,
-    assigneeId: 'tm-1', // Abhishai
+    assigneeIds: ['tm-1', 'tm-2'], // Co-assigned: Abhishai + Priya Nair
+    assigneeId: 'tm-1',
     startDate: '2026-11-09',
     dueDate: '2026-11-19',
     baselineDueDate: '2026-11-19',
@@ -384,7 +395,8 @@ export const INITIAL_TASKS: Task[] = [
     phase: 'Phase 3: Production Rollout',
     sprint: 'Sprint 24.4',
     effortPoints: 3,
-    assigneeId: 'tm-5', // Vikram Rao
+    assigneeIds: ['tm-5'], // Vikram Rao
+    assigneeId: 'tm-5',
     startDate: '2026-11-20',
     dueDate: '2026-11-28',
     baselineDueDate: '2026-11-28',
