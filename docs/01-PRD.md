@@ -95,13 +95,14 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
 ---
 
 ### FR-03: Interactive Dependency Gantt Chart
-- **Status:** ⏳ Scheduled (V2 Milestone 2)
-- **Description:** Elevate the Waterfall view into a full interactive dependency Gantt chart with task-to-task relationship connectors, Critical Path highlighting, and schedule drift indicators.
-- **Acceptance Criteria:**
-  1. Tasks support a `dependencies: string[]` array (pointing to predecessor task IDs).
-  2. Visual connector lines/arrows connect predecessor tasks to dependent successor tasks.
-  3. **Critical Path Calculation:** Tasks on the longest dependent chain determining the project release deadline are highlighted with a distinct high-visibility border/glow.
-  4. **Schedule Drift Bars:** If a task's `dueDate` exceeds its `baselineDueDate`, the UI renders a dual-layer bar showing the original baseline schedule versus the drifted actual forecast.
+- **Status:** ✅ Implemented (V2 Milestone 2)
+- **Description:** Elevate the Waterfall view into a full interactive dependency Gantt chart with task-to-task relationship connectors, Critical Path highlighting, circular dependency cycle prevention, and schedule drift indicators.
+- **Acceptance Criteria & Implemented Features:**
+  1. Tasks support a `dependencies: string[]` array (pointing to predecessor task IDs), with live linking/unlinking in the Task Drawer and auto-linking in JSON Smart Import.
+  2. Visual SVG connector lines and directional bezier arrows connect predecessor task finish dates to dependent successor start dates.
+  3. **Critical Path Method (CPM):** Topological sorting identifies the zero-slack longest delivery sequence determining project completion; highlighted with glowing orange borders and CPM badges.
+  4. **Schedule Drift Bars:** Dual-layer visualization renders a dashed baseline shadow underneath the forecast bar whenever `dueDate > baselineDueDate`.
+  5. **Domino Delay Detection & 1-Click Cascade Alignment:** Live banner detects whenever an upstream deliverable completes after a downstream task's start date, offering a 1-click `⚡ Auto-Shift Dependent Dates` cascade shift tool.
 
 ---
 

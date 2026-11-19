@@ -15,7 +15,9 @@ import {
   RoleCategory,
   SystemRole,
   SlipReason,
-  MemberLoadMetric
+  MemberLoadMetric,
+  GanttConflict,
+  GanttScheduleMetrics
 } from '../models/task.model';
 import {
   INITIAL_PROJECTS,
@@ -265,6 +267,95 @@ export class TaskStoreService {
     const set = new Set<string>();
     this.filteredTasks().forEach((t: Task) => set.add(t.sprint || 'Sprint Backlog'));
     return Array.from(set);
+  });
+
+  // --- Computed: Gantt Schedule Metrics & Critical Path (FR-03) ---
+  readonly ganttScheduleMetrics = computed<GanttScheduleMetrics>(() => {
+    const tasks = this.currentProjectTasks();
+    const taskMap = new Map<string, Task>();
+    tasks.forEach(t => taskMap.set(t.id, t));
+
+    const conflicts: GanttConflict[] = [];
+
+    // 1. Detect schedule conflicts: upstream.dueDate > downstream.startDate
+    tasks.forEach(downstream => {
+      (downstream.dependencies || []).forEach(upstreamId => {
+        const upstream = taskMap.get(upstreamId);
+        if (upstream) {
+          if (upstream.dueDate > downstream.startDate) {
+            const uDue = new Date(upstream.dueDate).getTime();
+            const dStart = new Date(downstream.startDate).getTime();
+            const overlapDays = Math.max(1, Math.round((uDue - dStart) / (1000 * 60 * 60 * 24)));
+            conflicts.push({
+              upstreamTaskId: upstream.id,
+              upstreamTitle: upstream.title,
+              downstreamTaskId: downstream.id,
+              downstreamTitle: downstream.title,
+              upstreamDueDate: upstream.dueDate,
+              downstreamStartDate: downstream.startDate,
+              overlapDays
+            });
+          }
+        }
+      });
+    });
+
+    // 2. Critical Path Calculation (CPM)
+    const downstreamMap = new Map<string, string[]>();
+    tasks.forEach(t => {
+      (t.dependencies || []).forEach(uId => {
+        if (!downstreamMap.has(uId)) downstreamMap.set(uId, []);
+        downstreamMap.get(uId)!.push(t.id);
+      });
+    });
+
+    const getDurationDays = (t: Task) => {
+      const s = new Date(t.startDate || '2026-11-01').getTime();
+      const d = new Date(t.dueDate || '2026-11-15').getTime();
+      return Math.max(1, Math.round((d - s) / (1000 * 60 * 60 * 24)));
+    };
+
+    const pathDuration = new Map<string, number>();
+    const calculateLongestPath = (taskId: string, visited: Set<string> = new Set()): number => {
+      if (pathDuration.has(taskId)) return pathDuration.get(taskId)!;
+      if (visited.has(taskId)) return 0;
+      visited.add(taskId);
+
+      const task = taskMap.get(taskId);
+      if (!task) return 0;
+      const dur = getDurationDays(task);
+      const downstreams = downstreamMap.get(taskId) || [];
+      let maxDownstream = 0;
+      for (const dId of downstreams) {
+        maxDownstream = Math.max(maxDownstream, calculateLongestPath(dId, new Set(visited)));
+      }
+      const total = dur + maxDownstream;
+      pathDuration.set(taskId, total);
+      return total;
+    };
+
+    let overallMaxPath = 0;
+    tasks.forEach(t => {
+      const p = calculateLongestPath(t.id);
+      if (p > overallMaxPath) overallMaxPath = p;
+    });
+
+    const criticalPathTaskIds = new Set<string>();
+    if (overallMaxPath > 0) {
+      tasks.forEach(t => {
+        const p = pathDuration.get(t.id) || 0;
+        if (p === overallMaxPath || (downstreamMap.has(t.id) && p >= overallMaxPath * 0.8)) {
+          criticalPathTaskIds.add(t.id);
+        }
+      });
+    }
+
+    return {
+      criticalPathTaskIds,
+      conflicts,
+      hasConflicts: conflicts.length > 0,
+      totalSlackDays: new Map()
+    };
   });
 
   constructor() {
@@ -799,6 +890,160 @@ export class TaskStoreService {
     });
   }
 
+  // --- Dependency Management & Circular Dependency Prevention (FR-03) ---
+  addDependency(taskId: string, upstreamTaskId: string): { success: boolean; error?: string } {
+    if (!this.canEditTasks()) {
+      return { success: false, error: 'RBAC: Viewer session cannot edit dependencies.' };
+    }
+    if (taskId === upstreamTaskId) {
+      return { success: false, error: 'A deliverable cannot depend on itself.' };
+    }
+
+    const task = this.tasks().find(t => t.id === taskId);
+    const upstream = this.tasks().find(t => t.id === upstreamTaskId);
+    if (!task || !upstream) {
+      return { success: false, error: 'Task not found.' };
+    }
+
+    const currentDeps = task.dependencies || [];
+    if (currentDeps.includes(upstreamTaskId)) {
+      return { success: true };
+    }
+
+    // Circular Dependency Cycle Detection
+    const visited = new Set<string>();
+    const hasCycle = (currentId: string): boolean => {
+      if (currentId === taskId) return true;
+      if (visited.has(currentId)) return false;
+      visited.add(currentId);
+      const curr = this.tasks().find(t => t.id === currentId);
+      if (!curr || !curr.dependencies) return false;
+      for (const depId of curr.dependencies) {
+        if (hasCycle(depId)) return true;
+      }
+      return false;
+    };
+
+    if (hasCycle(upstreamTaskId)) {
+      return {
+        success: false,
+        error: `Circular dependency detected: [${upstream.id}] already depends on [${task.id}]. Loop disallowed.`
+      };
+    }
+
+    this.tasks.update((prev: Task[]) =>
+      prev.map(t =>
+        t.id === taskId
+          ? {
+              ...t,
+              dependencies: [...(t.dependencies || []), upstreamTaskId],
+              updatedAt: new Date().toISOString()
+            }
+          : t
+      )
+    );
+
+    const actor = this.currentUser();
+    this.recordActivity({
+      actor: actor.name,
+      actorAvatar: actor.avatar,
+      action: 'DEPENDENCY_UPDATED',
+      taskId: task.id,
+      taskTitle: task.title,
+      details: `Linked prerequisite dependency: [${upstream.id}] ➔ [${task.id}]`
+    });
+
+    return { success: true };
+  }
+
+  removeDependency(taskId: string, upstreamTaskId: string): void {
+    if (!this.canEditTasks()) return;
+
+    const task = this.tasks().find(t => t.id === taskId);
+    if (!task) return;
+
+    this.tasks.update((prev: Task[]) =>
+      prev.map(t =>
+        t.id === taskId
+          ? {
+              ...t,
+              dependencies: (t.dependencies || []).filter(id => id !== upstreamTaskId),
+              updatedAt: new Date().toISOString()
+            }
+          : t
+      )
+    );
+
+    const actor = this.currentUser();
+    this.recordActivity({
+      actor: actor.name,
+      actorAvatar: actor.avatar,
+      action: 'DEPENDENCY_UPDATED',
+      taskId: task.id,
+      taskTitle: task.title,
+      details: `Unlinked prerequisite dependency [${upstreamTaskId}] from [${task.id}]`
+    });
+  }
+
+  // --- Automated Cascade Date Shift (FR-03 Domino Delay Prevention) ---
+  cascadeShiftDates(): { shiftedCount: number } {
+    if (!this.canEditTasks()) {
+      console.warn('RBAC: Viewer session cannot cascade shift dates.');
+      return { shiftedCount: 0 };
+    }
+
+    const tasks = [...this.tasks()];
+    const taskMap = new Map<string, Task>();
+    tasks.forEach(t => taskMap.set(t.id, { ...t, dependencies: [...(t.dependencies || [])] }));
+
+    let shiftedCount = 0;
+    // Iterate to propagate shifts down chains
+    for (let pass = 0; pass < 5; pass++) {
+      let changedInPass = false;
+      for (const task of tasks) {
+        const current = taskMap.get(task.id)!;
+        for (const upstreamId of current.dependencies) {
+          const upstream = taskMap.get(upstreamId);
+          if (upstream && upstream.dueDate > current.startDate) {
+            const upstreamDueTs = new Date(upstream.dueDate).getTime();
+            const currentStartTs = new Date(current.startDate).getTime();
+            const currentDueTs = new Date(current.dueDate).getTime();
+            const durationMs = Math.max(86400000, currentDueTs - currentStartTs);
+
+            const newStart = upstream.dueDate;
+            const newDue = new Date(upstreamDueTs + durationMs).toISOString().split('T')[0];
+
+            current.startDate = newStart;
+            current.dueDate = newDue;
+            if (newDue > (current.baselineDueDate || current.dueDate)) {
+              current.slipReason = current.slipReason || 'DEPENDENCY_BLOCKED';
+              current.slipJustification = current.slipJustification || `Auto-shifted to accommodate upstream [${upstream.id}] delivery`;
+            }
+            current.updatedAt = new Date().toISOString();
+            changedInPass = true;
+            shiftedCount++;
+          }
+        }
+      }
+      if (!changedInPass) break;
+    }
+
+    if (shiftedCount > 0) {
+      this.tasks.set(Array.from(taskMap.values()));
+      const actor = this.currentUser();
+      this.recordActivity({
+        actor: actor.name,
+        actorAvatar: actor.avatar,
+        action: 'CASCADE_SHIFT_DATES',
+        taskId: 'GANTT-CASCADE',
+        taskTitle: 'Cascade Shift Downstream Dates',
+        details: `Auto-shifted ${shiftedCount} downstream dependent delivery window(s) to resolve schedule conflicts.`
+      });
+    }
+
+    return { shiftedCount };
+  }
+
   // Subtask Checklists
   addSubtask(taskId: string, title: string): void {
     if (!this.canEditTasks()) return;
@@ -1047,7 +1292,8 @@ export class TaskStoreService {
       ...t,
       baselineDueDate: t.baselineDueDate || t.dueDate,
       reworkCount: t.reworkCount || 0,
-      slipReason: t.slipReason || null
+      slipReason: t.slipReason || null,
+      dependencies: Array.isArray(t.dependencies) ? t.dependencies : []
     }));
   }
 

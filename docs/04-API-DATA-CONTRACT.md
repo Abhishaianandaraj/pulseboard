@@ -133,7 +133,9 @@ export type ActivityActionType =
   | 'MEMBER_ADDED'
   | 'WORKSPACE_RESET'
   | 'REWORK_PENALTY'
-  | 'SLIPPAGE_LOGGED';
+  | 'SLIPPAGE_LOGGED'
+  | 'DEPENDENCY_UPDATED'
+  | 'CASCADE_SHIFT_DATES';
 
 export interface ActivityLog {
   id: string;
@@ -179,6 +181,26 @@ export interface TaskV2 extends Task {
   slipJustification?: string;      // Detailed context for slippage
   reworkCount: number;             // Count of moves from DEPLOYED back to IN_PROGRESS
   isCriticalPath?: boolean;        // Calculated by Gantt engine
+}
+
+// Gantt Dependency Conflict Data Model (FR-03)
+export interface GanttConflict {
+  upstreamTaskId: string;
+  upstreamTaskTitle: string;
+  upstreamDueDate: string;
+  downstreamTaskId: string;
+  downstreamTaskTitle: string;
+  downstreamStartDate: string;
+  delayDays: number;
+}
+
+// Gantt Schedule Metrics Signal Model (FR-03)
+export interface GanttScheduleMetrics {
+  conflicts: GanttConflict[];
+  hasConflicts: boolean;
+  criticalPathTaskIds: Set<string>;
+  maxProjectDurationDays: number;
+  scheduleSlackSummary: string;
 }
 ```
 

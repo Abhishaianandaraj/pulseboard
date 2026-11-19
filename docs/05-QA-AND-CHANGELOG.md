@@ -24,12 +24,14 @@ Every release candidate, pull request, and staging deployment must execute and s
 - [x] **Over Budget (> 15 pts):** Team member shows red warning indicator; task assignment dropdown flags capacity breach warning.
 - [x] **Rework Penalty Calculation:** Flagging `NEEDS_CHANGES` on review increments `reworkCount` by 1 and immediately adds 3 penalty points to the assignee's effective load.
 
-### 1.3 Schedule Drift & Grace Buffer Protocol
-- [x] **Schedule Drift Detection:** If `dueDate` is moved beyond `baselineDueDate`, the UI detects drift (+N days).
+### 1.3 Schedule Drift & Gantt Dependency Protocol
+- [x] **Schedule Drift Detection:** If `dueDate` is moved beyond `baselineDueDate`, the UI detects drift (+N days) and renders a translucent baseline shadow bar.
 - [x] **Slippage Reason Selector:** Extending `dueDate` provides 1-click taxonomy selection (`DEPENDENCY_BLOCKED`, `SCOPE_EXPANDED`, `PRODUCTION_HOTFIX`, `UNDERESTIMATED`).
-- [x] **Audit Log Integration:** Deadline extensions and rework penalties record immutable `SLIPPAGE_LOGGED` and `REWORK_PENALTY` entries in the audit trail.
-- [ ] **Gantt Dependency Connectors:** Scheduled for Milestone 2.
-- [ ] **Critical Path Highlight:** Scheduled for Milestone 2.
+- [x] **Audit Log Integration:** Deadline extensions, rework penalties, dependency edits, and date cascade shifts record immutable events in the audit trail.
+- [x] **Gantt Dependency Connectors:** Smooth SVG cubic bezier arrows connect predecessor completion coordinates to dependent task start coordinates with directional markers and conflict/critical path styling.
+- [x] **Critical Path Method (CPM):** Longest topological delivery chain calculates zero slack and highlights critical tasks with high-visibility orange badges and glowing borders.
+- [x] **Circular Dependency Prevention:** Recursive graph traversal prevents circular A -> B -> A loops with immediate inline feedback in the Task Drawer.
+- [x] **Domino Delay Detection & Cascade Alignment:** Conflicts between upstream due dates and downstream start dates trigger an advisory banner and 1-click `⚡ Auto-Shift Dependent Dates` alignment.
 
 ### 1.4 Smart JSON Import Engine
 - [x] **Syntax Error Handling:** Malformed JSON triggers immediate red border and syntax error notification without app crash.
@@ -48,6 +50,13 @@ Every release candidate, pull request, and staging deployment must execute and s
 ## 2. Release Changelog
 
 ### `v2.0.0-alpha` (In Development)
+- **V2 Milestone 2 Delivered (Interactive Dependency Gantt Chart — `FR-03`):**
+  - **Topological Dependency Graph Engine:** Implemented `addDependency(taskId, upstreamTaskId)` and `removeDependency(taskId, upstreamTaskId)` in `TaskStoreService` with recursive DFS circular dependency cycle detection to prevent deadlocks.
+  - **Critical Path Method (CPM) Calculation:** Computed signal `ganttScheduleMetrics` calculates longest delivery chains, identifies critical path task IDs (`isCriticalPath`), and highlights bottlenecks across the project schedule.
+  - **Interactive Gantt Split Board UI:** Upgraded Timeline view with a 360px left tree column (with CPM tags and prerequisite counts) and a 30-day scrollable calendar timeline grid with dynamic SVG cubic bezier connector curves and directional arrowheads.
+  - **Domino Delay Detection & 1-Click Auto-Shift:** Real-time detection of dependency clashes where `upstream.dueDate > downstream.startDate`. Provides a 1-click `⚡ Auto-Shift Dependent Dates` cascade shift tool that propagates dates through all downstream descendants and logs audit entries.
+  - **Dual-Track Baseline Drift Bars:** Renders translucent dashed baseline shadow bars beneath live forecast bars whenever a deliverable slips past its initial baseline due date.
+  - **Task Drawer Prerequisites Manager:** Added dedicated "Prerequisites & Dependencies" section inside `TaskDrawerComponent` for 1-click upstream deliverable linking/unlinking with real-time cycle prevention alerts.
 - **V2 Milestone 1 Delivered:**
   - **RBAC Session Role Context (`FR-01` / `FR-02`):** Added active session switcher pill in the top command bar allowing 1-click simulation between `DEV`, `QA`, `LEAD`, and `VIEWER`. Enforced role gates across card movement, task creation, and server acceptance sign-offs.
   - **Smart Developer Capacity Budget & Recovery Score (`FR-04`):** Implemented effective load formula `Effective Load = Active Story Points + (Rework Count * 3)`. Integrated live capacity indicators (`Optimal`, `Near Capacity`, `Over Budget`) across Assignee selects, New Task modal, and Sidebar Squad roster, accompanied by soft advisory warning banners.

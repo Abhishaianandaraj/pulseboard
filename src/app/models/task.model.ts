@@ -78,6 +78,23 @@ export interface TeamMember {
   capacityBudget: number; // Sprint budget in points (default: 15)
 }
 
+export interface GanttConflict {
+  upstreamTaskId: string;
+  upstreamTitle: string;
+  downstreamTaskId: string;
+  downstreamTitle: string;
+  upstreamDueDate: string;
+  downstreamStartDate: string;
+  overlapDays: number;
+}
+
+export interface GanttScheduleMetrics {
+  criticalPathTaskIds: Set<string>;
+  conflicts: GanttConflict[];
+  hasConflicts: boolean;
+  totalSlackDays: Map<string, number>;
+}
+
 export interface Task {
   id: string;
   projectId: string; // foreign key to Project.id
@@ -98,7 +115,8 @@ export interface Task {
   blocked: boolean;
   blockerReason?: string;
   deployedUrl?: string;
-  dependencies?: string[];
+  dependencies: string[]; // Upstream prerequisite task IDs
+  isCriticalPath?: boolean; // Evaluated dynamically by Gantt engine
   subtasks: Subtask[];
   reviewNotes: ReviewNote[];
   createdAt: string;
@@ -118,7 +136,9 @@ export type ActivityActionType =
   | 'MEMBER_ADDED'
   | 'WORKSPACE_RESET'
   | 'REWORK_PENALTY'
-  | 'SLIPPAGE_LOGGED';
+  | 'SLIPPAGE_LOGGED'
+  | 'DEPENDENCY_UPDATED'
+  | 'CASCADE_SHIFT_DATES';
 
 export interface ActivityLog {
   id: string;
@@ -149,6 +169,8 @@ export interface SmartImportTaskItem {
   startDate?: string;
   dueDate?: string;
   deployedUrl?: string;
+  dependencies?: string[];
+  dependsOnTitles?: string[];
   subtasks?: string[];
 }
 

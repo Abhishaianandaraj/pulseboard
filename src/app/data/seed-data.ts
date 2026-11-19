@@ -294,6 +294,111 @@ export const INITIAL_TASKS: Task[] = [
     ],
     createdAt: '2026-11-01T09:00:00Z',
     updatedAt: '2026-11-08T16:10:00Z'
+  },
+  {
+    id: 'PB-106',
+    projectId: 'proj-1', // RAG-CORE
+    title: 'Context Window Chunking & Metadata Enrichment',
+    description: 'Integrate dynamic sliding-window semantic chunking with document taxonomy tags to maximize context utilization.',
+    status: 'TODO',
+    priority: 'HIGH',
+    phase: 'Phase 2: Serving Engine',
+    sprint: 'Sprint 24.3',
+    effortPoints: 3,
+    assigneeId: 'tm-2', // Priya Nair
+    startDate: '2026-11-18', // Overlaps with PB-102 dueDate (2026-11-20), triggering domino delay detection
+    dueDate: '2026-11-25',
+    baselineDueDate: '2026-11-25',
+    reworkCount: 0,
+    slipReason: null,
+    blocked: false,
+    dependencies: ['PB-102'],
+    subtasks: [
+      { id: 'st-16', taskId: 'PB-106', title: 'Implement sliding window token overlap analyzer', completed: false, createdAt: '2026-11-18' },
+      { id: 'st-17', taskId: 'PB-106', title: 'Enrich vector payloads with metadata filters', completed: false, createdAt: '2026-11-18' }
+    ],
+    reviewNotes: [],
+    createdAt: '2026-11-18T09:00:00Z',
+    updatedAt: '2026-11-18T09:00:00Z'
+  },
+  {
+    id: 'PB-107',
+    projectId: 'proj-2', // EVAL-GW
+    title: 'Toxicity & PII Telemetry Dashboards in Grafana',
+    description: 'Real-time telemetry streaming of eval metrics into Prometheus and Grafana for automated red-team compliance scorecards.',
+    status: 'TODO',
+    priority: 'MEDIUM',
+    phase: 'Phase 3: Security & Governance',
+    sprint: 'Sprint 24.4',
+    effortPoints: 5,
+    assigneeId: 'tm-4', // Rahul Verma
+    startDate: '2026-11-24',
+    dueDate: '2026-11-30',
+    baselineDueDate: '2026-11-30',
+    reworkCount: 0,
+    slipReason: null,
+    blocked: false,
+    dependencies: ['PB-104'],
+    subtasks: [
+      { id: 'st-18', taskId: 'PB-107', title: 'Define Prometheus custom latency metrics', completed: false, createdAt: '2026-11-18' },
+      { id: 'st-19', taskId: 'PB-107', title: 'Build live Grafana dashboard JSON model', completed: false, createdAt: '2026-11-18' }
+    ],
+    reviewNotes: [],
+    createdAt: '2026-11-18T10:00:00Z',
+    updatedAt: '2026-11-18T10:00:00Z'
+  },
+  {
+    id: 'PB-108',
+    projectId: 'proj-3', // PULSE-V1
+    title: 'Interactive Dependency Gantt & Critical Path Engine',
+    description: 'Mathematical CPM critical path calculation with SVG arrow connectors, dual-track baseline drift, and cascade auto-shift.',
+    status: 'IN_PROGRESS',
+    priority: 'HIGH',
+    phase: 'Phase 2: Delivery Engine',
+    sprint: 'Sprint 24.3',
+    effortPoints: 5,
+    assigneeId: 'tm-1', // Abhishai
+    startDate: '2026-11-09',
+    dueDate: '2026-11-19',
+    baselineDueDate: '2026-11-19',
+    reworkCount: 0,
+    slipReason: null,
+    blocked: false,
+    dependencies: ['PB-105'],
+    subtasks: [
+      { id: 'st-20', taskId: 'PB-108', title: 'Implement topological sort for cycle detection', completed: true, createdAt: '2026-11-09' },
+      { id: 'st-21', taskId: 'PB-108', title: 'Render SVG bezier curve connector paths', completed: true, createdAt: '2026-11-12' },
+      { id: 'st-22', taskId: 'PB-108', title: 'Add dual-track baseline shadow bars', completed: true, createdAt: '2026-11-15' }
+    ],
+    reviewNotes: [],
+    createdAt: '2026-11-09T09:00:00Z',
+    updatedAt: '2026-11-18T16:00:00Z'
+  },
+  {
+    id: 'PB-109',
+    projectId: 'proj-3', // PULSE-V1
+    title: 'Automated CI/CD Delivery Pipeline & Staging Verification',
+    description: 'Zero-warning GitHub Actions pipeline enforcing budget checks, linting, and automated staging server preview deployments.',
+    status: 'TODO',
+    priority: 'MEDIUM',
+    phase: 'Phase 3: Production Rollout',
+    sprint: 'Sprint 24.4',
+    effortPoints: 3,
+    assigneeId: 'tm-5', // Vikram Rao
+    startDate: '2026-11-20',
+    dueDate: '2026-11-28',
+    baselineDueDate: '2026-11-28',
+    reworkCount: 0,
+    slipReason: null,
+    blocked: false,
+    dependencies: ['PB-108'],
+    subtasks: [
+      { id: 'st-23', taskId: 'PB-109', title: 'Configure GitHub Pages automated action runner', completed: false, createdAt: '2026-11-18' },
+      { id: 'st-24', taskId: 'PB-109', title: 'Add production bundle size regression check', completed: false, createdAt: '2026-11-18' }
+    ],
+    reviewNotes: [],
+    createdAt: '2026-11-18T12:00:00Z',
+    updatedAt: '2026-11-18T12:00:00Z'
   }
 ];
 

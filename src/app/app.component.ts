@@ -328,7 +328,88 @@ export class AppComponent {
     return (task.subtasks || []).filter((st: Subtask) => st.completed).length;
   }
 
-  // Waterfall Timeline calculation helper
+  // --- Interactive Dependency Gantt Chart Engine (FR-03) ---
+  readonly showCriticalPath = signal<boolean>(true);
+  readonly showBaselineDrift = signal<boolean>(true);
+  readonly timelineDays = Array.from({ length: 30 }, (_, i) => i + 1);
+
+  toggleCriticalPath(): void {
+    this.showCriticalPath.update(v => !v);
+  }
+
+  toggleBaselineDrift(): void {
+    this.showBaselineDrift.update(v => !v);
+  }
+
+  triggerCascadeShift(): void {
+    this.store.cascadeShiftDates();
+  }
+
+  isCriticalPath(taskId: string): boolean {
+    return this.store.ganttScheduleMetrics().criticalPathTaskIds.has(taskId);
+  }
+
+  getGanttLeftPx(task: Task): number {
+    const baseTimestamp = new Date('2026-11-01').getTime();
+    const startTs = new Date(task.startDate || '2026-11-01').getTime();
+    const startOffsetDays = Math.max(0, Math.min(30, (startTs - baseTimestamp) / 86400000));
+    return Math.round(startOffsetDays * 30);
+  }
+
+  getGanttWidthPx(task: Task): number {
+    const startTs = new Date(task.startDate || '2026-11-01').getTime();
+    const dueTs = new Date(task.dueDate || '2026-11-15').getTime();
+    const durationDays = Math.max(1, Math.min(30, (dueTs - startTs) / 86400000));
+    return Math.max(28, Math.round(durationDays * 30));
+  }
+
+  getBaselineWidthPx(task: Task): number {
+    const startTs = new Date(task.startDate || '2026-11-01').getTime();
+    const dueTs = new Date(task.baselineDueDate || task.dueDate || '2026-11-15').getTime();
+    const durationDays = Math.max(1, Math.min(30, (dueTs - startTs) / 86400000));
+    return Math.max(28, Math.round(durationDays * 30));
+  }
+
+  getGanttConnectors(): Array<{ path: string; isConflict: boolean; upstreamId: string; downstreamId: string }> {
+    const tasks = this.store.filteredTasks();
+    const taskIndexMap = new Map<string, number>();
+    const taskMap = new Map<string, Task>();
+    tasks.forEach((t, idx) => {
+      taskIndexMap.set(t.id, idx);
+      taskMap.set(t.id, t);
+    });
+
+    const connectors: Array<{ path: string; isConflict: boolean; upstreamId: string; downstreamId: string }> = [];
+
+    tasks.forEach((downstream, downIdx) => {
+      (downstream.dependencies || []).forEach(upstreamId => {
+        const upstream = taskMap.get(upstreamId);
+        const upIdx = taskIndexMap.get(upstreamId);
+        if (upstream && upIdx !== undefined) {
+          const x1 = this.getGanttLeftPx(upstream) + this.getGanttWidthPx(upstream);
+          const y1 = upIdx * 52 + 26;
+          const x2 = this.getGanttLeftPx(downstream);
+          const y2 = downIdx * 52 + 26;
+
+          const dx = Math.abs(x2 - x1);
+          const curveOffset = Math.min(30, Math.max(15, dx / 2));
+          const path = `M ${x1} ${y1} C ${x1 + curveOffset} ${y1}, ${x2 - curveOffset} ${y2}, ${x2} ${y2}`;
+          const isConflict = upstream.dueDate > downstream.startDate;
+
+          connectors.push({
+            path,
+            isConflict,
+            upstreamId: upstream.id,
+            downstreamId: downstream.id
+          });
+        }
+      });
+    });
+
+    return connectors;
+  }
+
+  // Waterfall Timeline calculation helper (backward compatibility)
   getTimelineBarStyle(task: Task): { left: string; width: string } {
     const baseTimestamp = new Date('2026-11-01').getTime();
     const totalDays = 30;

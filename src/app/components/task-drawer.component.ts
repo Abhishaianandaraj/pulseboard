@@ -361,6 +361,73 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
               }
             </div>
 
+            <!-- Prerequisites & Dependencies (FR-03 Gantt Connector Engine) -->
+            <div class="dependencies-section">
+              <div class="section-title-row">
+                <div class="dep-title-wrap">
+                  <span class="dep-icon">🔗</span>
+                  <div>
+                    <h4 class="section-title">Upstream Prerequisites & Dependencies</h4>
+                    <p class="section-sub">Prerequisite deliverables required before this milestone can complete</p>
+                  </div>
+                </div>
+                <span class="dep-count-badge">{{ (task.dependencies || []).length }} Prerequisite(s)</span>
+              </div>
+
+              <!-- List of linked dependencies -->
+              <div class="dep-list">
+                @for (depId of task.dependencies; track depId) {
+                  <div class="dep-item">
+                    <span class="dep-id">{{ depId }}</span>
+                    <span class="dep-task-title" [title]="getTaskTitle(depId)">{{ getTaskTitle(depId) }}</span>
+                    <span class="dep-status" [attr.data-status]="getTaskStatus(depId)">{{ getTaskStatus(depId) }}</span>
+                    @if (!store.isViewer()) {
+                      <button
+                        type="button"
+                        class="btn-del-dep"
+                        (click)="store.removeDependency(task.id, depId)"
+                        title="Unlink prerequisite"
+                      >
+                        ✕
+                      </button>
+                    }
+                  </div>
+                } @empty {
+                  <div class="empty-deps">
+                    <span>No upstream prerequisite dependencies linked. This deliverable can run in parallel.</span>
+                  </div>
+                }
+              </div>
+
+              <!-- Add dependency row -->
+              @if (!store.isViewer()) {
+                <div class="add-dep-row">
+                  <select class="select-input select-sm" [(ngModel)]="selectedUpstreamId">
+                    <option value="">+ Link Upstream Prerequisite Deliverable...</option>
+                    @for (candidate of getAvailableUpstreamCandidates(task); track candidate.id) {
+                      <option [value]="candidate.id">
+                        [{{ candidate.id }}] {{ candidate.title }} (Due: {{ candidate.dueDate }})
+                      </option>
+                    }
+                  </select>
+                  <button
+                    type="button"
+                    class="btn-add-dep"
+                    [disabled]="!selectedUpstreamId"
+                    (click)="linkDependency(task.id)"
+                  >
+                    Link Prerequisite
+                  </button>
+                </div>
+              }
+
+              @if (dependencyError) {
+                <div class="dep-error-alert">
+                  <span>⚠️ {{ dependencyError }}</span>
+                </div>
+              }
+            </div>
+
             <!-- Subtasks Checklist -->
             <div class="subtasks-section">
               <div class="section-title-row">
@@ -887,7 +954,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
       color: #10b981;
     }
 
-    .subtasks-section, .review-section {
+    .subtasks-section, .review-section, .dependencies-section {
       background: var(--bg-canvas);
       border: 1px solid var(--border-subtle);
       border-radius: 8px;
@@ -895,6 +962,99 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
       display: flex;
       flex-direction: column;
       gap: 12px;
+    }
+    .dep-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dep-icon { font-size: 18px; }
+    .dep-count-badge {
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+    }
+    .dep-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .dep-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+    }
+    .dep-id {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-primary);
+    }
+    .dep-task-title {
+      font-size: 12px;
+      color: var(--text-primary);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .dep-status {
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--bg-canvas);
+      color: var(--text-secondary);
+    }
+    .dep-status[data-status="DONE"] { color: var(--status-done); }
+    .dep-status[data-status="DEPLOYED"] { color: var(--status-deployed); }
+    .dep-status[data-status="IN_PROGRESS"] { color: var(--status-inprogress); }
+    .btn-del-dep {
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .btn-del-dep:hover { color: #ef4444; }
+    .add-dep-row {
+      display: flex;
+      gap: 8px;
+    }
+    .add-dep-row .select-input { flex: 1; }
+    .btn-add-dep {
+      padding: 6px 12px;
+      background: var(--accent-primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-add-dep:disabled { opacity: 0.5; cursor: not-allowed; }
+    .empty-deps {
+      padding: 10px;
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+    .dep-error-alert {
+      font-size: 11.5px;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(239, 68, 68, 0.25);
     }
     .section-title-row, .review-header {
       display: flex;
@@ -1141,12 +1301,45 @@ export class TaskDrawerComponent {
   newReviewContent = '';
   newReviewVerdict: ReviewVerdict = 'OBSERVATION';
 
+  selectedUpstreamId = '';
+  dependencyError = '';
+
   close(): void {
     this.store.closeTaskDrawer();
+    this.dependencyError = '';
+    this.selectedUpstreamId = '';
   }
 
   getProjectCode(projectId: string): string {
     return this.store.projectMap().get(projectId)?.code || 'PROJ';
+  }
+
+  getTaskTitle(id: string): string {
+    return this.store.tasks().find(t => t.id === id)?.title || id;
+  }
+
+  getTaskStatus(id: string): string {
+    return this.store.tasks().find(t => t.id === id)?.status || 'TODO';
+  }
+
+  getAvailableUpstreamCandidates(currentTask: Task): Task[] {
+    const currentDeps = currentTask.dependencies || [];
+    return this.store.tasks().filter(
+      t => t.id !== currentTask.id &&
+           t.projectId === currentTask.projectId &&
+           !currentDeps.includes(t.id)
+    );
+  }
+
+  linkDependency(taskId: string): void {
+    if (!this.selectedUpstreamId) return;
+    this.dependencyError = '';
+    const res = this.store.addDependency(taskId, this.selectedUpstreamId);
+    if (!res.success) {
+      this.dependencyError = res.error || 'Failed to link dependency.';
+    } else {
+      this.selectedUpstreamId = '';
+    }
   }
 
   updateField(field: keyof Task, val: any): void {

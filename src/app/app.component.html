@@ -654,85 +654,199 @@
         </div>
       }
 
-      <!-- 3. WATERFALL TIMELINE VIEW -->
+      <!-- 3. INTERACTIVE DEPENDENCY GANTT CHART (FR-03) -->
       @if (store.currentView() === 'TIMELINE') {
-        <div class="timeline-view-wrapper">
-          <div class="view-header-card">
-            <div>
-              <h2 class="view-heading">Waterfall Phase Roadmap & Sequential Dependencies</h2>
-              <p class="view-sub">Visual chronological roadmap with start-to-due timeline durations</p>
+        <div class="gantt-view-wrapper">
+          <!-- Gantt Header & Controls -->
+          <div class="gantt-header-card">
+            <div class="gantt-title-col">
+              <div class="gantt-title-row">
+                <h2 class="view-heading">Interactive Delivery Gantt & Critical Path</h2>
+                <span class="gantt-count-badge">{{ store.filteredTasks().length }} Tasks</span>
+                <span class="gantt-crit-badge" [class.has-crit]="store.ganttScheduleMetrics().criticalPathTaskIds.size > 0">
+                  🔥 {{ store.ganttScheduleMetrics().criticalPathTaskIds.size }} Critical Path
+                </span>
+              </div>
+              <p class="view-sub">Topological dependency network, domino delay conflict detection & CPM analysis</p>
             </div>
-            <div class="timeline-legend">
-              <span class="legend-item"><span class="box-dot bg-todo"></span> To Do</span>
-              <span class="legend-item"><span class="box-dot bg-prog"></span> In Progress</span>
-              <span class="legend-item"><span class="box-dot bg-dep"></span> Deployed</span>
-              <span class="legend-item"><span class="box-dot bg-done"></span> Done</span>
+
+            <!-- Gantt View Toggles & Actions -->
+            <div class="gantt-controls">
+              <button
+                type="button"
+                class="btn-gantt-toggle"
+                [class.active]="showCriticalPath()"
+                (click)="toggleCriticalPath()"
+                title="Toggle visual highlights along the Critical Path"
+              >
+                🔥 Critical Path: {{ showCriticalPath() ? 'ON' : 'OFF' }}
+              </button>
+              <button
+                type="button"
+                class="btn-gantt-toggle"
+                [class.active]="showBaselineDrift()"
+                (click)="toggleBaselineDrift()"
+                title="Toggle baseline shadow bars to view schedule slippage"
+              >
+                📐 Baseline Shadow: {{ showBaselineDrift() ? 'ON' : 'OFF' }}
+              </button>
             </div>
           </div>
 
-          <div class="gantt-container">
-            <!-- Timeline Grid Header -->
-            <div class="gantt-header-row">
-              <div class="gantt-col-task">Phase & Deliverable</div>
-              <div class="gantt-col-grid">
-                <span class="gantt-scale-tick">Week 1 (Nov 01 - 07)</span>
-                <span class="gantt-scale-tick">Week 2 (Nov 08 - 14)</span>
-                <span class="gantt-scale-tick">Week 3 (Nov 15 - 21)</span>
-                <span class="gantt-scale-tick">Week 4 (Nov 22 - 28)</span>
+          <!-- Domino Delay / Dependency Conflict Warning Banner -->
+          @if (store.ganttScheduleMetrics().hasConflicts) {
+            <div class="gantt-conflict-banner">
+              <div class="conflict-banner-msg">
+                <span class="conflict-icon">⚠️</span>
+                <div>
+                  <strong>Dependency Conflict Detected (Domino Delay Risk)</strong>
+                  <p class="conflict-desc">
+                    {{ store.ganttScheduleMetrics().conflicts.length }} task(s) scheduled before their upstream prerequisites finish. Downstream dates need cascading alignment.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="btn-cascade-shift"
+                (click)="triggerCascadeShift()"
+                [disabled]="!store.canEditTasks()"
+                title="Auto-shift downstream dates to resolve dependency clashes"
+              >
+                ⚡ Auto-Shift Dependent Dates
+              </button>
+            </div>
+          }
+
+          <!-- Gantt Split Chart: Left Tree + Right 30-Day Calendar -->
+          <div class="gantt-split-board">
+            <!-- LEFT TREE COLUMN -->
+            <div class="gantt-tree-col">
+              <div class="gantt-tree-head">
+                <span>Phase & Deliverable</span>
+                <span class="tree-pts-label">Pts</span>
+              </div>
+              <div class="gantt-tree-body">
+                @for (task of store.filteredTasks(); track task.id) {
+                  <div
+                    class="gantt-tree-row"
+                    (click)="openTask(task.id)"
+                    [class.is-crit-row]="isCriticalPath(task.id) && showCriticalPath()"
+                    [class.is-conflict-row]="task.slipReason !== null"
+                  >
+                    <div class="tree-item-info">
+                      <span class="font-mono text-muted text-xs">{{ task.id }}</span>
+                      @if (getProject(task.projectId); as proj) {
+                        <span class="proj-table-badge" [style.color]="proj.color">{{ proj.code }}</span>
+                      }
+                      <span class="gantt-tree-title" [title]="task.title">{{ task.title }}</span>
+                      @if (isCriticalPath(task.id) && showCriticalPath()) {
+                        <span class="tree-crit-tag" title="Critical Path Task">CPM</span>
+                      }
+                      @if (task.dependencies && task.dependencies.length > 0) {
+                        <span class="tree-dep-tag" [title]="'Prerequisites: ' + task.dependencies.join(', ')">
+                          🔗 {{ task.dependencies.length }}
+                        </span>
+                      }
+                    </div>
+                    <div class="tree-item-meta">
+                      <span class="avatar-mini-gantt" [style.background-color]="getMember(task.assigneeId).color" [title]="getMember(task.assigneeId).name">
+                        {{ getMember(task.assigneeId).avatar }}
+                      </span>
+                      <span class="tree-pts tabular-nums">{{ task.effortPoints }}p</span>
+                    </div>
+                  </div>
+                }
               </div>
             </div>
 
-            <!-- Grouped by Project Phase -->
-            @for (phase of store.projectPhases(); track phase) {
-              <div class="gantt-phase-block">
-                <div class="gantt-phase-banner">
-                  <span class="phase-pin">📌</span>
-                  <strong>{{ phase }}</strong>
-                </div>
-
-                @for (task of store.filteredTasks(); track task.id) {
-                  @if (task.phase === phase) {
-                    <div class="gantt-item-row" (click)="openTask(task.id)">
-                      <div class="gantt-item-info">
-                        <span class="font-mono text-muted text-xs">{{ task.id }}</span>
-                        @if (getProject(task.projectId); as proj) {
-                          <span class="proj-table-badge" [style.color]="proj.color">{{ proj.code }}</span>
-                        }
-                        <span class="gantt-task-name" [title]="task.title">{{ task.title }}</span>
-                        @if (task.dependencies && task.dependencies.length > 0) {
-                          <span class="dep-pill" [title]="'Depends on ' + task.dependencies.join(', ')">
-                            🔗 {{ task.dependencies[0] }}
-                          </span>
-                        }
-                      </div>
-
-                      <div class="gantt-track-lane">
-                        <!-- Grid lines -->
-                        <div class="gantt-lane-grid">
-                          <div class="grid-lane-cell"></div>
-                          <div class="grid-lane-cell"></div>
-                          <div class="grid-lane-cell"></div>
-                          <div class="grid-lane-cell"></div>
-                        </div>
-
-                        <!-- Proportional Timeline Bar -->
-                        <div
-                          class="gantt-timeline-bar"
-                          [ngStyle]="getTimelineBarStyle(task)"
-                          [attr.data-status]="task.status"
-                          [class.is-blocked]="task.blocked"
-                          [title]="task.title + ' (' + task.startDate + ' to ' + task.dueDate + ')'"
-                        >
-                          <span class="bar-label tabular-nums">
-                            {{ getMember(task.assigneeId).avatar }}: {{ task.dueDate | slice:5:10 }}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  }
+            <!-- RIGHT 30-DAY TIMELINE GRID -->
+            <div class="gantt-timeline-col">
+              <!-- Timeline Scale Header -->
+              <div class="gantt-scale-header">
+                @for (day of timelineDays; track day) {
+                  <div class="scale-day-cell">
+                    <span class="day-num">{{ day }}</span>
+                  </div>
                 }
               </div>
-            }
+
+              <!-- Timeline Track Rows & SVG Layer -->
+              <div class="gantt-timeline-body" [style.height.px]="store.filteredTasks().length * 52">
+                <!-- Background Day Columns -->
+                <div class="gantt-grid-bg">
+                  @for (day of timelineDays; track day) {
+                    <div class="grid-day-col"></div>
+                  }
+                </div>
+
+                <!-- SVG Connector Arrow Layer -->
+                <svg
+                  class="gantt-svg-overlay"
+                  width="900"
+                  [attr.height]="store.filteredTasks().length * 52"
+                >
+                  <defs>
+                    <marker id="gantt-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-primary)" />
+                    </marker>
+                    <marker id="gantt-arrow-crit" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f97316" />
+                    </marker>
+                    <marker id="gantt-arrow-conflict" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ef4444" />
+                    </marker>
+                  </defs>
+                  @for (conn of getGanttConnectors(); track conn.upstreamId + '-' + conn.downstreamId) {
+                    <path
+                      [attr.d]="conn.path"
+                      class="gantt-conn-path"
+                      [class.is-conflict]="conn.isConflict"
+                      [class.is-crit]="(isCriticalPath(conn.upstreamId) && isCriticalPath(conn.downstreamId)) && showCriticalPath()"
+                      [attr.marker-end]="conn.isConflict ? 'url(#gantt-arrow-conflict)' : ((isCriticalPath(conn.upstreamId) && isCriticalPath(conn.downstreamId)) && showCriticalPath() ? 'url(#gantt-arrow-crit)' : 'url(#gantt-arrow)')"
+                    />
+                  }
+                </svg>
+
+                <!-- Task Bars -->
+                @for (task of store.filteredTasks(); track task.id; let idx = $index) {
+                  <div class="gantt-track-row" [style.top.px]="idx * 52" (click)="openTask(task.id)">
+                    <!-- Baseline Shadow Bar (if drifted) -->
+                    @if (showBaselineDrift() && task.baselineDueDate && task.dueDate > task.baselineDueDate) {
+                      <div
+                        class="gantt-bar-baseline"
+                        [style.left.px]="getGanttLeftPx(task)"
+                        [style.width.px]="getBaselineWidthPx(task)"
+                        title="Original Baseline: {{ task.baselineDueDate }}"
+                      >
+                        <span class="bar-drift-label">Baseline: {{ task.baselineDueDate | slice:5:10 }}</span>
+                      </div>
+                    }
+
+                    <!-- Live Forecast Bar -->
+                    <div
+                      class="gantt-bar-forecast"
+                      [style.left.px]="getGanttLeftPx(task)"
+                      [style.width.px]="getGanttWidthPx(task)"
+                      [attr.data-status]="task.status"
+                      [class.is-critical]="isCriticalPath(task.id) && showCriticalPath()"
+                      [class.is-blocked]="task.blocked"
+                      [title]="task.title + ' (' + task.startDate + ' to ' + task.dueDate + ')'"
+                    >
+                      <div class="bar-inner-content">
+                        @if (task.blocked) {
+                          <span class="bar-blocked-dot">🚫</span>
+                        }
+                        @if (task.slipReason) {
+                          <span class="bar-slip-dot" title="Slipped: {{ task.slipReason }}">⚠️</span>
+                        }
+                        <span class="bar-title-text">{{ task.title }}</span>
+                        <span class="bar-date-text">{{ task.dueDate | slice:5:10 }}</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
           </div>
         </div>
       }
