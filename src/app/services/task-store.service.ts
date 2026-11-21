@@ -20,7 +20,8 @@ import {
   GanttScheduleMetrics,
   ProjectBottleneckMetric,
   SlippageReasonBreakdown,
-  CycleTimeMetrics
+  CycleTimeMetrics,
+  ExtractedTaskDraft
 } from '../models/task.model';
 import {
   INITIAL_PROJECTS,
@@ -1570,6 +1571,105 @@ export class TaskStoreService {
     } catch (e: any) {
       return { success: false, count: 0, error: e.message || 'Malformed JSON schema.' };
     }
+  }
+
+  // --- AI Voice & NLP Task Ingestion (AI_EXTRACTED tag in ActivityLog) ---
+  createTasksFromAiDrafts(drafts: ExtractedTaskDraft[]): { success: boolean; count: number; error?: string } {
+    if (!this.canCreateTasks()) {
+      return { success: false, count: 0, error: 'RBAC: Viewer session cannot create tasks.' };
+    }
+
+    if (!Array.isArray(drafts) || drafts.length === 0) {
+      return { success: false, count: 0, error: 'No task drafts provided.' };
+    }
+
+    let maxNum = Math.max(
+      100,
+      ...this.tasks().map((t: Task) => {
+        const num = parseInt(t.id.replace('PB-', ''), 10);
+        return isNaN(num) ? 0 : num;
+      })
+    );
+
+    const currentProjects = this.projects();
+    const fallbackProjectId = this.selectedProjectId() !== 'ALL'
+      ? this.selectedProjectId()
+      : (currentProjects[0]?.id || 'proj-1');
+
+    const defaultMember = this.teamMembers()[0];
+    const newTasks: Task[] = [];
+
+    for (const draft of drafts) {
+      if (!draft.title || !draft.title.trim()) continue;
+
+      maxNum++;
+      const taskId = `PB-${maxNum}`;
+      const assigneeIds = (draft.assigneeIds && draft.assigneeIds.length > 0)
+        ? draft.assigneeIds
+        : [defaultMember?.id || 'tm-1'];
+      const assigneeId = assigneeIds[0];
+
+      const projectId = draft.projectId && draft.projectId !== 'ALL'
+        ? draft.projectId
+        : fallbackProjectId;
+
+      const dueDate = draft.dueDate || new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0];
+
+      const subtasks = (draft.subtasks || []).map((subTitle: string, idx: number) => ({
+        id: `st-${Date.now()}-${maxNum}-${idx}`,
+        taskId,
+        title: typeof subTitle === 'string' ? subTitle : 'Subtask item',
+        completed: false,
+        createdAt: new Date().toISOString().split('T')[0]
+      }));
+
+      const task: Task = {
+        id: taskId,
+        projectId,
+        title: draft.title.trim(),
+        description: draft.description?.trim() || '',
+        status: 'TODO',
+        priority: draft.priority || 'MEDIUM',
+        phase: 'Sprint Backlog',
+        sprint: 'Sprint 24.3',
+        effortPoints: Number(draft.effortPoints) || 3,
+        assigneeIds,
+        assigneeId,
+        startDate: new Date().toISOString().split('T')[0],
+        dueDate,
+        baselineDueDate: dueDate,
+        reworkCount: 0,
+        slipReason: null,
+        slipJustification: '',
+        blocked: false,
+        deployedUrl: '',
+        dependencies: draft.dependencies || [],
+        subtasks,
+        reviewNotes: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      newTasks.push(task);
+    }
+
+    if (newTasks.length === 0) {
+      return { success: false, count: 0, error: 'No valid tasks could be generated from drafts.' };
+    }
+
+    this.tasks.update((prev: Task[]) => [...newTasks, ...prev]);
+
+    const actor = this.currentUser();
+    this.recordActivity({
+      actor: actor.name,
+      actorAvatar: actor.avatar,
+      action: 'AI_PROMPT_EXTRACTION',
+      taskId: newTasks[0]?.id || 'AI-PROMPT',
+      taskTitle: `AI Extraction (${newTasks.length} tasks)`,
+      details: `[AI_EXTRACTED] Ingested ${newTasks.length} deliverables composed via Voice & NLP Task Composer.`
+    });
+
+    return { success: true, count: newTasks.length };
   }
 
   // --- Reset Workspace ---

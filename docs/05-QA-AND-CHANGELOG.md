@@ -80,7 +80,28 @@ Every release candidate, pull request, and staging deployment must execute and s
 
 ---
 
+### 1.10 Prompt with AI & Voice Dictation Quality Gate (v3.1)
+- [x] **Live Speech Recognition Integration:** `Web Speech API` starts and stops cleanly via pulsing microphone toggle; interim transcripts display in real time without crashing on unsupported browsers.
+- [x] **Dual-Mode NLP Parsing:** Deterministic local parser reliably extracts project codes (`RAG-CORE`, `EVAL-GW`, `PULSE-V1`), co-assignees, priority, story points, due dates, subtasks, and upstream dependencies. Corporate LLM mode handles offline scenarios with seamless automatic fallback to local NLP.
+- [x] **Staging & Editing Quality Gate:** Users can edit deliverable titles, projects, co-assignees (with live capacity status indicators), points, and priorities before committing.
+- [x] **Immutable Provenance Audit:** Committing deliverables created via the AI prompt composer logs an `AI_PROMPT_EXTRACTION` activity record tagged with `[AI_EXTRACTED]` in the activity ledger.
+- [x] **RBAC Gate:** `VIEWER` persona cannot open or commit tasks via `Prompt with AI`.
+
+---
+
 ## 2. Release Changelog
+
+### `v3.1.0` (Prompt with AI Voice & NLP Task Composer)
+- **Standalone "Prompt with AI" Modal (`AiPromptModalComponent`):**
+  - Added dedicated voice & NLP composer dialog accessible via `Prompt with AI` pill button in the Delivery Workspace and My Day landing screen.
+  - Leaves the existing `Smart Import` JSON schema importer untouched as an independent tool.
+- **AI Copilot Service (`AiCopilotService`):**
+  - Integrated `Web Speech API` live dictation with streaming interim transcript banner and pulsating recording indicator.
+  - Built zero-backend deterministic NLP parser with multi-assignee detection, project mapping, priority extraction, story points parsing, and upstream dependency linking.
+  - Added optional Corporate LLM proxy endpoint support persisted in `localStorage` with resilient offline failover.
+- **Interactive Staging & Provenance Logging:**
+  - Interactive pre-commit review grid with co-assignee capacity comfort dots (`OPTIMAL`, `NEAR_CAPACITY`, `OVER_BUDGET`).
+  - Added `AI_PROMPT_EXTRACTION` action type and `createTasksFromAiDrafts` in `TaskStoreService` tagging all created deliverables with `[AI_EXTRACTED]` in the immutable audit ledger.
 
 ### `v3.0.0` (Production Release)
 - **Kanso + Spartan UI + Phosphor Light Aesthetic Overhaul:**

@@ -13,11 +13,12 @@ import {
   MethodologyView
 } from '../../models/task.model';
 import { ImportModalComponent } from '../../components/import-modal.component';
+import { AiPromptModalComponent } from '../../components/ai-prompt-modal.component';
 
 @Component({
   selector: 'app-workspace',
   standalone: true,
-  imports: [CommonModule, FormsModule, DragDropModule, ImportModalComponent],
+  imports: [CommonModule, FormsModule, DragDropModule, ImportModalComponent, AiPromptModalComponent],
   template: `
     <div class="workspace-page-wrapper">
       <!-- 1. Top Execution Toolbar -->
@@ -112,6 +113,16 @@ import { ImportModalComponent } from '../../components/import-modal.component';
 
         <!-- Toolbar Right Actions -->
         <div class="toolbar-right">
+          <button
+            type="button"
+            class="btn-action btn-ai-prompt"
+            [disabled]="!store.canCreateTasks()"
+            (click)="openAiPromptModal()"
+            title="Prompt with AI Voice & NLP Task Composer"
+          >
+            <i class="ph-light ph-microphone"></i>
+            <span>Prompt with AI</span>
+          </button>
           <button
             type="button"
             class="btn-action btn-smart-import"
@@ -596,6 +607,11 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       @if (isSmartImportModalOpen()) {
         <app-import-modal (closeModal)="closeSmartImport()"></app-import-modal>
       }
+
+      <!-- STANDALONE PROMPT WITH AI MODAL -->
+      @if (isAiPromptModalOpen()) {
+        <app-ai-prompt-modal (closeModal)="closeAiPromptModal()"></app-ai-prompt-modal>
+      }
     </div>
   `,
   styles: [`
@@ -748,6 +764,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      white-space: nowrap;
       padding: 6px 14px;
       border-radius: var(--radius-pill);
       font-size: 12px;
@@ -755,6 +772,19 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       cursor: pointer;
       border: 1px solid transparent;
       transition: var(--transition-tactile);
+    }
+
+    .btn-ai-prompt {
+      background: var(--bg-subtle);
+      border-color: var(--border-hairline);
+      color: var(--text-primary);
+    }
+
+    .btn-ai-prompt:hover:not(:disabled) {
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
+      border-color: var(--accent-primary);
+      transform: translateY(-1px);
     }
 
     .btn-smart-import {
@@ -1627,6 +1657,7 @@ export class WorkspaceComponent {
   // Modals
   readonly isNewTaskModalOpen = signal<boolean>(false);
   readonly isSmartImportModalOpen = signal<boolean>(false);
+  readonly isAiPromptModalOpen = signal<boolean>(false);
 
   // New Task Form
   newTaskTitle = '';
@@ -1786,6 +1817,14 @@ export class WorkspaceComponent {
 
   closeSmartImport(): void {
     this.isSmartImportModalOpen.set(false);
+  }
+
+  openAiPromptModal(): void {
+    this.isAiPromptModalOpen.set(true);
+  }
+
+  closeAiPromptModal(): void {
+    this.isAiPromptModalOpen.set(false);
   }
 
   getGanttLeftPx(task: Task): number {

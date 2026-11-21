@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TaskStoreService } from '../../services/task-store.service';
 import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
+import { AiPromptModalComponent } from '../../components/ai-prompt-modal.component';
 
 @Component({
   selector: 'app-my-day',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AiPromptModalComponent],
   template: `
     <div class="my-day-wrapper custom-scroll">
       <!-- 1. Warm Editorial Hero Card & Personal Pace Health -->
@@ -103,10 +104,22 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
                 <h2 class="section-title font-serif">My Active Tasks</h2>
                 <span class="section-count-badge">{{ myActiveTasks().length }}</span>
               </div>
-              <button type="button" class="btn-jump-workspace" (click)="goToWorkspace()">
-                <span>Open Workspace</span>
-                <i class="ph-light ph-arrow-right"></i>
-              </button>
+              <div class="card-actions-group">
+                <button
+                  type="button"
+                  class="btn-ai-prompt-mini"
+                  [disabled]="!store.canCreateTasks()"
+                  (click)="openAiPromptModal()"
+                  title="Prompt with AI Voice & NLP Task Composer"
+                >
+                  <i class="ph-light ph-microphone"></i>
+                  <span>Prompt with AI</span>
+                </button>
+                <button type="button" class="btn-jump-workspace" (click)="goToWorkspace()">
+                  <span>Open Workspace</span>
+                  <i class="ph-light ph-arrow-right"></i>
+                </button>
+              </div>
             </div>
 
             @if (myActiveTasks().length > 0) {
@@ -259,6 +272,11 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
           </div>
         </div>
       </div>
+
+      <!-- STANDALONE PROMPT WITH AI MODAL -->
+      @if (isAiPromptModalOpen()) {
+        <app-ai-prompt-modal (closeModal)="closeAiPromptModal()"></app-ai-prompt-modal>
+      }
     </div>
   `,
   styles: [`
@@ -567,6 +585,35 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
       font-weight: 500;
       cursor: pointer;
       transition: var(--transition-tactile);
+    }
+
+    .card-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-ai-prompt-mini {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-primary);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition-tactile);
+    }
+
+    .btn-ai-prompt-mini:hover:not(:disabled) {
+      background: var(--accent-primary-tint);
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+      transform: translateY(-1px);
     }
 
     .btn-jump-workspace:hover {
@@ -1001,6 +1048,17 @@ export class MyDayComponent {
 
   openTask(taskId: string): void {
     this.store.selectTask(taskId);
+  }
+
+  readonly isAiPromptModalOpen = signal<boolean>(false);
+
+  openAiPromptModal(): void {
+    if (!this.store.canCreateTasks()) return;
+    this.isAiPromptModalOpen.set(true);
+  }
+
+  closeAiPromptModal(): void {
+    this.isAiPromptModalOpen.set(false);
   }
 
   goToWorkspace(): void {

@@ -209,3 +209,22 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
   4. **Pill-First Geometry & Open-Air Row Lists:** All buttons, filters, switchers, and role tags adopt pill geometry (`border-radius: var(--radius-pill)`). Multi-column and multi-row lists utilize open-air rows separated by hairline dividers rather than nested box frames.
   5. **Tactile Physics & Micro-Interactions (`cubic-bezier(0.22, 1, 0.36, 1)`):** Smooth `-1px` button hover lifts, border highlight shifting toward sage green on cards/rows, and stacked avatars that fan out on group hover.
   6. **Frosted Backdrops:** Task Drawer and Modals use translucent scrims with `backdrop-filter: blur(6px)` and tactile slide-in/scale-in animations.
+
+
+---
+
+### FR-11: Dedicated "Prompt with AI" Voice & NLP Task Composer
+- **Status:** ✅ Implemented (v3.1)
+- **Description:** A standalone voice dictation and natural language task composer dialog (`app-ai-prompt-modal`) triggered from the Delivery Workspace and My Day landing screen, preserving the existing JSON Smart Importer untouched while enabling fluid, hands-free task composition during standups and sprint planning.
+- **Key Capabilities:**
+  1. **Live Voice Dictation (Web Speech API):**
+     - Continuous streaming speech recognition with interim transcript readout (`interimTranscript` signal).
+     - Pulsing Terracotta recording pill button (`Start Voice Prompt` / `Stop Listening`).
+     - Graceful, non-throwing degradation on unsupported browsers or denied microphone permissions.
+  2. **Dual-Mode NLP Extraction Engine:**
+     - **Mode 1: Local Deterministic NLP (Default):** Zero-backend offline regex and heuristics engine that extracts project codes, squad co-assignees, priority, story points, due dates, subtasks, and upstream dependencies.
+     - **Mode 2: Corporate LLM Proxy:** Configurable internal corporate endpoint persisted in `localStorage` with automatic, resilient failover to the local deterministic NLP engine if offline.
+  3. **Interactive Staging & Provenance Audit:**
+     - Review & edit staged deliverables prior to committing to workspace.
+     - Co-assignee toggles with real-time capacity budget comfort dots (`OPTIMAL`, `NEAR_CAPACITY`, `OVER_BUDGET`).
+     - Ingested tasks automatically record an `[AI_EXTRACTED]` entry under `ActivityActionType = 'AI_PROMPT_EXTRACTION'` in the immutable compliance audit ledger.

@@ -134,6 +134,8 @@ export type ActivityActionType =
   | 'REVIEW_NOTE_ADDED'
   | 'BLOCKER_TOGGLED'
   | 'SMART_IMPORT_BATCH'
+  | 'AI_PROMPT_EXTRACTION'
+  | 'AI_EXTRACTED'
   | 'PROJECT_CREATED'
   | 'MEMBER_ADDED'
   | 'WORKSPACE_RESET'
@@ -209,4 +211,19 @@ export interface SmartImportTaskItem {
 
 export interface SmartImportPayload {
   tasks: SmartImportTaskItem[];
+}
+
+export interface ExtractedTaskDraft {
+  id: string;
+  title: string;
+  description?: string;
+  projectId: string;
+  projectCode: string;
+  assigneeIds: string[];
+  priority: TaskPriority;
+  effortPoints: number;
+  dueDate: string;
+  dependencies: string[];
+  subtasks: string[];
+  confidence?: number;
 }

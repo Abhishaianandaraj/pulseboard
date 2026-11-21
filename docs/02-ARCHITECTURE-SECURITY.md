@@ -143,3 +143,25 @@ PulseBoard implements a granular role-based authorization model across 5 enterpr
 2. **Simulation / Demo Mode (Staging & Offline Workspaces):**
    - In environments where corporate IdP connectivity is unavailable (e.g., local developer laptops or air-gapped demo sandboxes), the `RoleSimulatorService` provides an in-memory session profile switcher.
    - Switching the role triggers an instant Signal emission, updating all UI action states dynamically without requiring a mock OAuth callback.
+
+
+---
+
+## 5. AI Copilot, Web Speech API & NLP Security Architecture
+
+### 5.1 Client-Side Web Speech Dictation
+- Uses the standard browser `Web Speech API` (`window.SpeechRecognition` / `window.webkitSpeechRecognition`).
+- Operates with `continuous = true` and `interimResults = true` in streaming mode.
+- Does not transmit continuous raw audio streams to untrusted remote third parties; audio transcription is performed locally by the browser engine or corporate speech proxy.
+- Permission states (`not-allowed`, `service-not-allowed`) fail gracefully without throwing unhandled exceptions, alerting the user through a non-intrusive alert pill.
+
+### 5.2 Dual-Mode NLP Engine & Corporate LLM Fallback
+- **Mode 1 (Local Deterministic NLP):** Operates 100% in-browser using compiled regular expressions, token boundary matching, and dictionary lookups against active project codes (`RAG-CORE`, `EVAL-GW`, `PULSE-V1`) and squad members. Zero external HTTP requests are made.
+- **Mode 2 (Corporate LLM Proxy):** When configured, requests are sent via standard HTTPS `fetch` with an abort controller timeout (6000ms). If the corporate endpoint returns a non-200 code or network failure occurs, the copilot automatically falls back to Local Deterministic NLP without interrupting the user.
+
+### 5.3 Text Sanitization & Injection Defense
+- All natural language prompt inputs (voice transcript or typed text) pass through strict input sanitization:
+  - Strips HTML `<script>` and malicious DOM elements: `text.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '').replace(/<[^>]+>/g, '')`.
+  - Strips invisible Unicode control characters (`\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F`).
+- Extracted deliverables undergo user staging validation before being committed to the reactive state store.
+- Deliverables created via the AI Copilot are tagged with `AI_PROMPT_EXTRACTION` in the append-only `ActivityLog`.

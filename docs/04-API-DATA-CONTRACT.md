@@ -377,3 +377,74 @@ function canEditTask(task: Task, user: TeamMember): boolean {
   return assignees.length === 0 || assignees.includes(user.id);
 }
 ```
+
+
+---
+
+## 6. AI Prompt Composer & Extracted Draft Contract
+
+### 6.1 ExtractedTaskDraft Interface
+```typescript
+export interface ExtractedTaskDraft {
+  id: string;                      // Temporary draft ID (e.g. "draft-1700000000-0")
+  title: string;                   // Clean deliverable title
+  description?: string;            // Contextual extraction notes
+  projectId: string;               // Matched Project ID
+  projectCode: string;             // Matched Project Code (e.g. "RAG-CORE")
+  assigneeIds: string[];           // Matched TeamMember IDs
+  priority: TaskPriority;          // "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+  effortPoints: number;            // Story points (1 - 21)
+  dueDate: string;                 // ISO date YYYY-MM-DD
+  dependencies: string[];          // Matched upstream task IDs (e.g. ["PB-103"])
+  subtasks: string[];              // Extracted checklist step strings
+  confidence?: number;             // Parser confidence score (0.0 - 1.0)
+}
+```
+
+### 6.2 ActivityActionType Extension
+```typescript
+export type ActivityActionType =
+  | 'TASK_CREATED'
+  | 'TASK_UPDATED'
+  | 'TASK_DELETED'
+  | 'STATUS_CHANGED'
+  | 'DEPLOYED_TO_SERVER'
+  | 'REVIEW_NOTE_ADDED'
+  | 'BLOCKER_TOGGLED'
+  | 'SMART_IMPORT_BATCH'
+  | 'AI_PROMPT_EXTRACTION'        // Deliverables created via Voice & NLP Copilot
+  | 'AI_EXTRACTED'                // Secondary provenance tag
+  | 'PROJECT_CREATED'
+  | 'MEMBER_ADDED'
+  | 'WORKSPACE_RESET'
+  | 'REWORK_PENALTY'
+  | 'SLIPPAGE_LOGGED'
+  | 'DEPENDENCY_UPDATED'
+  | 'CASCADE_SHIFT_DATES'
+  | 'MEMBER_ROLE_UPDATED';
+```
+
+### 6.3 Corporate LLM Extraction Request / Response Schema
+```json
+// POST /v1/chat/completions (Corporate Proxy)
+// Request Body:
+{
+  "prompt": "Assign Abhishai and Priya to build Postgres audit schema for Pulse V1...",
+  "systemPrompt": "You are the PulseBoard Corporate Task Extractor...",
+  "stream": false
+}
+
+// Response Body:
+[
+  {
+    "title": "Build Postgres audit log schema",
+    "projectCode": "PULSE-V1",
+    "assigneeNames": ["Abhishai", "Priya"],
+    "priority": "HIGH",
+    "effortPoints": 5,
+    "dueDate": "2026-11-26",
+    "dependencies": ["PB-103"],
+    "subtasks": ["Define migration", "Add indexing"]
+  }
+]
+```
