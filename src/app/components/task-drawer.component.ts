@@ -15,33 +15,41 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
           <!-- Role Gating Viewer Notice -->
           @if (store.isViewer()) {
             <div class="viewer-notice-strip">
-              <span>🔒 <strong>Viewer Session:</strong> You have read-only permissions. Switch personas in the top bar to test DEV or LEAD controls.</span>
+              <i class="ph-light ph-lock-key"></i>
+              <span><strong>Viewer Session:</strong> You have read-only permissions. Switch personas in the top bar to test DEV or LEAD controls.</span>
             </div>
           } @else if (isReadOnly(task)) {
             <div class="ownership-lock-badge">
-              <span>🔒 <strong>Read-Only · Teammate Task:</strong> You are viewing a deliverable assigned to a teammate. You may inspect details and add review notes, but property modifications are locked to assignees and Tech Leads.</span>
+              <i class="ph-light ph-lock-key"></i>
+              <span><strong>Read-Only · Teammate Task:</strong> You are viewing a deliverable assigned to a teammate. You may inspect details and add review notes, but property modifications are locked to assignees and Tech Leads.</span>
             </div>
           }
 
           <!-- Drawer Header -->
           <div class="drawer-header">
             <div class="header-left">
-              <span class="task-id-badge">{{ task.id }}</span>
-              <span class="project-code-tag">{{ getProjectCode(task.projectId) }}</span>
+              <span class="task-id-badge font-mono">{{ task.id }}</span>
+              <span class="project-code-tag font-mono">{{ getProjectCode(task.projectId) }}</span>
               <span class="priority-pill" [attr.data-priority]="task.priority">{{ task.priority }}</span>
               @if (task.blocked) {
-                <span class="blocked-badge">BLOCKED</span>
+                <span class="blocked-badge">
+                  <i class="ph-light ph-warning"></i> Blocked
+                </span>
               }
               @if (task.status === 'DEPLOYED') {
-                <span class="server-badge">READY FOR CHECK</span>
+                <span class="server-badge">
+                  <i class="ph-light ph-cloud-arrow-up"></i> Staged
+                </span>
               }
               @if (task.reworkCount > 0) {
                 <span class="rework-badge" title="Rework recovery overhead active">
-                  🔁 {{ task.reworkCount }} Rework (+{{ task.reworkCount * 3 }} pts)
+                  <i class="ph-light ph-arrows-counter-clockwise"></i> {{ task.reworkCount }} Rework (+{{ task.reworkCount * 3 }} pts)
                 </span>
               }
             </div>
-            <button type="button" class="btn-close" (click)="close()" title="Close Drawer (Esc)">✕</button>
+            <button type="button" class="btn-close" (click)="close()" title="Close Drawer (Esc)">
+              <i class="ph-light ph-x"></i>
+            </button>
           </div>
 
           <!-- Drawer Content Body -->
@@ -51,7 +59,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
               <label class="field-label">Task Title</label>
               <input
                 type="text"
-                class="input-title"
+                class="input-title font-serif"
                 [disabled]="isReadOnly(task)"
                 [ngModel]="task.title"
                 (ngModelChange)="updateField('title', $event)"
@@ -59,7 +67,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
               />
             </div>
 
-            <!-- Workflow Status Stepper Bar -->
+            <!-- Workflow Status Stepper Bar (Pill Geometry) -->
             <div class="field-group">
               <label class="field-label">Workflow Status</label>
               <div class="status-grid">
@@ -98,7 +106,8 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                   (click)="setStatus('DONE')"
                   [title]="!store.canSignOffDone() ? 'Requires Tech Lead or Admin sign-off' : 'Mark task as Done'"
                 >
-                  ✓ Done {{ !store.canSignOffDone() ? '(Lead)' : '' }}
+                  <i class="ph-light ph-check"></i>
+                  <span>Done {{ !store.canSignOffDone() ? '(Lead)' : '' }}</span>
                 </button>
               </div>
             </div>
@@ -107,7 +116,9 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
             @for (m of store.getTaskMembers(task); track m.id) {
               @if (store.getMemberLoadMetric(m.id).status === 'OVER_BUDGET') {
                 <div class="capacity-advisory-box">
-                  <div class="advisory-icon">⚠️</div>
+                  <div class="advisory-icon">
+                    <i class="ph-light ph-warning"></i>
+                  </div>
                   <div class="advisory-text">
                     <strong>Capacity Advisory:</strong>
                     {{ m.name }} is currently Over Budget
@@ -146,7 +157,9 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                         <span class="chip-role">({{ m.role }})</span>
                         <span class="capacity-dot" [attr.data-status]="store.getMemberLoadMetric(m.id).status" [title]="store.getMemberLoadMetric(m.id).label + ' (' + store.getMemberLoadMetric(m.id).effectiveLoad + '/' + m.capacityBudget + ' pts)'"></span>
                         @if (!isReadOnly(task) && store.getTaskMembers(task).length > 1) {
-                          <button type="button" class="btn-remove-assignee" (click)="removeAssignee(task, m.id)" title="Remove co-assignee">✕</button>
+                          <button type="button" class="btn-remove-assignee" (click)="removeAssignee(task, m.id)" title="Remove co-assignee">
+                            <i class="ph-light ph-x"></i>
+                          </button>
                         }
                       </span>
                     }
@@ -253,7 +266,9 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
               <div class="grace-buffer-panel">
                 <div class="drift-header">
                   <div class="drift-title-wrap">
-                    <span class="drift-icon">⏱️</span>
+                    <span class="drift-icon">
+                      <i class="ph-light ph-timer"></i>
+                    </span>
                     <div>
                       <h4 class="drift-title">Schedule Drift Detected (+{{ getDaysDrift(task) }} Days)</h4>
                       <p class="drift-sub">Baseline: {{ task.baselineDueDate || task.dueDate }} ➔ Forecast: {{ task.dueDate }}</p>
@@ -272,7 +287,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                       [disabled]="store.isViewer()"
                       (click)="setSlipReason(task, 'DEPENDENCY_BLOCKED')"
                     >
-                      🔗 Dependency Blocked
+                      <i class="ph-light ph-link"></i> Dependency Blocked
                     </button>
                     <button
                       type="button"
@@ -281,7 +296,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                       [disabled]="store.isViewer()"
                       (click)="setSlipReason(task, 'SCOPE_EXPANDED')"
                     >
-                      📐 Scope Expanded
+                      <i class="ph-light ph-arrows-out"></i> Scope Expanded
                     </button>
                     <button
                       type="button"
@@ -290,7 +305,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                       [disabled]="store.isViewer()"
                       (click)="setSlipReason(task, 'PRODUCTION_HOTFIX')"
                     >
-                      🚨 Production Hotfix
+                      <i class="ph-light ph-fire"></i> Production Hotfix
                     </button>
                     <button
                       type="button"
@@ -299,7 +314,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                       [disabled]="store.isViewer()"
                       (click)="setSlipReason(task, 'UNDERESTIMATED')"
                     >
-                      ⏳ Underestimated Effort
+                      <i class="ph-light ph-timer"></i> Underestimated Effort
                     </button>
                   </div>
 
@@ -337,7 +352,8 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                     class="btn-test-link"
                     title="Open live endpoint in new window"
                   >
-                    ↗ Open Endpoint
+                    <span>Open Endpoint</span>
+                    <i class="ph-light ph-arrow-square-out"></i>
                   </a>
                 }
               </div>
@@ -396,20 +412,22 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
             <div class="dependencies-section">
               <div class="section-title-row">
                 <div class="dep-title-wrap">
-                  <span class="dep-icon">🔗</span>
+                  <span class="dep-icon">
+                    <i class="ph-light ph-link"></i>
+                  </span>
                   <div>
                     <h4 class="section-title">Upstream Prerequisites & Dependencies</h4>
                     <p class="section-sub">Prerequisite deliverables required before this milestone can complete</p>
                   </div>
                 </div>
-                <span class="dep-count-badge">{{ (task.dependencies || []).length }} Prerequisite(s)</span>
+                <span class="dep-count-badge font-mono">{{ (task.dependencies || []).length }} Prerequisite(s)</span>
               </div>
 
               <!-- List of linked dependencies -->
               <div class="dep-list">
                 @for (depId of task.dependencies; track depId) {
                   <div class="dep-item">
-                    <span class="dep-id">{{ depId }}</span>
+                    <span class="dep-id font-mono">{{ depId }}</span>
                     <span class="dep-task-title" [title]="getTaskTitle(depId)">{{ getTaskTitle(depId) }}</span>
                     <span class="dep-status" [attr.data-status]="getTaskStatus(depId)">{{ getTaskStatus(depId) }}</span>
                     @if (!store.isViewer()) {
@@ -419,7 +437,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                         (click)="store.removeDependency(task.id, depId)"
                         title="Unlink prerequisite"
                       >
-                        ✕
+                        <i class="ph-light ph-x"></i>
                       </button>
                     }
                   </div>
@@ -487,7 +505,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                         (click)="store.deleteSubtask(task.id, st.id)"
                         title="Remove subtask"
                       >
-                        ✕
+                        <i class="ph-light ph-x"></i>
                       </button>
                     }
                   </div>
@@ -512,7 +530,9 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
             <div class="review-section">
               <div class="review-header">
                 <div class="review-title-wrap">
-                  <span class="review-icon">🛡️</span>
+                  <span class="review-icon">
+                    <i class="ph-light ph-shield-check"></i>
+                  </span>
                   <div>
                     <h4 class="section-title">Lead / QA Server Verification</h4>
                     <p class="section-sub">Sign-off audit trail & recovery scoring prior to closing</p>
@@ -526,7 +546,8 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                     (click)="quickApproveAndClose(task)"
                     title="1-Click Tech Lead Sign-off"
                   >
-                    ✓ Sign Off & Close to Done
+                    <i class="ph-light ph-check"></i>
+                    <span>Sign Off & Close</span>
                   </button>
                 }
               </div>
@@ -539,7 +560,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
                       <div class="review-author">
                         <span class="author-avatar">{{ note.authorAvatar }}</span>
                         <strong class="author-name">{{ note.author }}</strong>
-                        <span class="note-time">{{ note.timestamp }}</span>
+                        <span class="note-time font-mono">{{ note.timestamp }}</span>
                       </div>
                       <span class="verdict-tag" [attr.data-verdict]="note.verdict">
                         {{ note.verdict }}
@@ -600,7 +621,8 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
           <div class="drawer-footer">
             @if (!store.isViewer()) {
               <button type="button" class="btn-delete-task" (click)="deleteTask(task.id)">
-                Delete Task
+                <i class="ph-light ph-trash"></i>
+                <span>Delete Task</span>
               </button>
             }
             <button type="button" class="btn-close-drawer" (click)="close()">
@@ -615,254 +637,150 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
     .drawer-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(10, 14, 20, 0.45);
-      backdrop-filter: blur(2px);
+      background: rgba(20, 19, 18, 0.45);
+      backdrop-filter: blur(6px);
       z-index: 90;
       display: flex;
       justify-content: flex-end;
-      animation: fadeIn 0.15s ease-out;
+      animation: fadeIn 0.18s ease-out;
     }
     .drawer-panel {
-      width: 620px;
+      width: 630px;
       max-width: 92vw;
       height: 100%;
       background: var(--bg-surface);
-      border-left: 1px solid var(--border-subtle);
-      box-shadow: -8px 0 32px rgba(0, 0, 0, 0.25);
+      border-left: 1px solid var(--border-hairline);
+      box-shadow: var(--shadow-drawer);
       display: flex;
       flex-direction: column;
-      animation: slideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      animation: slideIn 0.25s var(--ease-tactile);
     }
     @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
     .viewer-notice-strip {
-      background: rgba(234, 179, 8, 0.15);
-      border-bottom: 1px solid rgba(234, 179, 8, 0.3);
-      color: #eab308;
-      padding: 8px 16px;
+      background: var(--accent-warn-tint);
+      border-bottom: 1px solid rgba(197, 155, 78, 0.3);
+      color: var(--accent-warn);
+      padding: 10px 20px;
       font-size: 11.5px;
-      font-weight: 500;
-    }
-    .ownership-lock-badge {
-      background: var(--bg-hover);
-      border-bottom: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-      padding: 8px 16px;
-      font-size: 11.5px;
-      font-weight: 500;
-    }
-    .full-width-span {
-      grid-column: 1 / -1;
-    }
-    .assignee-picker-box {
       display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      padding: 10px 12px;
-    }
-    .selected-assignees-wrap {
-      display: flex;
-      flex-wrap: wrap;
+      align-items: center;
       gap: 8px;
     }
-    .assignee-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 14px;
-      padding: 3px 10px 3px 4px;
-      font-size: 12px;
-      color: var(--text-primary);
-    }
-    .chip-avatar {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      color: #fff;
-      font-size: 9px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .chip-name {
-      font-weight: 600;
-    }
-    .chip-role {
-      font-size: 10px;
-      color: var(--text-muted);
-    }
-    .capacity-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #10b981;
-    }
-    .capacity-dot[data-status="NEAR_CAPACITY"] { background: #f59e0b; }
-    .capacity-dot[data-status="OVER_BUDGET"] { background: #ef4444; }
-    .btn-remove-assignee {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 11px;
-      padding: 0 2px;
-      line-height: 1;
-    }
-    .btn-remove-assignee:hover { color: #ef4444; }
-    .assignee-select-pool {
-      border-top: 1px dashed var(--border-subtle);
-      padding-top: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .pool-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .pool-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-    .pool-chip-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 11.5px;
+    .ownership-lock-badge {
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border-hairline);
       color: var(--text-secondary);
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .pool-chip-btn:hover {
-      border-color: var(--accent-primary);
-      color: var(--text-primary);
-    }
-    .pool-chip-btn.selected {
-      background: rgba(59, 130, 246, 0.12);
-      border-color: var(--accent-primary);
-      color: var(--accent-primary);
-      font-weight: 600;
-    }
-    .chip-avatar-sm {
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      color: #fff;
-      font-size: 8px;
-      font-weight: 700;
+      padding: 10px 20px;
+      font-size: 11.5px;
       display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 8px;
     }
-    .capacity-mini-dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: #10b981;
-    }
-    .capacity-mini-dot[data-status="NEAR_CAPACITY"] { background: #f59e0b; }
-    .capacity-mini-dot[data-status="OVER_BUDGET"] { background: #ef4444; }
 
     .drawer-header {
-      padding: 16px 24px;
-      border-bottom: 1px solid var(--border-subtle);
-      background: var(--bg-elevated);
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
     }
+
     .header-left {
       display: flex;
       align-items: center;
-      flex-wrap: wrap;
       gap: 8px;
+      flex-wrap: wrap;
     }
+
     .task-id-badge {
-      font-family: var(--font-mono);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
-      color: var(--text-secondary);
-      background: var(--bg-canvas);
-      padding: 3px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle);
-    }
-    .project-code-tag {
-      font-family: var(--font-mono);
-      font-size: 10.5px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 4px;
-      background: rgba(59, 130, 246, 0.15);
-      color: var(--accent-primary);
-      border: 1px solid rgba(59, 130, 246, 0.3);
-    }
-    .priority-pill {
-      font-size: 10.5px;
-      font-weight: 700;
+      color: var(--text-muted);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
       padding: 2px 8px;
-      border-radius: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
+      border-radius: var(--radius-pill);
     }
-    .priority-pill[data-priority="CRITICAL"] { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-    .priority-pill[data-priority="HIGH"] { background: rgba(249, 115, 22, 0.15); color: #f97316; }
-    .priority-pill[data-priority="MEDIUM"] { background: rgba(234, 179, 8, 0.15); color: #eab308; }
-    .priority-pill[data-priority="LOW"] { background: rgba(100, 116, 139, 0.15); color: #64748b; }
+
+    .project-code-tag {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-primary);
+      background: var(--accent-primary-tint);
+      border: 1px solid rgba(92, 115, 98, 0.25);
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+    }
+
+    .priority-pill {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+    }
+
+    .priority-pill[data-priority="CRITICAL"] {
+      background: var(--badge-critical-bg);
+      color: var(--badge-critical-text);
+    }
+    .priority-pill[data-priority="HIGH"] {
+      background: var(--badge-high-bg);
+      color: var(--badge-high-text);
+    }
 
     .blocked-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       font-size: 10px;
-      font-weight: 800;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: #ef4444;
-      color: #fff;
-    }
-    .server-badge {
-      font-size: 10px;
-      font-weight: 800;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: var(--status-deployed);
-      color: #fff;
-    }
-    .rework-badge {
-      font-size: 10.5px;
       font-weight: 700;
       padding: 2px 8px;
-      border-radius: 12px;
-      background: rgba(239, 68, 68, 0.12);
-      color: #ef4444;
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: var(--radius-pill);
+      background: var(--status-blocked-bg);
+      color: var(--status-blocked-text);
+    }
+
+    .server-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--status-deployed-bg);
+      color: var(--status-deployed-text);
+    }
+
+    .rework-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-warn-tint);
+      color: var(--accent-warn);
+      border: 1px solid rgba(197, 155, 78, 0.25);
     }
 
     .btn-close {
-      background: none;
+      background: transparent;
       border: none;
+      font-size: 18px;
       color: var(--text-muted);
-      font-size: 16px;
       cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      transition: var(--transition-tactile);
     }
-    .btn-close:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
+    .btn-close:hover { color: var(--text-primary); }
 
     .drawer-body {
       flex: 1;
@@ -878,377 +796,492 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
       flex-direction: column;
       gap: 6px;
     }
+
     .field-label {
       font-size: 11.5px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
       color: var(--text-secondary);
     }
+
     .input-title {
       font-size: 18px;
-      font-weight: 600;
+      font-weight: 500;
+      padding: 8px 12px;
+      border-radius: var(--radius-inner);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       color: var(--text-primary);
-      background: transparent;
-      border: 1px solid transparent;
-      border-radius: 6px;
-      padding: 6px 8px;
-      margin: -6px -8px;
       outline: none;
+      transition: var(--transition-tactile);
     }
     .input-title:focus {
-      border-color: var(--border-focus);
-      background: var(--bg-canvas);
+      background: var(--bg-surface);
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 2px var(--accent-primary-tint);
     }
 
     .status-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 6px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-pill);
+      padding: 3px;
     }
+
     .status-btn {
-      padding: 8px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 7px 10px;
+      border-radius: var(--radius-pill);
+      border: none;
+      background: transparent;
       color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 500;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: var(--transition-tactile);
     }
+
     .status-btn:hover:not(:disabled) {
-      border-color: var(--border-focus);
       color: var(--text-primary);
     }
+
     .status-btn.active {
-      background: var(--accent-primary);
-      color: #fff;
-      border-color: var(--accent-primary);
+      background: var(--bg-surface);
+      color: var(--accent-primary);
+      box-shadow: var(--shadow-sm);
+      font-weight: 600;
     }
-    .status-btn.btn-deployed.active {
-      background: var(--status-deployed);
-      border-color: var(--status-deployed);
-    }
+
     .status-btn.btn-done.active {
-      background: var(--status-done);
-      border-color: var(--status-done);
+      color: var(--status-done);
     }
+
     .status-btn:disabled {
-      opacity: 0.55;
+      opacity: 0.6;
       cursor: not-allowed;
     }
 
-    /* Capacity Advisory Box */
     .capacity-advisory-box {
       display: flex;
-      gap: 10px;
       align-items: flex-start;
-      background: rgba(239, 68, 68, 0.08);
-      border: 1px solid rgba(239, 68, 68, 0.25);
-      border-radius: 8px;
-      padding: 10px 14px;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: var(--radius-inner);
+      background: var(--accent-danger-tint);
+      border: 1px solid rgba(200, 109, 81, 0.3);
+      font-size: 12px;
+      color: var(--text-primary);
     }
+
     .advisory-icon {
       font-size: 16px;
-      line-height: 1;
-    }
-    .advisory-text {
-      font-size: 12px;
-      color: #ef4444;
-      line-height: 1.45;
+      color: var(--accent-danger);
     }
 
     .meta-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: 1fr 1fr;
       gap: 14px;
     }
 
+    .full-width-span {
+      grid-column: 1 / -1;
+    }
+
     .text-input, .select-input, .textarea-input {
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      padding: 8px 10px;
-      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: var(--radius-inner);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       color: var(--text-primary);
+      font-size: 12.5px;
       outline: none;
-      font-family: inherit;
+      transition: var(--transition-tactile);
     }
+
     .text-input:focus, .select-input:focus, .textarea-input:focus {
-      border-color: var(--border-focus);
+      background: var(--bg-surface);
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 2px var(--accent-primary-tint);
     }
+
     .text-input-sm {
-      padding: 6px 8px;
+      padding: 6px 10px;
       font-size: 12px;
     }
+
+    .assignee-picker-box {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-inner);
+      padding: 12px 14px;
+    }
+
+    .selected-assignees-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .assignee-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px 3px 4px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      font-size: 11.5px;
+    }
+
+    .chip-avatar {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      color: #ffffff;
+      font-size: 8.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chip-name { font-weight: 600; color: var(--text-primary); }
+    .chip-role { font-size: 10.5px; color: var(--text-muted); }
+
+    .capacity-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .capacity-dot[data-status="OPTIMAL"] { background: var(--status-done); }
+    .capacity-dot[data-status="NEAR_CAPACITY"] { background: var(--accent-warn); }
+    .capacity-dot[data-status="OVER_BUDGET"] { background: var(--accent-danger); }
+
+    .btn-remove-assignee {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      font-size: 11px;
+    }
+    .btn-remove-assignee:hover { color: var(--accent-danger); }
+
+    .assignee-select-pool {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-top: 1px solid var(--border-hairline);
+      padding-top: 8px;
+    }
+
+    .pool-label { font-size: 11px; color: var(--text-muted); }
+    .pool-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .pool-chip-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+      font-size: 11px;
+      cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+    .pool-chip-btn:hover { border-color: var(--accent-primary); }
+    .pool-chip-btn.selected {
+      background: var(--accent-primary-tint);
+      border-color: rgba(92, 115, 98, 0.4);
+      color: var(--accent-primary);
+      font-weight: 600;
+    }
+
+    .chip-avatar-sm {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      color: #ffffff;
+      font-size: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    .capacity-mini-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+    }
+    .capacity-mini-dot[data-status="OPTIMAL"] { background: var(--status-done); }
+    .capacity-mini-dot[data-status="NEAR_CAPACITY"] { background: var(--accent-warn); }
+    .capacity-mini-dot[data-status="OVER_BUDGET"] { background: var(--accent-danger); }
 
     /* Grace Buffer Panel */
     .grace-buffer-panel {
-      background: var(--bg-elevated);
-      border: 1px solid rgba(234, 179, 8, 0.4);
-      border-radius: 8px;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .drift-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .drift-title-wrap {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .drift-icon { font-size: 18px; }
-    .drift-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: #eab308;
-      margin: 0;
-    }
-    .drift-sub {
-      font-size: 11px;
-      color: var(--text-secondary);
-      margin: 0;
-    }
-    .grace-pill {
-      font-size: 10.5px;
-      font-weight: 700;
-      background: rgba(234, 179, 8, 0.15);
-      color: #eab308;
-      padding: 2px 7px;
-      border-radius: 4px;
-    }
-    .slip-reasons-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 6px;
-      margin-top: 4px;
-      margin-bottom: 8px;
-    }
-    .slip-reason-btn {
-      padding: 6px 10px;
-      font-size: 11.5px;
-      font-weight: 600;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      color: var(--text-secondary);
-      cursor: pointer;
-      text-align: left;
-      transition: all 0.12s ease;
-    }
-    .slip-reason-btn:hover:not(:disabled) {
-      border-color: #eab308;
-      color: var(--text-primary);
-    }
-    .slip-reason-btn.active {
-      background: rgba(234, 179, 8, 0.18);
-      border-color: #eab308;
-      color: #eab308;
-      font-weight: 700;
-    }
-
-    .url-input-wrap {
-      display: flex;
-      gap: 8px;
-    }
-    .url-input-wrap .text-input { flex: 1; }
-    .btn-test-link {
-      padding: 8px 12px;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--accent-primary);
-      text-decoration: none;
-      white-space: nowrap;
-      display: flex;
-      align-items: center;
-    }
-
-    .blocker-card {
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .blocker-card.is-blocked {
-      border-color: rgba(239, 68, 68, 0.4);
-      background: rgba(239, 68, 68, 0.04);
-    }
-    .blocker-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .blocker-heading {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin: 0 0 2px 0;
-    }
-    .blocker-sub {
-      font-size: 11.5px;
-      color: var(--text-secondary);
-      margin: 0;
-    }
-    .btn-blocker-toggle {
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #ef4444;
-      cursor: pointer;
-    }
-    .btn-blocker-toggle.btn-clear {
-      background: rgba(16, 185, 129, 0.15);
-      border-color: rgba(16, 185, 129, 0.3);
-      color: #10b981;
-    }
-
-    .subtasks-section, .review-section, .dependencies-section {
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
+      background: var(--accent-warn-tint);
+      border: 1px solid rgba(197, 155, 78, 0.3);
+      border-radius: var(--radius-inner);
       padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 12px;
     }
+
+    .drift-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .drift-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .drift-icon {
+      font-size: 20px;
+      color: var(--accent-warn);
+    }
+
+    .drift-title { font-size: 13.5px; font-weight: 600; margin: 0; color: var(--text-primary); }
+    .drift-sub { font-size: 11.5px; color: var(--text-secondary); margin: 2px 0 0 0; }
+
+    .grace-pill {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: rgba(197, 155, 78, 0.2);
+      color: var(--accent-warn);
+    }
+
+    .slip-reason-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .slip-reasons-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .slip-reason-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+      font-size: 11px;
+      cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+
+    .slip-reason-btn:hover { border-color: var(--accent-warn); }
+    .slip-reason-btn.active {
+      background: var(--accent-warn);
+      color: #ffffff;
+      border-color: var(--accent-warn);
+      font-weight: 600;
+    }
+
+    .url-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .url-input-wrap .text-input { flex: 1; }
+
+    .btn-test-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 14px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-primary-tint);
+      border: 1px solid rgba(92, 115, 98, 0.3);
+      color: var(--accent-primary);
+      text-decoration: none;
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: var(--transition-tactile);
+    }
+    .btn-test-link:hover {
+      background: var(--accent-primary);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    /* Blocker Card */
+    .blocker-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-inner);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .blocker-card.is-blocked {
+      background: var(--status-blocked-bg);
+      border-color: rgba(200, 109, 81, 0.35);
+    }
+
+    .blocker-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .blocker-heading { font-size: 13px; font-weight: 600; margin: 0; color: var(--text-primary); }
+    .blocker-sub { font-size: 11.5px; color: var(--text-secondary); margin: 2px 0 0 0; }
+
+    .btn-blocker-toggle {
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+
+    .btn-blocker-toggle.btn-clear {
+      background: var(--accent-danger);
+      color: #ffffff;
+      border-color: var(--accent-danger);
+    }
+
+    /* Dependencies Section */
+    .dependencies-section, .subtasks-section, .review-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-hairline);
+    }
+
+    .section-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
     .dep-title-wrap {
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .dep-icon { font-size: 18px; }
-    .dep-count-badge {
-      font-size: 10.5px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 12px;
-      background: var(--bg-surface);
-      color: var(--text-secondary);
-      border: 1px solid var(--border-subtle);
+
+    .dep-icon, .review-icon {
+      font-size: 18px;
+      color: var(--accent-primary);
     }
+
+    .section-title { font-size: 13.5px; font-weight: 600; margin: 0; color: var(--text-primary); }
+    .section-sub { font-size: 11px; color: var(--text-muted); margin: 2px 0 0 0; }
+
+    .dep-count-badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-muted);
+    }
+
     .dep-list {
       display: flex;
       flex-direction: column;
       gap: 6px;
     }
+
     .dep-item {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 8px;
-      padding: 6px 10px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-    }
-    .dep-id {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--accent-primary);
-    }
-    .dep-task-title {
+      padding: 8px 12px;
+      border-radius: var(--radius-inner);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
       font-size: 12px;
-      color: var(--text-primary);
-      flex: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
+
+    .dep-id { font-weight: 700; color: var(--text-muted); font-size: 11px; }
+    .dep-task-title { flex: 1; color: var(--text-primary); }
     .dep-status {
       font-size: 9.5px;
-      font-weight: 700;
+      font-weight: 600;
       padding: 1px 6px;
-      border-radius: 4px;
-      background: var(--bg-canvas);
-      color: var(--text-secondary);
+      border-radius: var(--radius-pill);
+      background: var(--bg-surface);
+      color: var(--text-muted);
     }
-    .dep-status[data-status="DONE"] { color: var(--status-done); }
-    .dep-status[data-status="DEPLOYED"] { color: var(--status-deployed); }
-    .dep-status[data-status="IN_PROGRESS"] { color: var(--status-inprogress); }
-    .btn-del-dep {
+
+    .btn-del-dep, .btn-del-subtask {
+      background: transparent;
       border: none;
-      background: none;
       color: var(--text-muted);
       cursor: pointer;
-      font-size: 12px;
+      display: flex;
+      align-items: center;
     }
-    .btn-del-dep:hover { color: #ef4444; }
+    .btn-del-dep:hover, .btn-del-subtask:hover { color: var(--accent-danger); }
+
+    .empty-deps, .empty-reviews {
+      padding: 14px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 11.5px;
+      background: var(--bg-subtle);
+      border-radius: var(--radius-inner);
+    }
+
     .add-dep-row {
       display: flex;
+      align-items: center;
       gap: 8px;
     }
-    .add-dep-row .select-input { flex: 1; }
-    .btn-add-dep {
-      padding: 6px 12px;
+
+    .btn-add-dep, .btn-add-sub {
+      padding: 7px 14px;
+      border-radius: var(--radius-pill);
       background: var(--accent-primary);
-      color: #fff;
+      color: #ffffff;
       border: none;
-      border-radius: 6px;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 600;
       cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition-tactile);
     }
-    .btn-add-dep:disabled { opacity: 0.5; cursor: not-allowed; }
-    .empty-deps {
-      padding: 10px;
-      text-align: center;
-      font-size: 11.5px;
-      color: var(--text-muted);
-    }
-    .dep-error-alert {
-      font-size: 11.5px;
-      color: #ef4444;
-      background: rgba(239, 68, 68, 0.1);
-      padding: 6px 10px;
-      border-radius: 6px;
-      border: 1px solid rgba(239, 68, 68, 0.25);
-    }
-    .section-title-row, .review-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .review-title-wrap {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .section-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin: 0;
-    }
-    .section-sub {
-      font-size: 11px;
-      color: var(--text-secondary);
-      margin: 0;
-    }
-    .btn-fast-approve {
-      padding: 5px 10px;
-      background: var(--status-done);
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-size: 11.5px;
-      font-weight: 700;
-      cursor: pointer;
+    .btn-add-dep:hover:not(:disabled), .btn-add-sub:hover {
+      background: var(--accent-primary-hover);
     }
 
     .subtasks-list {
@@ -1256,204 +1289,226 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
       flex-direction: column;
       gap: 6px;
     }
+
     .subtask-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 8px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
+      padding: 7px 12px;
+      border-radius: var(--radius-inner);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
     }
-    .subtask-label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      cursor: pointer;
-    }
-    .subtask-text {
-      font-size: 12.5px;
-      color: var(--text-primary);
-    }
+
     .subtask-row.completed .subtask-text {
       text-decoration: line-through;
       color: var(--text-muted);
     }
-    .btn-del-subtask {
-      border: none;
-      background: none;
-      color: var(--text-muted);
+
+    .subtask-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 12.5px;
     }
+
     .add-subtask-row {
       display: flex;
+      align-items: center;
       gap: 8px;
     }
+
     .add-subtask-row .text-input { flex: 1; }
-    .btn-add-sub {
-      padding: 6px 12px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      font-size: 12px;
+
+    .review-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-fast-approve {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      background: var(--status-done);
+      color: #ffffff;
+      border: none;
+      font-size: 11.5px;
       font-weight: 600;
-      color: var(--text-primary);
       cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+    .btn-fast-approve:hover {
+      transform: translateY(-1px);
     }
 
     .review-feed {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 200px;
-      overflow-y: auto;
     }
+
     .review-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      padding: 10px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-inner);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
+
     .review-card.approved {
-      border-left: 3px solid var(--status-done);
+      border-color: rgba(78, 124, 89, 0.4);
+      background: var(--status-done-bg);
     }
+
     .review-card.needs-changes {
-      border-left: 3px solid #ef4444;
+      border-color: rgba(200, 109, 81, 0.4);
+      background: var(--status-blocked-bg);
     }
+
     .review-card-meta {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 6px;
     }
+
     .review-author {
       display: flex;
       align-items: center;
       gap: 6px;
+      font-size: 11.5px;
     }
+
     .author-avatar {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
       background: var(--accent-primary);
-      color: #fff;
-      font-size: 10px;
+      color: #ffffff;
+      font-size: 8.5px;
       font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .author-name {
-      font-size: 12px;
-      color: var(--text-primary);
-    }
-    .note-time {
-      font-size: 10.5px;
-      color: var(--text-muted);
-    }
+
+    .note-time { font-size: 10px; color: var(--text-muted); }
+
     .verdict-tag {
-      font-size: 10px;
-      font-weight: 800;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: rgba(100, 116, 139, 0.15);
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-surface);
       color: var(--text-secondary);
     }
-    .verdict-tag[data-verdict="APPROVED"] {
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
-    }
-    .verdict-tag[data-verdict="NEEDS_CHANGES"] {
-      background: rgba(239, 68, 68, 0.15);
-      color: #ef4444;
-    }
+
+    .verdict-tag[data-verdict="APPROVED"] { color: var(--status-done); }
+    .verdict-tag[data-verdict="NEEDS_CHANGES"] { color: var(--accent-danger); }
+
     .note-body {
       font-size: 12px;
-      color: var(--text-secondary);
-      line-height: 1.4;
+      color: var(--text-primary);
+      line-height: 1.45;
       margin: 0;
-    }
-    .empty-reviews {
-      padding: 12px;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 12px;
     }
 
     .post-review-box {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      padding: 10px;
+      gap: 10px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-inner);
+      padding: 14px;
     }
+
     .post-review-controls {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
     }
+
     .verdict-select {
       display: flex;
       align-items: center;
       gap: 6px;
       flex: 1;
     }
+
     .select-sm {
-      padding: 4px 8px;
-      font-size: 12px;
+      padding: 5px 8px;
+      font-size: 11.5px;
       flex: 1;
     }
+
     .btn-post-review {
-      padding: 6px 14px;
+      padding: 6px 16px;
       background: var(--accent-primary);
       color: #fff;
       border: none;
-      border-radius: 6px;
-      font-size: 12px;
+      border-radius: var(--radius-pill);
+      font-size: 11.5px;
       font-weight: 600;
       cursor: pointer;
+      transition: var(--transition-tactile);
     }
-    .btn-post-review:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+    .btn-post-review:hover:not(:disabled) {
+      background: var(--accent-primary-hover);
+      transform: translateY(-1px);
     }
+
     .rbac-hint-text {
-      font-size: 11px;
+      font-size: 10.5px;
       color: var(--text-muted);
-      margin: 4px 0 0 0;
+      margin: 0;
     }
 
     .drawer-footer {
-      padding: 14px 24px;
-      border-top: 1px solid var(--border-subtle);
-      background: var(--bg-elevated);
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
+
     .btn-delete-task {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       border: none;
       background: transparent;
-      color: #ef4444;
-      font-size: 12.5px;
+      color: var(--accent-danger);
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
+      transition: var(--transition-tactile);
     }
-    .btn-delete-task:hover { text-decoration: underline; }
+    .btn-delete-task:hover {
+      text-decoration: underline;
+    }
+
     .btn-close-drawer {
-      padding: 7px 16px;
+      padding: 8px 18px;
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-pill);
       color: var(--text-primary);
-      font-size: 12.5px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 500;
       cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+    .btn-close-drawer:hover {
+      background: var(--bg-subtle);
+      transform: translateY(-1px);
     }
   `]
 })
@@ -1487,7 +1542,6 @@ export class TaskDrawerComponent {
     let updated: string[];
     if (current.includes(memberId)) {
       if (current.length === 1) {
-        // Keep at least one assignee
         return;
       }
       updated = current.filter(id => id !== memberId);

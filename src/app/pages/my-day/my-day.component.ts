@@ -1,5 +1,6 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TaskStoreService } from '../../services/task-store.service';
 import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
@@ -7,10 +8,10 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
 @Component({
   selector: 'app-my-day',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="my-day-wrapper custom-scroll">
-      <!-- 1. Warm Greeting & Personal Pace Health Card -->
+      <!-- 1. Warm Editorial Hero Card & Personal Pace Health -->
       <section class="personal-hero-card">
         <div class="hero-header-row">
           <div class="hero-avatar-col">
@@ -18,192 +19,233 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
               {{ store.currentUser().avatar }}
             </span>
           </div>
+
           <div class="hero-text-col">
             <div class="hero-name-row">
-              <h1 class="hero-greeting">{{ greeting() }}, {{ store.currentUser().name.split(' ')[0] }}</h1>
+              <h1 class="hero-greeting font-serif">{{ greeting() }}, {{ store.currentUser().name.split(' ')[0] }}<span class="brand-dot">.</span></h1>
               <span class="hero-role-pill" [attr.data-role]="store.currentUserRole()">
                 {{ store.currentUser().role }} [{{ store.currentUserRole() }}]
               </span>
             </div>
-            <p class="hero-subtext">
-              Here is your focused daily delivery queue across {{ store.currentUser().squad }}.
-            </p>
+
+            <!-- Inline Italic Daily Intention -->
+            <div class="daily-intention-row">
+              <span class="intention-icon">
+                <i class="ph-light ph-feather"></i>
+              </span>
+              <input
+                type="text"
+                class="intention-input font-serif"
+                [ngModel]="dailyIntention()"
+                (ngModelChange)="updateIntention($event)"
+                placeholder="What is your focus for today?..."
+                title="Click to edit your daily focus intention"
+              />
+            </div>
           </div>
 
-          <!-- Pace Health Box -->
-          <div class="hero-pace-box">
-            <div class="pace-status-row">
-              <span class="pace-dot" [class.dot-optimal]="myLoadMetric().status === 'OPTIMAL'" [class.dot-near]="myLoadMetric().status === 'NEAR_CAPACITY'" [class.dot-over]="myLoadMetric().status === 'OVER_BUDGET'"></span>
-              <strong class="pace-label">{{ myLoadMetric().label }}</strong>
-              <span class="pace-info-bubble" [title]="myLoadMetric().activePoints + ' active story points + ' + (myLoadMetric().reworkCount * 3) + 'pt recovery buffer = ' + myLoadMetric().effectiveLoad + ' pts / ' + myLoadMetric().capacityBudget + ' budget'">
-                ⓘ
+          <!-- Circular SVG Completion Ring & Pace Health Box -->
+          <div class="hero-stats-group">
+            <!-- Circular Completion Ring -->
+            <div class="completion-ring-box" title="{{ myCompletedToday() }} of {{ myTotalTasks() }} tasks closed">
+              <svg class="ring-svg" width="46" height="46" viewBox="0 0 46 46">
+                <circle class="ring-track" cx="23" cy="23" r="18" fill="none" stroke-width="3"></circle>
+                <circle
+                  class="ring-progress"
+                  cx="23"
+                  cy="23"
+                  r="18"
+                  fill="none"
+                  stroke-width="3"
+                  stroke-dasharray="113.097"
+                  [attr.stroke-dashoffset]="113.097 - (113.097 * completionPercent()) / 100"
+                ></circle>
+              </svg>
+              <span class="ring-label font-mono">{{ completionPercent() }}%</span>
+            </div>
+
+            <!-- Pace Health Box -->
+            <div class="hero-pace-box">
+              <div class="pace-status-row">
+                <span class="pace-dot" [class.dot-optimal]="myLoadMetric().status === 'OPTIMAL'" [class.dot-near]="myLoadMetric().status === 'NEAR_CAPACITY'" [class.dot-over]="myLoadMetric().status === 'OVER_BUDGET'"></span>
+                <strong class="pace-label">{{ myLoadMetric().label }}</strong>
+                <span class="pace-info-bubble" [title]="myLoadMetric().activePoints + ' active story points + ' + (myLoadMetric().reworkCount * 3) + 'pt recovery buffer = ' + myLoadMetric().effectiveLoad + ' pts / ' + myLoadMetric().capacityBudget + ' budget'">
+                  <i class="ph-light ph-info"></i>
+                </span>
+              </div>
+              <div class="pace-track-mini">
+                <div
+                  class="pace-fill-mini"
+                  [class.fill-optimal]="myLoadMetric().status === 'OPTIMAL'"
+                  [class.fill-near]="myLoadMetric().status === 'NEAR_CAPACITY'"
+                  [class.fill-over]="myLoadMetric().status === 'OVER_BUDGET'"
+                  [style.width.%]="Math.min(100, (myLoadMetric().effectiveLoad / myLoadMetric().capacityBudget) * 100)"
+                ></div>
+              </div>
+              <span class="pace-caption font-mono">
+                {{ myLoadMetric().effectiveLoad }} of {{ myLoadMetric().capacityBudget }} pts allocated
               </span>
             </div>
-            <div class="pace-track-mini">
-              <div
-                class="pace-fill-mini"
-                [class.fill-optimal]="myLoadMetric().status === 'OPTIMAL'"
-                [class.fill-near]="myLoadMetric().status === 'NEAR_CAPACITY'"
-                [class.fill-over]="myLoadMetric().status === 'OVER_BUDGET'"
-                [style.width.%]="Math.min(100, (myLoadMetric().effectiveLoad / myLoadMetric().capacityBudget) * 100)"
-              ></div>
-            </div>
-            <span class="pace-caption font-mono">
-              {{ myLoadMetric().effectiveLoad }} of {{ myLoadMetric().capacityBudget }} pts allocated
-            </span>
           </div>
         </div>
       </section>
 
       <!-- 2. Main Two-Column Delivery Layout -->
       <div class="my-day-grid">
-        <!-- LEFT COLUMN: My Active Deliverables -->
+        <!-- LEFT COLUMN: Open-Air Active Deliverables -->
         <div class="my-day-col">
-          <div class="section-card-header">
-            <div class="card-title-group">
-              <span class="section-icon">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-              </span>
-              <h2 class="section-title">My Active Tasks</h2>
-              <span class="section-count-badge">{{ myActiveTasks().length }}</span>
+          <div class="clean-surface-box">
+            <div class="section-card-header">
+              <div class="card-title-group">
+                <span class="section-icon">
+                  <i class="ph-light ph-sun-horizon"></i>
+                </span>
+                <h2 class="section-title font-serif">My Active Tasks</h2>
+                <span class="section-count-badge">{{ myActiveTasks().length }}</span>
+              </div>
+              <button type="button" class="btn-jump-workspace" (click)="goToWorkspace()">
+                <span>Open Workspace</span>
+                <i class="ph-light ph-arrow-right"></i>
+              </button>
             </div>
-            <button type="button" class="btn-jump-workspace" (click)="goToWorkspace()">
-              Open Workspace →
-            </button>
-          </div>
 
-          @if (myActiveTasks().length > 0) {
-            <div class="tasks-flow-list">
-              @for (task of myActiveTasks(); track task.id) {
-                <div class="my-task-card" (click)="openTask(task.id)">
-                  <div class="my-task-top">
-                    <div class="my-task-id-row">
-                      <span class="task-id font-mono">{{ task.id }}</span>
-                      @if (getProject(task.projectId); as proj) {
-                        <span class="proj-badge-mini" [style.color]="proj.color">{{ proj.code }}</span>
-                      }
-                      <span class="priority-mini" [attr.data-priority]="task.priority">{{ task.priority }}</span>
-                      @if (task.blocked) {
-                        <span class="blocked-badge-mini">Blocked</span>
-                      }
-                    </div>
-                    <span class="effort-badge font-mono">{{ task.effortPoints }}p</span>
-                  </div>
-
-                  <strong class="my-task-title">{{ task.title }}</strong>
-
-                  <div class="my-task-bottom">
-                    <div class="task-meta-left">
-                      <span class="task-due-date font-mono text-muted text-xs">Due {{ task.dueDate }}</span>
-                      @if (task.subtasks.length > 0) {
-                        <span class="checklist-badge text-xs font-mono">
-                          ☑ {{ getCompletedSubtasks(task) }}/{{ task.subtasks.length }}
-                        </span>
-                      }
-                      <div class="avatar-stack">
-                        @for (m of store.getTaskMembers(task); track m.id) {
-                          <span class="avatar-stack-item" [style.background-color]="m.color" [title]="m.name">{{ m.avatar }}</span>
+            @if (myActiveTasks().length > 0) {
+              <div class="open-air-task-list">
+                @for (task of myActiveTasks(); track task.id) {
+                  <div class="open-air-row" (click)="openTask(task.id)">
+                    <div class="row-main">
+                      <div class="row-top-meta">
+                        <span class="task-id font-mono">{{ task.id }}</span>
+                        @if (getProject(task.projectId); as proj) {
+                          <span class="proj-badge-mini" [style.color]="proj.color">{{ proj.code }}</span>
                         }
+                        <span class="priority-mini" [attr.data-priority]="task.priority">{{ task.priority }}</span>
+                        @if (task.blocked) {
+                          <span class="blocked-badge-mini">
+                            <i class="ph-light ph-warning"></i> Blocked
+                          </span>
+                        }
+                        <span class="effort-badge font-mono">{{ task.effortPoints }}p</span>
+                      </div>
+
+                      <strong class="row-title">{{ task.title }}</strong>
+
+                      <div class="row-bottom-meta">
+                        <span class="task-due-date font-mono text-muted">
+                          <i class="ph-light ph-calendar"></i> Due {{ task.dueDate }}
+                        </span>
+                        @if (task.subtasks.length > 0) {
+                          <span class="checklist-badge font-mono">
+                            <i class="ph-light ph-check-square"></i> {{ getCompletedSubtasks(task) }}/{{ task.subtasks.length }}
+                          </span>
+                        }
+                        <div class="avatar-stack">
+                          @for (m of store.getTaskMembers(task); track m.id) {
+                            <span class="avatar-stack-item" [style.background-color]="m.color" [title]="m.name">{{ m.avatar }}</span>
+                          }
+                        </div>
                       </div>
                     </div>
 
-                    <!-- 1-Click Status Progression Action -->
-                    <div class="task-action-wrap" (click)="$event.stopPropagation()">
+                    <!-- 1-Click Status Progression Pill -->
+                    <div class="row-action-wrap" (click)="$event.stopPropagation()">
                       @if (task.status === 'TODO') {
                         <button type="button" class="btn-progression btn-start" (click)="advanceStatus(task, 'IN_PROGRESS')">
-                          ▶ Start Working
+                          <i class="ph-light ph-play"></i>
+                          <span>Start Working</span>
                         </button>
                       } @else if (task.status === 'IN_PROGRESS') {
                         <button type="button" class="btn-progression btn-deploy" (click)="advanceStatus(task, 'DEPLOYED')">
-                          Deploy to Server
+                          <i class="ph-light ph-cloud-arrow-up"></i>
+                          <span>Deploy to Staging</span>
                         </button>
                       } @else if (task.status === 'DEPLOYED') {
                         @if (store.canSignOffDone()) {
                           <button type="button" class="btn-progression btn-done" (click)="advanceStatus(task, 'DONE')">
-                            ✓ Verify &amp; Close
+                            <i class="ph-light ph-check"></i>
+                            <span>Verify &amp; Close</span>
                           </button>
                         } @else {
-                          <span class="waiting-lead-tag">Awaiting Lead Sign-Off</span>
+                          <span class="waiting-lead-tag">
+                            <i class="ph-light ph-clock"></i> Awaiting Lead
+                          </span>
                         }
                       }
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-          } @else {
-            <div class="empty-state-box">
-              <span class="empty-icon">✓</span>
-              <strong>All caught up!</strong>
-              <p>You have zero pending tasks on your active board. Head to the workspace to pick up new work.</p>
-              <button type="button" class="btn-empty-action" (click)="goToWorkspace()">Explore Workspace</button>
-            </div>
-          }
-        </div>
-
-        <!-- RIGHT COLUMN: Needs Attention & Project Pulse -->
-        <div class="my-day-col">
-          <!-- Attention / Review Queue -->
-          <div class="attention-card">
-            <div class="section-card-header">
-              <div class="card-title-group">
-                <span class="section-icon">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                  </svg>
-                </span>
-                <h2 class="section-title">Needs My Attention</h2>
-                <span class="section-count-badge attention-badge">{{ attentionItems().length }}</span>
-              </div>
-            </div>
-
-            @if (attentionItems().length > 0) {
-              <div class="attention-list">
-                @for (item of attentionItems(); track item.id) {
-                  <div class="attention-item" (click)="openTask(item.id)">
-                    <div class="attention-item-top">
-                      <span class="font-mono text-muted text-xs">{{ item.id }}</span>
-                      <span class="attention-tag" [class.tag-deployed]="item.status === 'DEPLOYED'" [class.tag-blocked]="item.blocked">
-                        {{ item.status === 'DEPLOYED' ? 'Ready for Lead Check' : (item.blocked ? 'Blocked' : 'Needs Changes') }}
-                      </span>
-                    </div>
-                    <strong class="attention-title">{{ item.title }}</strong>
-                    <div class="attention-footer text-xs">
-                      <span class="text-secondary">{{ getMemberName(item.assigneeId) }}</span>
-                      <span class="font-mono text-muted">Due {{ item.dueDate }}</span>
                     </div>
                   </div>
                 }
               </div>
             } @else {
+              <div class="empty-state-box">
+                <span class="empty-icon"><i class="ph-light ph-check-circle"></i></span>
+                <strong class="font-serif">All caught up!</strong>
+                <p>You have zero pending tasks on your active board. Head to the workspace to pick up new work.</p>
+                <button type="button" class="btn-empty-action" (click)="goToWorkspace()">Explore Workspace</button>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Needs Attention & Project Pulse -->
+        <div class="my-day-col">
+          <!-- Attention / Review Queue -->
+          <div class="clean-surface-box">
+            <div class="section-card-header">
+              <div class="card-title-group">
+                <span class="section-icon attention-icon-wrap">
+                  <i class="ph-light ph-warning-circle"></i>
+                </span>
+                <h2 class="section-title font-serif">Needs Attention</h2>
+                <span class="section-count-badge attention-badge">{{ attentionItems().length }}</span>
+              </div>
+            </div>
+
+            @if (attentionItems().length > 0) {
+              <div class="open-air-task-list">
+                @for (item of attentionItems(); track item.id) {
+                  <div class="open-air-row attention-row" (click)="openTask(item.id)">
+                    <div class="row-main">
+                      <div class="row-top-meta">
+                        <span class="font-mono text-muted text-xs">{{ item.id }}</span>
+                        <span class="attention-tag" [class.tag-deployed]="item.status === 'DEPLOYED'" [class.tag-blocked]="item.blocked">
+                          {{ item.status === 'DEPLOYED' ? 'Ready for Lead Check' : (item.blocked ? 'Blocked' : 'Needs Changes') }}
+                        </span>
+                      </div>
+                      <strong class="row-title">{{ item.title }}</strong>
+                      <div class="row-bottom-meta">
+                        <span class="text-secondary text-xs">{{ getMemberName(item.assigneeId) }}</span>
+                        <span class="font-mono text-muted text-xs">Due {{ item.dueDate }}</span>
+                      </div>
+                    </div>
+                    <span class="row-nav-arrow">
+                      <i class="ph-light ph-arrow-right"></i>
+                    </span>
+                  </div>
+                }
+              </div>
+            } @else {
               <div class="calm-box">
+                <i class="ph-light ph-sparkle"></i>
                 <span>No urgent blockers or pending reviews requiring your action.</span>
               </div>
             }
           </div>
 
           <!-- Recent Project Pulse / Activity Log -->
-          <div class="pulse-feed-card">
+          <div class="clean-surface-box">
             <div class="section-card-header">
               <div class="card-title-group">
                 <span class="section-icon">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                  </svg>
+                  <i class="ph-light ph-wave-sine"></i>
                 </span>
-                <h2 class="section-title">Recent Project Pulse</h2>
+                <h2 class="section-title font-serif">Recent Project Pulse</h2>
               </div>
             </div>
 
             <div class="activity-feed-list custom-scroll">
               @for (log of recentLogs(); track log.id) {
                 <div class="activity-feed-item">
-                  <span class="feed-avatar" style="background: var(--color-primary)">{{ log.actorAvatar }}</span>
+                  <span class="feed-avatar" style="background: var(--accent-primary)">{{ log.actorAvatar }}</span>
                   <div class="feed-content">
                     <div class="feed-top-row">
                       <strong class="feed-actor">{{ log.actor }}</strong>
@@ -221,155 +263,228 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
   `,
   styles: [`
     .my-day-wrapper {
-      padding: 24px;
+      padding: 24px 28px;
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 22px;
       height: 100%;
       overflow-y: auto;
     }
 
     .personal-hero-card {
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      padding: 20px 24px;
-      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      padding: 24px 28px;
+      box-shadow: var(--shadow-soft);
     }
 
     .hero-header-row {
       display: flex;
       align-items: center;
-      gap: 18px;
+      gap: 20px;
       flex-wrap: wrap;
     }
 
     .user-hero-avatar {
-      width: 48px;
-      height: 48px;
+      width: 52px;
+      height: 52px;
       border-radius: 50%;
       color: #ffffff;
-      font-size: 16px;
-      font-weight: 800;
+      font-size: 18px;
+      font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     }
 
     .hero-text-col {
       flex: 1;
-      min-width: 240px;
+      min-width: 260px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
     }
 
     .hero-name-row {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       gap: 12px;
       flex-wrap: wrap;
     }
 
     .hero-greeting {
-      font-size: 20px;
-      font-weight: 800;
+      font-size: 26px;
+      font-weight: 500;
       color: var(--text-primary);
       margin: 0;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-dot {
+      color: var(--accent-primary);
     }
 
     .hero-role-pill {
       font-size: 11px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 12px;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
     }
 
     .hero-role-pill[data-role="LEAD"], .hero-role-pill[data-role="ADMIN"] {
-      color: #059669;
-      border-color: #10b981;
-      background: rgba(16, 185, 129, 0.1);
+      color: var(--status-done);
+      border-color: rgba(78, 124, 89, 0.3);
+      background: rgba(78, 124, 89, 0.1);
     }
 
-    .hero-subtext {
-      font-size: 13px;
+    .hero-role-pill[data-role="QA"] {
+      color: var(--status-deployed);
+      border-color: rgba(123, 104, 174, 0.3);
+      background: rgba(123, 104, 174, 0.1);
+    }
+
+    .daily-intention-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .intention-icon {
+      color: var(--accent-primary);
+      font-size: 14px;
+    }
+
+    .intention-input {
+      font-style: italic;
+      font-size: 13.5px;
       color: var(--text-secondary);
-      margin: 0;
+      background: transparent;
+      border: none;
+      outline: none;
+      width: 100%;
+      border-bottom: 1px dashed transparent;
+      padding: 2px 0;
+      transition: var(--transition-tactile);
+    }
+
+    .intention-input:hover, .intention-input:focus {
+      color: var(--text-primary);
+      border-bottom-color: var(--accent-primary);
+    }
+
+    .hero-stats-group {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .completion-ring-box {
+      position: relative;
+      width: 46px;
+      height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ring-svg {
+      transform: rotate(-90deg);
+    }
+
+    .ring-track {
+      stroke: var(--border-hairline);
+    }
+
+    .ring-progress {
+      stroke: var(--accent-primary);
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.5s var(--ease-tactile);
+    }
+
+    .ring-label {
+      position: absolute;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-primary);
     }
 
     .hero-pace-box {
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 10px 14px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      min-width: 220px;
+      gap: 5px;
+      min-width: 190px;
+      padding: 10px 14px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-inner);
     }
 
     .pace-status-row {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .pace-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
     }
 
-    .dot-optimal { background: #10b981; }
-    .dot-near { background: #f59e0b; }
-    .dot-over { background: #ef4444; }
+    .dot-optimal { background: var(--status-done); }
+    .dot-near { background: var(--accent-warn); }
+    .dot-over { background: var(--accent-danger); }
 
     .pace-label {
       font-size: 12px;
+      font-weight: 600;
       color: var(--text-primary);
-      flex: 1;
     }
 
     .pace-info-bubble {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--text-muted);
       cursor: help;
+      margin-left: auto;
     }
 
     .pace-track-mini {
-      height: 6px;
-      background: var(--bg-elevated);
-      border-radius: 3px;
+      height: 5px;
+      background: var(--border-hairline);
+      border-radius: var(--radius-pill);
       overflow: hidden;
     }
 
     .pace-fill-mini {
       height: 100%;
-      border-radius: 3px;
-      transition: width 0.2s ease;
+      border-radius: var(--radius-pill);
+      transition: width 0.3s var(--ease-tactile);
     }
 
-    .fill-optimal { background: #10b981; }
-    .fill-near { background: #f59e0b; }
-    .fill-over { background: #ef4444; }
+    .fill-optimal { background: var(--status-done); }
+    .fill-near { background: var(--accent-warn); }
+    .fill-over { background: var(--accent-danger); }
 
     .pace-caption {
       font-size: 10px;
       color: var(--text-muted);
     }
 
+    /* 2. Grid Layout */
     .my-day-grid {
       display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 20px;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 22px;
+      align-items: start;
     }
 
-    @media (max-width: 960px) {
+    @media (max-width: 900px) {
       .my-day-grid {
         grid-template-columns: 1fr;
       }
@@ -381,11 +496,21 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
       gap: 20px;
     }
 
+    .clean-surface-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+
     .section-card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
+      gap: 12px;
     }
 
     .card-title-group {
@@ -396,301 +521,302 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
 
     .section-icon {
       font-size: 16px;
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
+    }
+
+    .attention-icon-wrap {
+      color: var(--accent-warn);
     }
 
     .section-title {
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 16px;
+      font-weight: 500;
       color: var(--text-primary);
       margin: 0;
     }
 
     .section-count-badge {
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      font-weight: 600;
       padding: 1px 7px;
-      border-radius: 10px;
-      background: var(--bg-elevated);
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
-      border: 1px solid var(--border-subtle);
     }
 
     .attention-badge {
-      background: rgba(245, 158, 11, 0.15);
-      border-color: #f59e0b;
-      color: #d97706;
+      background: var(--accent-warn-tint);
+      color: var(--accent-warn);
+      border-color: rgba(197, 155, 78, 0.3);
     }
 
     .btn-jump-workspace {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--color-primary);
-      background: transparent;
-      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 500;
       cursor: pointer;
-      transition: color 0.1s ease;
+      transition: var(--transition-tactile);
     }
 
     .btn-jump-workspace:hover {
-      text-decoration: underline;
-    }
-
-    .tasks-flow-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .my-task-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 14px 16px;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      box-shadow: var(--shadow-sm);
-      transition: all 0.12s ease;
-    }
-
-    .my-task-card:hover {
-      border-color: var(--color-primary);
+      background: var(--accent-primary-tint);
+      border-color: rgba(92, 115, 98, 0.3);
+      color: var(--accent-primary);
       transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
     }
 
-    .my-task-top {
+    /* Open-Air Row List Architecture */
+    .open-air-task-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .open-air-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 16px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-hairline);
+      cursor: pointer;
+      transition: var(--transition-tactile);
     }
 
-    .my-task-id-row {
+    .open-air-row:last-child {
+      border-bottom: none;
+    }
+
+    .open-air-row:hover {
+      background: var(--bg-subtle);
+      padding-left: 24px;
+    }
+
+    .row-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .row-top-meta {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      font-size: 11px;
     }
 
     .task-id {
-      font-size: 11px;
       color: var(--text-muted);
+      font-size: 11px;
     }
 
     .proj-badge-mini {
-      font-size: 10.5px;
       font-weight: 700;
-      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
     }
 
     .priority-mini {
       font-size: 9.5px;
-      font-weight: 700;
-      padding: 1px 5px;
-      border-radius: 3px;
-      background: var(--badge-medium-bg);
-      color: var(--badge-medium-text);
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
     }
 
     .priority-mini[data-priority="CRITICAL"] {
       background: var(--badge-critical-bg);
       color: var(--badge-critical-text);
     }
+    .priority-mini[data-priority="HIGH"] {
+      background: var(--badge-high-bg);
+      color: var(--badge-high-text);
+    }
 
     .blocked-badge-mini {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       font-size: 9.5px;
-      font-weight: 700;
-      padding: 1px 5px;
-      border-radius: 3px;
-      background: rgba(239, 68, 68, 0.15);
-      color: #dc2626;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: var(--radius-pill);
+      background: var(--status-blocked-bg);
+      color: var(--status-blocked-text);
     }
 
     .effort-badge {
-      font-size: 11px;
-      color: var(--text-muted);
+      font-size: 10.5px;
       font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-subtle);
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      margin-left: auto;
     }
 
-    .my-task-title {
+    .row-title {
       font-size: 13.5px;
+      font-weight: 600;
       color: var(--text-primary);
-      line-height: 1.4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .my-task-bottom {
+    .row-bottom-meta {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-top: 4px;
+      gap: 12px;
+      font-size: 11.5px;
     }
 
-    .task-meta-left {
+    .task-due-date, .checklist-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+    }
+
+    /* Status Progression Pill Buttons */
+    .row-action-wrap {
       display: flex;
       align-items: center;
-      gap: 8px;
     }
 
     .btn-progression {
-      padding: 5px 10px;
-      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: var(--radius-pill);
       font-size: 11.5px;
-      font-weight: 700;
+      font-weight: 600;
+      border: 1px solid transparent;
       cursor: pointer;
-      border: none;
-      transition: background-color 0.15s ease;
+      transition: var(--transition-tactile);
+      white-space: nowrap;
     }
 
     .btn-start {
-      background: var(--color-primary);
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
+      border-color: rgba(92, 115, 98, 0.3);
+    }
+
+    .btn-start:hover {
+      background: var(--accent-primary);
       color: #ffffff;
+      transform: translateY(-1px);
     }
 
     .btn-deploy {
-      background: #7c3aed;
+      background: var(--status-deployed-bg);
+      color: var(--status-deployed-text);
+      border-color: rgba(123, 104, 174, 0.3);
+    }
+
+    .btn-deploy:hover {
+      background: var(--status-deployed);
       color: #ffffff;
+      transform: translateY(-1px);
     }
 
     .btn-done {
-      background: #10b981;
+      background: var(--status-done-bg);
+      color: var(--status-done-text);
+      border-color: rgba(78, 124, 89, 0.3);
+    }
+
+    .btn-done:hover {
+      background: var(--status-done);
       color: #ffffff;
+      transform: translateY(-1px);
     }
 
     .waiting-lead-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       font-size: 11px;
-      color: #7c3aed;
-      font-weight: 600;
-      background: rgba(124, 58, 237, 0.1);
-      padding: 3px 8px;
-      border-radius: 4px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
     }
 
-    .empty-state-box {
-      background: var(--bg-surface);
-      border: 1px dashed var(--border-subtle);
-      border-radius: 8px;
-      padding: 32px 20px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .empty-icon {
-      font-size: 28px;
-    }
-
-    .empty-state-box strong {
+    .row-nav-arrow {
+      color: var(--text-muted);
       font-size: 14px;
-      color: var(--text-primary);
+      transition: var(--transition-tactile);
     }
 
-    .empty-state-box p {
-      font-size: 12px;
-      color: var(--text-secondary);
-      max-width: 280px;
-      margin: 0;
-    }
-
-    .btn-empty-action {
-      margin-top: 8px;
-      padding: 6px 14px;
-      border-radius: 6px;
-      background: var(--color-primary);
-      color: #ffffff;
-      border: none;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .attention-card, .pulse-feed-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 16px 18px;
-    }
-
-    .attention-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .attention-item {
-      padding: 8px 10px;
-      border-radius: 6px;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      transition: background-color 0.1s ease;
-    }
-
-    .attention-item:hover {
-      background: var(--bg-elevated);
-    }
-
-    .attention-item-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    .attention-row:hover .row-nav-arrow {
+      color: var(--accent-primary);
+      transform: translateX(3px);
     }
 
     .attention-tag {
-      font-size: 9.5px;
-      font-weight: 700;
-      padding: 1px 5px;
-      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
     }
 
     .tag-deployed {
-      background: rgba(124, 58, 237, 0.15);
-      color: #7c3aed;
+      background: var(--status-deployed-bg);
+      color: var(--status-deployed-text);
     }
 
     .tag-blocked {
-      background: rgba(239, 68, 68, 0.15);
-      color: #dc2626;
-    }
-
-    .attention-title {
-      font-size: 12.5px;
-      color: var(--text-primary);
-    }
-
-    .attention-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      color: var(--text-secondary);
+      background: var(--status-blocked-bg);
+      color: var(--status-blocked-text);
     }
 
     .calm-box {
-      padding: 12px;
-      border-radius: 6px;
-      background: var(--bg-canvas);
-      font-size: 12px;
-      color: var(--text-secondary);
-      text-align: center;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-muted);
+      font-size: 12.5px;
+      justify-content: center;
     }
 
     .activity-feed-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
       max-height: 320px;
       overflow-y: auto;
-      padding-right: 4px;
     }
 
     .activity-feed-item {
       display: flex;
-      align-items: flex-start;
-      gap: 10px;
+      gap: 12px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border-hairline);
+    }
+
+    .activity-feed-item:last-child {
+      border-bottom: none;
     }
 
     .feed-avatar {
@@ -698,25 +824,25 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
       height: 24px;
       border-radius: 50%;
       color: #ffffff;
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-top: 2px;
+      flex-shrink: 0;
     }
 
     .feed-content {
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 1px;
+      gap: 2px;
     }
 
     .feed-top-row {
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: baseline;
     }
 
     .feed-actor {
@@ -725,15 +851,47 @@ import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
     }
 
     .feed-time {
-      font-size: 10.5px;
+      font-size: 10px;
       color: var(--text-muted);
     }
 
     .feed-detail {
       font-size: 11.5px;
       color: var(--text-secondary);
-      margin: 0;
       line-height: 1.4;
+      margin: 0;
+    }
+
+    .empty-state-box {
+      padding: 40px 24px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .empty-icon {
+      font-size: 32px;
+      color: var(--status-done);
+    }
+
+    .btn-empty-action {
+      margin-top: 8px;
+      padding: 6px 16px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-primary);
+      color: #ffffff;
+      border: none;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+
+    .btn-empty-action:hover {
+      background: var(--accent-primary-hover);
+      transform: translateY(-1px);
     }
   `]
 })
@@ -741,6 +899,15 @@ export class MyDayComponent {
   protected readonly store = inject(TaskStoreService);
   private readonly router = inject(Router);
   protected readonly Math = Math;
+
+  readonly dailyIntention = signal<string>(
+    localStorage.getItem('pb_daily_intention') || 'Ship streaming token batching & review stage pull requests'
+  );
+
+  updateIntention(val: string): void {
+    this.dailyIntention.set(val);
+    localStorage.setItem('pb_daily_intention', val);
+  }
 
   readonly greeting = computed(() => {
     const hour = new Date().getHours();
@@ -752,6 +919,32 @@ export class MyDayComponent {
   readonly myLoadMetric = computed(() => {
     const curId = this.store.currentUserId();
     return this.store.getMemberLoadMetric(curId);
+  });
+
+  readonly myTotalTasks = computed(() => {
+    const curId = this.store.currentUserId();
+    return this.store.tasks().filter((t: Task) => {
+      const assignees = (t.assigneeIds && t.assigneeIds.length > 0)
+        ? t.assigneeIds
+        : (t.assigneeId ? [t.assigneeId] : []);
+      return assignees.includes(curId);
+    }).length;
+  });
+
+  readonly myCompletedToday = computed(() => {
+    const curId = this.store.currentUserId();
+    return this.store.tasks().filter((t: Task) => {
+      const assignees = (t.assigneeIds && t.assigneeIds.length > 0)
+        ? t.assigneeIds
+        : (t.assigneeId ? [t.assigneeId] : []);
+      return assignees.includes(curId) && t.status === 'DONE';
+    }).length;
+  });
+
+  readonly completionPercent = computed(() => {
+    const total = this.myTotalTasks();
+    if (total === 0) return 100;
+    return Math.round((this.myCompletedToday() / total) * 100);
   });
 
   readonly myActiveTasks = computed(() => {

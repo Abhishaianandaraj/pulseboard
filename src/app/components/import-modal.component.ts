@@ -15,20 +15,18 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
         <div class="modal-header">
           <div class="modal-title-row">
             <span class="modal-icon-wrap">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
+              <i class="ph-light ph-tray-arrow-down"></i>
             </span>
             <div>
-              <h3 class="modal-title">Smart Import (Multi-Project & Structured JSON)</h3>
+              <h3 class="modal-title font-serif">Smart Import Deliverables<span class="brand-dot">.</span></h3>
               <p class="modal-sub">
                 Ingest tasks into PulseBoard schema with automatic project linkage and new squad member registration
               </p>
             </div>
           </div>
-          <button type="button" class="btn-close" (click)="close()">✕</button>
+          <button type="button" class="btn-close" (click)="close()">
+            <i class="ph-light ph-x"></i>
+          </button>
         </div>
 
         <!-- Modal Body -->
@@ -40,29 +38,31 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
               <div>
                 <strong class="step-title">Copy LLM Extraction Prompt</strong>
                 <p class="step-desc">
-                  Prompt instructs LLM to output valid JSON matching project codes (RAG-CORE, EVAL-GW, PULSE-V1) and roles.
+                  Prompt instructs LLM to output valid JSON matching project codes (RAG-CORE, EVAL-GW, PULSE-V1) and squad roles.
                 </p>
               </div>
             </div>
             <button type="button" class="btn-copy-prompt" (click)="copyPrompt()">
-              {{ isCopied() ? '✓ Copied to Clipboard!' : 'Copy Extraction Prompt' }}
+              <i class="ph-light" [class.ph-check]="isCopied()" [class.ph-copy]="!isCopied()"></i>
+              <span>{{ isCopied() ? 'Copied to Clipboard!' : 'Copy Extraction Prompt' }}</span>
             </button>
           </div>
 
           <!-- Step 2: Paste JSON or Load 1-Click Demo -->
           <div class="step-2-header">
-            <div>
+            <div class="step-2-title-wrap">
               <span class="step-badge step-2">STEP 2</span>
-              <strong class="step-title ml-2">Paste Structured JSON</strong>
+              <strong class="step-title">Paste Structured JSON</strong>
             </div>
             <button type="button" class="btn-load-sample" (click)="loadSampleJson()">
-              Load Sample Delivery JSON
+              <i class="ph-light ph-sparkle"></i>
+              <span>Load Sample Delivery JSON</span>
             </button>
           </div>
 
           <!-- JSON Code Textarea -->
           <textarea
-            class="json-textarea"
+            class="json-textarea custom-scroll"
             rows="9"
             [(ngModel)]="jsonInput"
             placeholder='{\n  "tasks": [\n    {\n      "title": "Optimize Triton FP8 Dynamic Batching",\n      "projectCode": "RAG-CORE",\n      "assigneeName": "Priya Nair",\n      "assigneeRole": "AI Engineer",\n      "priority": "HIGH",\n      "subtasks": ["Tune scheduler", "Test p99 latency"]\n    }\n  ]\n}'
@@ -71,14 +71,16 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
           <!-- Error Alert Banner -->
           @if (errorMessage()) {
             <div class="alert-box error">
-              <span>⚠️ {{ errorMessage() }}</span>
+              <i class="ph-light ph-warning"></i>
+              <span>{{ errorMessage() }}</span>
             </div>
           }
 
           <!-- Success Alert Banner -->
           @if (successMessage()) {
             <div class="alert-box success">
-              <span>🎉 {{ successMessage() }}</span>
+              <i class="ph-light ph-check-circle"></i>
+              <span>{{ successMessage() }}</span>
             </div>
           }
         </div>
@@ -97,7 +99,8 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
               [disabled]="!jsonInput.trim()"
               (click)="executeImport()"
             >
-              Import to Workspace
+              <i class="ph-light ph-tray-arrow-down"></i>
+              <span>Import to Workspace</span>
             </button>
           </div>
         </div>
@@ -108,34 +111,34 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(10, 14, 20, 0.55);
-      backdrop-filter: blur(3px);
+      background: rgba(20, 19, 18, 0.45);
+      backdrop-filter: blur(6px);
       z-index: 100;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 16px;
-      animation: fadeIn 0.15s ease-out;
+      animation: fadeIn 0.18s ease-out;
     }
     .modal-card {
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
+      border: 1px solid var(--border-hairline);
       width: 700px;
       max-width: 95vw;
-      border-radius: 12px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-float);
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      animation: scaleIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      animation: scaleIn 0.22s var(--ease-tactile);
     }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes scaleIn { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes scaleIn { from { transform: scale(0.97); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
     .modal-header {
-      padding: 18px 24px;
-      border-bottom: 1px solid var(--border-subtle);
-      background: var(--bg-elevated);
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -145,12 +148,21 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
       align-items: center;
       gap: 12px;
     }
-    .ai-spark-icon { font-size: 22px; }
+    .modal-icon-wrap {
+      font-size: 20px;
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
+    }
     .modal-title {
-      font-size: 16px;
-      font-weight: 700;
+      font-size: 20px;
+      font-weight: 500;
       color: var(--text-primary);
       margin: 0;
+      letter-spacing: -0.01em;
+    }
+    .brand-dot {
+      color: var(--accent-primary);
     }
     .modal-sub {
       font-size: 12px;
@@ -160,15 +172,17 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
     .btn-close {
       border: none;
       background: transparent;
-      color: var(--text-secondary);
-      font-size: 16px;
+      color: var(--text-muted);
+      font-size: 18px;
       cursor: pointer;
-      padding: 4px;
+      display: flex;
+      align-items: center;
+      transition: var(--transition-tactile);
     }
     .btn-close:hover { color: var(--text-primary); }
 
     .modal-body {
-      padding: 22px 24px;
+      padding: 24px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -176,10 +190,10 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
       overflow-y: auto;
     }
     .step-card {
-      padding: 12px 14px;
-      border-radius: 8px;
-      background: var(--badge-done-bg);
-      border: 1px solid var(--status-done);
+      padding: 14px 18px;
+      border-radius: var(--radius-inner);
+      background: var(--accent-primary-tint);
+      border: 1px solid rgba(92, 115, 98, 0.3);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -193,131 +207,169 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
     .step-badge {
       font-size: 10px;
       font-weight: 700;
-      padding: 2px 6px;
-      background: var(--status-done);
+      padding: 2px 8px;
+      background: var(--accent-primary);
       color: #ffffff;
-      border-radius: 4px;
+      border-radius: var(--radius-pill);
     }
     .step-badge.step-2 {
-      background: var(--accent-primary);
+      background: var(--accent-warn);
     }
     .step-title {
-      font-size: 12.5px;
+      font-size: 13px;
+      font-weight: 600;
       color: var(--text-primary);
     }
     .step-desc {
-      font-size: 11px;
+      font-size: 11.5px;
       color: var(--text-secondary);
       margin: 2px 0 0 0;
     }
     .btn-copy-prompt {
-      padding: 6px 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
       background: var(--bg-surface);
-      border: 1px solid var(--status-done);
+      border: 1px solid var(--border-hairline);
       color: var(--text-primary);
-      border-radius: 6px;
+      border-radius: var(--radius-pill);
       font-size: 11.5px;
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
+      transition: var(--transition-tactile);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-copy-prompt:hover {
+      border-color: var(--accent-primary);
+      transform: translateY(-1px);
     }
     .step-2-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-    .ml-2 { margin-left: 8px; }
+    .step-2-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     .btn-load-sample {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       border: none;
       background: transparent;
-      color: var(--status-deployed);
+      color: var(--accent-primary);
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
+      transition: var(--transition-tactile);
     }
     .btn-load-sample:hover { text-decoration: underline; }
 
     .json-textarea {
       width: 100%;
-      background: #0d1117;
-      color: #58a6ff;
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 12px;
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-inner);
+      padding: 14px;
       font-family: var(--font-mono);
-      font-size: 11.5px;
+      font-size: 12px;
       line-height: 1.5;
       outline: none;
-      resize: vertical;
+      transition: var(--transition-tactile);
     }
     .json-textarea:focus {
+      background: var(--bg-surface);
       border-color: var(--accent-primary);
+      box-shadow: 0 0 0 2px var(--accent-primary-tint);
     }
 
     .alert-box {
-      padding: 8px 12px;
-      border-radius: 6px;
+      padding: 12px 16px;
+      border-radius: var(--radius-inner);
       font-size: 12px;
-      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     .alert-box.error {
-      background: var(--badge-critical-bg);
-      border: 1px solid var(--badge-critical-text);
-      color: var(--badge-critical-text);
+      background: var(--status-blocked-bg);
+      border: 1px solid rgba(200, 109, 81, 0.35);
+      color: var(--status-blocked-text);
     }
     .alert-box.success {
-      background: var(--badge-done-bg);
-      border: 1px solid var(--status-done);
-      color: var(--badge-done-text);
+      background: var(--status-done-bg);
+      border: 1px solid rgba(78, 124, 89, 0.35);
+      color: var(--status-done-text);
     }
 
     .modal-footer {
       padding: 16px 24px;
-      border-top: 1px solid var(--border-subtle);
-      background: var(--bg-elevated);
+      border-top: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 16px;
     }
     .footer-note {
       display: flex;
       align-items: center;
       gap: 8px;
       font-size: 11px;
-      color: var(--text-secondary);
+      color: var(--text-muted);
     }
     .arch-tag {
-      font-size: 10px;
       font-weight: 700;
-      padding: 2px 6px;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: 4px;
+      font-size: 9.5px;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
     }
     .footer-actions {
       display: flex;
+      align-items: center;
       gap: 8px;
     }
     .btn-cancel {
-      padding: 7px 16px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      background: transparent;
+      border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
-      border-radius: 6px;
-      font-size: 12.5px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 500;
       cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+    .btn-cancel:hover {
+      background: var(--bg-surface);
+      color: var(--text-primary);
     }
     .btn-import {
-      padding: 7px 18px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
       background: var(--accent-primary);
-      border: 1px solid var(--accent-primary);
       color: #ffffff;
-      border-radius: 6px;
-      font-size: 12.5px;
+      border: none;
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition-tactile);
+    }
+    .btn-import:hover:not(:disabled) {
+      background: var(--accent-primary-hover);
+      transform: translateY(-1px);
     }
     .btn-import:disabled {
       opacity: 0.5;
@@ -327,48 +379,41 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
 })
 export class ImportModalComponent {
   protected readonly store = inject(TaskStoreService);
-
   readonly closeModal = output<void>();
 
   jsonInput = '';
+  errorMessage = signal<string>('');
+  successMessage = signal<string>('');
   isCopied = signal<boolean>(false);
-  errorMessage = signal<string | null>(null);
-  successMessage = signal<string | null>(null);
 
-  readonly geminiPromptTemplate = `You are an AI Technical Delivery Manager for a high-performance AI Engineering Team.
-Analyze the following unstructured meeting notes, transcribe them into actionable engineering tasks, and output ONLY valid JSON matching this exact schema:
+  copyPrompt(): void {
+    const promptText = `Extract engineering tasks from your conversation into this exact JSON format.
+Strict rules:
+1. "projectCode" MUST match one of: "RAG-CORE", "EVAL-GW", "PULSE-V1"
+2. "assigneeRole" should be one of: "AI Engineer", "Full-Stack Dev", "QA / Test Engineer", "Tech Lead"
+3. "priority" must be: "LOW", "MEDIUM", "HIGH", or "CRITICAL"
+4. "dependencies" (optional): list upstream task IDs if any
+5. Return ONLY a valid JSON object matching this schema:
 
 {
   "tasks": [
     {
-      "title": "Clear concise engineering task title",
-      "description": "Specific implementation instructions, benchmark goals, or context",
-      "projectCode": "RAG-CORE | EVAL-GW | PULSE-V1",
-      "assigneeName": "Abhishai | Priya Nair | Karthik R | Rahul Verma | Vikram Rao | Any New Member",
-      "assigneeRole": "AI Engineer | Full-Stack Dev | QA / Test Engineer | Tech Lead | Delivery Manager",
-      "squad": "Core AI Squad | Platform & QA Squad",
-      "priority": "LOW | MEDIUM | HIGH | CRITICAL",
-      "phase": "Phase 1: Knowledge Core | Phase 2: Serving Engine | Phase 3: Security & Governance",
+      "title": "Task title summarizing deliverable",
+      "projectCode": "RAG-CORE",
+      "assigneeName": "Priya Nair",
+      "assigneeRole": "AI Engineer",
+      "priority": "HIGH",
+      "phase": "Phase 2: Serving Engine",
       "sprint": "Sprint 24.3",
-      "effortPoints": 3,
-      "dueDate": "YYYY-MM-DD",
-      "subtasks": [
-        "First concrete step",
-        "Second verification step"
-      ]
+      "effortPoints": 5,
+      "dueDate": "2026-11-20",
+      "subtasks": ["Implement unit tests", "Benchmark GPU memory"],
+      "dependencies": []
     }
   ]
-}
+}`;
 
-Raw Meeting Notes to Extract:
-[PASTE YOUR RAW MEETING NOTES OR SLACK THREAD HERE]`;
-
-  close(): void {
-    this.closeModal.emit();
-  }
-
-  copyPrompt(): void {
-    navigator.clipboard.writeText(this.geminiPromptTemplate).then(() => {
+    navigator.clipboard.writeText(promptText).then(() => {
       this.isCopied.set(true);
       setTimeout(() => this.isCopied.set(false), 2500);
     });
@@ -376,31 +421,33 @@ Raw Meeting Notes to Extract:
 
   loadSampleJson(): void {
     this.jsonInput = JSON.stringify(SAMPLE_IMPORT_JSON, null, 2);
-    this.errorMessage.set(null);
-    this.successMessage.set(null);
+    this.errorMessage.set('');
+    this.successMessage.set('');
   }
 
   executeImport(): void {
-    this.errorMessage.set(null);
-    this.successMessage.set(null);
+    if (!this.jsonInput.trim()) return;
 
-    if (!this.jsonInput.trim()) {
-      this.errorMessage.set('Please paste JSON or click "Load Sample Meeting JSON".');
-      return;
-    }
+    this.errorMessage.set('');
+    this.successMessage.set('');
 
     try {
       const parsed = JSON.parse(this.jsonInput);
       const res = this.store.importTasksFromJson(parsed);
-
-      if (res.success) {
-        this.successMessage.set(`Successfully imported ${res.count} tasks with automatic project and squad member resolution!`);
-        setTimeout(() => this.close(), 1200);
+      if (!res.success) {
+        this.errorMessage.set(res.error || 'Failed to parse JSON payload.');
       } else {
-        this.errorMessage.set(res.error || 'Failed to import JSON.');
+        this.successMessage.set(`Successfully imported ${res.count} tasks! Automatically registered any new squad members.`);
+        setTimeout(() => {
+          this.close();
+        }, 1200);
       }
     } catch (e: any) {
-      this.errorMessage.set(`JSON Syntax Error: ${e.message}`);
+      this.errorMessage.set(`Invalid JSON syntax: ${e.message}`);
     }
+  }
+
+  close(): void {
+    this.closeModal.emit();
   }
 }

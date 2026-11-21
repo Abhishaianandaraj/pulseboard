@@ -1419,12 +1419,23 @@ export class TaskStoreService {
   }
 
   // --- Smart Import Batch Ingestion (Enhanced with Project, Multi-Assignees and Auto-Member creation) ---
-  importTasksFromJson(payload: SmartImportPayload): { success: boolean; count: number; error?: string } {
+  importTasksFromJson(rawPayload: SmartImportPayload | string): { success: boolean; count: number; error?: string } {
     if (!this.canCreateTasks()) {
       return { success: false, count: 0, error: 'RBAC: Viewer session cannot import tasks.' };
     }
 
     try {
+      let payload: SmartImportPayload;
+      if (typeof rawPayload === 'string') {
+        try {
+          payload = JSON.parse(rawPayload);
+        } catch (e: any) {
+          return { success: false, count: 0, error: `Invalid JSON syntax: ${e.message}` };
+        }
+      } else {
+        payload = rawPayload;
+      }
+
       if (!payload || !Array.isArray(payload.tasks) || payload.tasks.length === 0) {
         return { success: false, count: 0, error: 'JSON must contain a "tasks" array with at least one task.' };
       }

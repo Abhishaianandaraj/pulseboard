@@ -14,11 +14,12 @@ import { Project, Task, TeamMember } from '../../models/task.model';
       <!-- Header -->
       <div class="projects-header-card">
         <div>
-          <h1 class="projects-title">Project Workspaces &amp; Squad Directories</h1>
+          <h1 class="projects-title font-serif">Project Workspaces &amp; Squad Directories<span class="brand-dot">.</span></h1>
           <p class="projects-sub">Autonomous technical initiatives, deliverable completion health, and cross-functional squad ownership</p>
         </div>
         <button type="button" class="btn-create-proj" (click)="openCreateModal()">
-          + Create Project
+          <i class="ph-light ph-plus"></i>
+          <span>Create Project</span>
         </button>
       </div>
 
@@ -37,8 +38,8 @@ import { Project, Task, TeamMember } from '../../models/task.model';
             <!-- Card Header -->
             <div class="proj-card-top">
               <div class="proj-title-group">
-                <span class="proj-code-badge" [style.color]="proj.color">{{ proj.code }}</span>
-                <h3 class="proj-card-name">{{ proj.name }}</h3>
+                <span class="proj-code-badge font-mono" [style.color]="proj.color">{{ proj.code }}</span>
+                <h3 class="proj-card-name font-serif">{{ proj.name }}</h3>
               </div>
               <span class="proj-status-tag" [class.tag-active]="proj.status === 'ACTIVE'" [class.tag-staging]="proj.status === 'STAGING'">
                 {{ proj.status }}
@@ -51,9 +52,7 @@ import { Project, Task, TeamMember } from '../../models/task.model';
             <!-- Squad Tag -->
             <div class="proj-squad-row">
               <span class="squad-icon">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                </svg>
+                <i class="ph-light ph-users"></i>
               </span>
               <span class="squad-name">{{ proj.teamName }}</span>
             </div>
@@ -89,12 +88,12 @@ import { Project, Task, TeamMember } from '../../models/task.model';
               </div>
             </div>
 
-            <!-- Card Bottom: Squad Avatars + Open Workspace Action -->
+            <!-- Card Bottom: Stacked Squad Avatars + Open Workspace Action -->
             <div class="proj-card-bottom">
-              <div class="squad-avatars-row">
+              <div class="avatar-stack">
                 @for (mem of squadMembers; track mem.id) {
                   <span
-                    class="squad-mini-avatar"
+                    class="avatar-stack-item"
                     [style.background-color]="mem.color"
                     [title]="mem.name + ' • ' + mem.role"
                   >
@@ -104,7 +103,8 @@ import { Project, Task, TeamMember } from '../../models/task.model';
               </div>
 
               <button type="button" class="btn-open-workspace" (click)="openWorkspace(proj.id)">
-                Open Workspace →
+                <span>Open Workspace</span>
+                <i class="ph-light ph-arrow-right"></i>
               </button>
             </div>
           </div>
@@ -116,8 +116,10 @@ import { Project, Task, TeamMember } from '../../models/task.model';
         <div class="modal-backdrop" (click)="closeCreateModal()">
           <div class="modal-card" (click)="$event.stopPropagation()">
             <div class="modal-head">
-              <h3>Create Project Workspace</h3>
-              <button type="button" class="btn-close" (click)="closeCreateModal()">✕</button>
+              <h3 class="font-serif">Create Project Workspace</h3>
+              <button type="button" class="btn-close" (click)="closeCreateModal()">
+                <i class="ph-light ph-x"></i>
+              </button>
             </div>
             <div class="modal-body custom-scroll">
               <div class="form-group">
@@ -153,77 +155,89 @@ import { Project, Task, TeamMember } from '../../models/task.model';
   `,
   styles: [`
     .projects-page-wrapper {
-      padding: 24px;
+      padding: 24px 28px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 22px;
       height: 100%;
       overflow-y: auto;
+      background: var(--bg-canvas);
     }
 
     .projects-header-card {
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 10px;
-      padding: 18px 24px;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      padding: 22px 28px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
       flex-wrap: wrap;
+      box-shadow: var(--shadow-soft);
     }
 
     .projects-title {
-      font-size: 18px;
-      font-weight: 800;
+      font-size: 24px;
+      font-weight: 500;
       color: var(--text-primary);
       margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-dot {
+      color: var(--accent-primary);
     }
 
     .projects-sub {
-      font-size: 12.5px;
+      font-size: 13px;
       color: var(--text-secondary);
-      margin: 3px 0 0 0;
+      margin: 4px 0 0 0;
     }
 
     .btn-create-proj {
-      padding: 8px 16px;
-      border-radius: 6px;
-      background: var(--color-primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-primary);
       color: #ffffff;
       border: none;
       font-size: 12.5px;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
-      transition: background-color 0.15s ease;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition-tactile);
     }
 
     .btn-create-proj:hover {
-      background: var(--color-primary-hover);
+      background: var(--accent-primary-hover);
+      transform: translateY(-1px);
     }
 
     .projects-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
       gap: 20px;
     }
 
     .project-card {
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      padding: 22px;
+      box-shadow: var(--shadow-soft);
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+      gap: 15px;
+      transition: var(--transition-tactile);
     }
 
     .project-card:hover {
       transform: translateY(-2px);
       box-shadow: var(--shadow-md);
-      border-color: var(--border-strong);
+      border-color: rgba(92, 115, 98, 0.4);
     }
 
     .proj-card-top {
@@ -235,55 +249,55 @@ import { Project, Task, TeamMember } from '../../models/task.model';
 
     .proj-title-group {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       gap: 8px;
     }
 
     .proj-code-badge {
       font-size: 11px;
-      font-weight: 800;
-      font-family: var(--font-mono);
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      padding: 2px 7px;
-      border-radius: 4px;
+      font-weight: 700;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
     }
 
     .proj-card-name {
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 17px;
+      font-weight: 500;
       color: var(--text-primary);
       margin: 0;
+      letter-spacing: -0.01em;
     }
 
     .proj-status-tag {
-      font-size: 9.5px;
-      font-weight: 800;
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: var(--bg-canvas);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
       color: var(--text-secondary);
-      border: 1px solid var(--border-subtle);
+      border: 1px solid var(--border-hairline);
     }
 
     .tag-active {
-      color: #059669;
-      border-color: #10b981;
-      background: rgba(16, 185, 129, 0.1);
+      color: var(--status-done);
+      border-color: rgba(78, 124, 89, 0.35);
+      background: rgba(78, 124, 89, 0.1);
     }
 
     .tag-staging {
-      color: #7c3aed;
-      border-color: #7c3aed;
-      background: rgba(124, 58, 237, 0.1);
+      color: var(--status-deployed);
+      border-color: rgba(123, 104, 174, 0.35);
+      background: rgba(123, 104, 174, 0.1);
     }
 
     .proj-desc {
-      font-size: 12px;
+      font-size: 12.5px;
       color: var(--text-secondary);
-      line-height: 1.45;
+      line-height: 1.5;
       margin: 0;
-      min-height: 34px;
+      min-height: 38px;
     }
 
     .proj-squad-row {
@@ -294,47 +308,53 @@ import { Project, Task, TeamMember } from '../../models/task.model';
       color: var(--text-muted);
     }
 
+    .squad-icon {
+      font-size: 14px;
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
+    }
+
     .proj-progress-section {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 6px;
     }
 
     .progress-labels {
       display: flex;
-      align-items: center;
       justify-content: space-between;
       font-size: 11px;
-      color: var(--text-secondary);
+      color: var(--text-muted);
     }
 
     .progress-track-wrap {
-      height: 7px;
-      background: var(--bg-canvas);
-      border-radius: 4px;
+      height: 6px;
+      background: var(--border-hairline);
+      border-radius: var(--radius-pill);
       overflow: hidden;
-      border: 1px solid var(--border-subtle);
     }
 
     .progress-bar-fill {
       height: 100%;
-      border-radius: 4px;
-      transition: width 0.2s ease;
+      border-radius: var(--radius-pill);
+      transition: width 0.3s var(--ease-tactile);
     }
 
     .proj-metrics-matrix {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
+      gap: 6px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-inner);
       padding: 8px 10px;
-      text-align: center;
     }
 
     .metric-cell {
       display: flex;
       flex-direction: column;
+      align-items: center;
       gap: 2px;
     }
 
@@ -348,60 +368,49 @@ import { Project, Task, TeamMember } from '../../models/task.model';
       font-size: 9.5px;
       color: var(--text-muted);
       text-transform: uppercase;
+      letter-spacing: 0.03em;
     }
 
-    .text-deployed { color: #7c3aed; }
-    .text-blocked { color: #dc2626; }
+    .text-deployed { color: var(--status-deployed); }
+    .text-blocked { color: var(--accent-danger); }
 
     .proj-card-bottom {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-top: 4px;
-    }
-
-    .squad-avatars-row {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .squad-mini-avatar {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      color: #ffffff;
-      font-size: 9px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      margin-top: 6px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-hairline);
     }
 
     .btn-open-workspace {
-      padding: 6px 12px;
-      border-radius: 6px;
-      background: transparent;
-      border: 1px solid var(--border-subtle);
-      color: var(--color-primary);
-      font-size: 12px;
-      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 500;
       cursor: pointer;
-      transition: all 0.12s ease;
+      transition: var(--transition-tactile);
     }
 
     .btn-open-workspace:hover {
-      background: var(--color-primary);
-      color: #ffffff;
-      border-color: var(--color-primary);
+      background: var(--accent-primary-tint);
+      border-color: rgba(92, 115, 98, 0.3);
+      color: var(--accent-primary);
+      transform: translateY(-1px);
     }
 
-    /* MODAL */
+    /* Modals */
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(10, 14, 20, 0.55);
-      backdrop-filter: blur(2px);
+      background: rgba(20, 19, 18, 0.45);
+      backdrop-filter: blur(6px);
       z-index: 95;
       display: flex;
       align-items: center;
@@ -411,11 +420,11 @@ import { Project, Task, TeamMember } from '../../models/task.model';
 
     .modal-card {
       width: 100%;
-      max-width: 480px;
+      max-width: 520px;
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-float);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -425,64 +434,95 @@ import { Project, Task, TeamMember } from '../../models/task.model';
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border-subtle);
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border-hairline);
     }
 
-    .modal-head h3 { font-size: 15px; font-weight: 700; margin: 0; }
-    .btn-close { background: transparent; border: none; font-size: 16px; cursor: pointer; color: var(--text-muted); }
+    .modal-head h3 { font-size: 18px; font-weight: 500; margin: 0; }
+    .btn-close {
+      background: transparent;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      transition: var(--transition-tactile);
+    }
+    .btn-close:hover { color: var(--text-primary); }
 
     .modal-body {
-      padding: 20px;
+      padding: 22px 24px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
     }
 
-    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
     .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .form-label { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
-    .form-label.required::after { content: ' *'; color: #ef4444; }
+    .form-label.required::after { content: ' *'; color: var(--accent-danger); }
 
     .form-input, .form-select, .form-textarea {
-      padding: 7px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-canvas);
+      padding: 8px 12px;
+      border-radius: var(--radius-inner);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       color: var(--text-primary);
-      font-size: 12px;
+      font-size: 12.5px;
       outline: none;
+      transition: var(--transition-tactile);
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      background: var(--bg-surface);
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 2px var(--accent-primary-tint);
     }
 
     .modal-actions {
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 8px;
-      padding: 14px 20px;
-      border-top: 1px solid var(--border-subtle);
-      background: var(--bg-elevated);
+      gap: 10px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
     }
 
     .btn-cancel {
-      padding: 7px 14px;
-      border-radius: 6px;
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
       background: transparent;
-      border: 1px solid var(--border-subtle);
+      border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
       font-size: 12px;
+      font-weight: 500;
       cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+
+    .btn-cancel:hover {
+      background: var(--bg-surface);
+      color: var(--text-primary);
     }
 
     .btn-submit {
-      padding: 7px 16px;
-      border-radius: 6px;
-      background: var(--color-primary);
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-primary);
       border: none;
       color: #ffffff;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition-tactile);
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: var(--accent-primary-hover);
+      transform: translateY(-1px);
     }
   `]
 })
@@ -492,7 +532,6 @@ export class ProjectsComponent {
   protected readonly Math = Math;
 
   readonly isCreateModalOpen = signal<boolean>(false);
-
   newProjName = '';
   newProjCode = '';
   newProjSquad = 'Core AI Squad';
@@ -511,25 +550,27 @@ export class ProjectsComponent {
   }
 
   getBlockedCount(tasks: Task[]): number {
-    return tasks.filter(t => t.blocked && t.status !== 'DONE').length;
+    return tasks.filter(t => t.blocked).length;
   }
 
   getTotalPoints(tasks: Task[]): number {
-    return tasks.reduce((sum, t) => sum + (Number(t.effortPoints) || 0), 0);
+    return tasks.reduce((sum, t) => sum + (t.effortPoints || 0), 0);
   }
 
   getProjectSquadMembers(proj: Project, tasks: Task[]): TeamMember[] {
-    const map = this.store.assigneeMap();
-    const ids = new Set<string>(proj.memberIds || []);
+    const memberIds = new Set<string>();
+    (proj.memberIds || []).forEach(id => memberIds.add(id));
     tasks.forEach(t => {
-      const assignees = (t.assigneeIds && t.assigneeIds.length > 0) ? t.assigneeIds : (t.assigneeId ? [t.assigneeId] : []);
-      assignees.forEach(id => ids.add(id));
+      (t.assigneeIds || []).forEach(id => memberIds.add(id));
+      if (t.assigneeId) memberIds.add(t.assigneeId);
     });
-    return Array.from(ids).map(id => map.get(id)).filter((m): m is TeamMember => !!m);
+    return Array.from(memberIds)
+      .map(id => this.store.assigneeMap().get(id))
+      .filter((m): m is TeamMember => !!m);
   }
 
   openWorkspace(projectId: string): void {
-    this.store.selectProject(projectId);
+    this.store.selectedProjectId.set(projectId);
     this.router.navigate(['/workspace']);
   }
 
@@ -547,7 +588,14 @@ export class ProjectsComponent {
 
   submitCreateProject(): void {
     if (!this.newProjName.trim() || !this.newProjCode.trim()) return;
-    this.store.addProject(this.newProjName, this.newProjCode, this.newProjSquad, this.newProjDesc);
+
+    this.store.addProject(
+      this.newProjName.trim(),
+      this.newProjCode.trim().toUpperCase(),
+      this.newProjSquad,
+      this.newProjDesc.trim() || 'Engineering deliverables and milestone targets.'
+    );
+
     this.closeCreateModal();
   }
 }

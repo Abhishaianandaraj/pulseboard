@@ -67,11 +67,28 @@ Every release candidate, pull request, and staging deployment must execute and s
 - [x] **Multi-Assignee Pill Selector:** Task Drawer and New Task modal provide interactive co-assignee toggling with member avatars, technical role tags, and live capacity status dots.
 - [x] **Jira/Linear Visual Aesthetic:** All glowing neon borders, gradient text headers, and decorative emojis eliminated in favor of crisp hairline surfaces (`#f4f5f7` canvas / `#ffffff` card / `#dfe1e6` border in Light; `#0f1115` canvas / `#16181d` card / `#262932` border in Dark), issue key chips (`PB-101`), subtask fractions (`☑ 2/4`), and overlapping stacked avatars (`.avatar-stack`).
 
+### 1.9 Kanso + Spartan UI + Phosphor Light Gate (v3.0)
+- [x] **Alabaster & Sage (Light Mode) Token Parity:** Canvas renders `#F9F8F6` warm stationery paper with `#FFFFFF` pure card surfaces, `#EBE8E2` hairline stationery dividers, and `#5C7362` muted sage green accents across all 8 screens.
+- [x] **Sumi Ink & Moss (Dark Mode) Token Parity:** Canvas renders `#141312` espresso-charcoal sumi ink with `#1C1B19` elevated dark stone cards, `#2A2825` hairline dividers, and `#6E8B74` soft moss-sage accents across all 8 screens.
+- [x] **Typography & Editorial Pairing:** Page greetings, titles, and wordmark (`PulseBoard.`) render Google Font `Newsreader` (weights 300–500, italic), paired with `Plus Jakarta Sans` for controls and `JetBrains Mono` with `tabular-nums` for points and dates.
+- [x] **Phosphor Light Icon Integration:** All navigation items, buttons, status indicators, lock badges, and drawer actions utilize thin `1.5px`-equivalent `@phosphor-icons/web` (`ph-light`) icons with zero bundle bloat.
+- [x] **Pill-First Geometry:** Buttons, filter chips, view switchers (`Board`, `Sprint`, `Gantt`), role tags, and sidebar items render rounded pill geometry (`border-radius: var(--radius-pill)`).
+- [x] **Open-Air Surfaces:** Cards and table rows render inside unified soft paper containers with hairline dividers rather than nested box-in-box frames.
+- [x] **Tactile Hover Physics:** Buttons lift `-1px` on hover with `scale(0.98)` active press feedback; task cards shift border-color toward sage green; stacked avatars fan out (`margin-left: 2px`) on group hover.
+- [x] **Frosted Glass Backdrops:** Modals and Task Drawer utilize `backdrop-filter: blur(6px)` with smooth slide-in/scale-in animations.
+
 ---
 
 ## 2. Release Changelog
 
-### `v2.0.0-alpha` (In Development)
+### `v3.0.0` (Production Release)
+- **Kanso + Spartan UI + Phosphor Light Aesthetic Overhaul:**
+  - **Dual-Theme Design System:** Replaced generic SaaS blues and harsh black backgrounds with warm "Alabaster & Sage" Light theme (`#F9F8F6` paper, `#5C7362` sage) and "Sumi Ink & Moss" Dark theme (`#141312` espresso charcoal, `#6E8B74` moss).
+  - **Editorial Typography:** Added Google Font `Newsreader` for editorial page headings, greetings, project titles, and the `PulseBoard.` brand wordmark, paired with `Plus Jakarta Sans` for crisp UI controls.
+  - **Phosphor Light Iconography:** Deployed `@phosphor-icons/web` across all 8 screens, providing thin `1.5px`-equivalent hairline icons for all navigation, actions, status pills, and drawers.
+  - **Pill-First Geometry & Open-Air Surfaces:** Converted action buttons, view switchers, filter chips, and role tags to pill geometry (`border-radius: var(--radius-pill)`). Replaced boxy nested cards with open-air row lists separated by 1px warm stationery dividers.
+  - **Tactile Hover Physics (`cubic-bezier(0.22, 1, 0.36, 1)`):** Added smooth `-1px` button hover lifts, subtle border highlights, and interactive avatar fan-out on group hover.
+  - **Screen-by-Screen Polishing:** Overhauled all 8 screens: Login (`/login`), My Day (`/my-day`), Delivery Workspace (`/workspace`), Projects & Squads (`/projects`), Governance & Audit (`/governance`), Task Drawer, Smart Import Modal, and Create Modals.
 - **V2 Milestone 5 Delivered (Project Scoped Visibility, Task Ownership Locks, Multi-Assignee & Jira/Linear Overhaul — `FR-08`, `FR-09`):**
   - **Project-Scoped Visibility (`Project.memberIds`, `visibleProjects()`):** Implemented strict squad-based project isolation. Non-lead roles (`DEV`, `QA`) can only access and view deliverables belonging to projects where their member ID is explicitly listed in `Project.memberIds`. Portfolio leads (`LEAD`, `ADMIN`) and executive delivery managers (`VIEWER`) retain portfolio-wide visibility (`canViewAllProjects`).
   - **Task Ownership Locks (`canEditTask()`):** Enforced deliverable edit protection. `DEV` and `QA` engineers can only edit, rename, move, or change status on tasks assigned to them (or unassigned tasks). Peer tasks display a `🔒 Read-only · Teammate task` badge and disable card dragging and form inputs, while still permitting teammates to append collaborative review and blocker notes.

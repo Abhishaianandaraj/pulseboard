@@ -194,3 +194,18 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
   2. **Jira-Style Issue Cards:** Issue key chip (`PB-101`), subtle priority indicators, subtask completion fraction (`☑ 2/4`), and story point badges (`5p`).
   3. **Overlapping Stacked Avatars:** `.avatar-stack` and `.avatar-stack-item` pattern for multi-assignee task cards, sprint rows, and detail drawer.
   4. **Minimalist SVG Icon System:** Zero decorative emojis in core navigation and buttons; pure inline geometric SVG icons across navigation rail, view switchers, search bars, and action modals.
+
+---
+
+### FR-10: Kanso + Spartan UI + Phosphor Light Design System
+- **Status:** ✅ Implemented (v3.0)
+- **Description:** Transform PulseBoard into a timeless, calm editorial delivery system inspired by Japanese minimalism (Kanso), Spartan restraint, and tactile stationery ergonomics across all 8 screens.
+- **Key Capabilities & Aesthetics:**
+  1. **Dual-Theme Token Parity:**
+     - Light Mode ("Alabaster & Sage"): Warm stationery paper `#F9F8F6`, elevated white card `#FFFFFF`, hairline divider `#EBE8E2`, and muted sage green `#5C7362`.
+     - Dark Mode ("Sumi Ink & Moss"): Warm espresso-charcoal sumi ink `#141312`, elevated dark stone `#1C1B19`, hairline `#2A2825`, and soft moss-sage `#6E8B74`.
+  2. **Editorial Typography Pairing:** Google Font `Newsreader` (weights 300–500, italic) for page greetings, headings, project titles, and the `PulseBoard.` brand wordmark, paired with `Plus Jakarta Sans` for controls and `JetBrains Mono` for tabular figures.
+  3. **Phosphor Light Iconography:** Thin `1.5px`-equivalent `ph-light` hairline icons integrated across navigation, status indicators, action buttons, and drawers.
+  4. **Pill-First Geometry & Open-Air Row Lists:** All buttons, filters, switchers, and role tags adopt pill geometry (`border-radius: var(--radius-pill)`). Multi-column and multi-row lists utilize open-air rows separated by hairline dividers rather than nested box frames.
+  5. **Tactile Physics & Micro-Interactions (`cubic-bezier(0.22, 1, 0.36, 1)`):** Smooth `-1px` button hover lifts, border highlight shifting toward sage green on cards/rows, and stacked avatars that fan out on group hover.
+  6. **Frosted Backdrops:** Task Drawer and Modals use translucent scrims with `backdrop-filter: blur(6px)` and tactile slide-in/scale-in animations.

@@ -10,22 +10,20 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="gov-page-wrapper custom-scroll">
-      <!-- 1. Top Governance Header & Tab Bar -->
+      <!-- 1. Top Governance Header & Pill Tab Bar -->
       <div class="gov-header-card">
         <div class="gov-title-col">
           <div class="gov-title-row">
             <span class="gov-shield-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
+              <i class="ph-light ph-shield-check"></i>
             </span>
-            <h1 class="gov-heading">Governance, Bottleneck Analytics &amp; Compliance Console</h1>
-            <span class="gov-version-pill">Enterprise V2</span>
+            <h1 class="gov-heading font-serif">Governance, Analytics &amp; Compliance Console<span class="brand-dot">.</span></h1>
+            <span class="gov-version-pill">v3.0 Kanso</span>
           </div>
           <p class="gov-subtext">Squad RBAC authorization, cycle-time telemetry, failure recovery budgets &amp; append-only compliance audit trail</p>
         </div>
 
-        <!-- Horizontal Tabs -->
+        <!-- Horizontal Pill Tabs -->
         <div class="gov-tabs-bar">
           <button
             type="button"
@@ -33,12 +31,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
             [class.active]="activeTab() === 'RBAC_MATRIX'"
             (click)="setTab('RBAC_MATRIX')"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
+            <i class="ph-light ph-users"></i>
             <span>Team &amp; Access</span>
           </button>
           <button
@@ -47,11 +40,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
             [class.active]="activeTab() === 'ANALYTICS'"
             (click)="setTab('ANALYTICS')"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="20" x2="18" y2="10"></line>
-              <line x1="12" y1="20" x2="12" y2="4"></line>
-              <line x1="6" y1="20" x2="6" y2="14"></line>
-            </svg>
+            <i class="ph-light ph-chart-bar"></i>
             <span>Delivery Bottlenecks</span>
           </button>
           <button
@@ -60,13 +49,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
             [class.active]="activeTab() === 'AUDIT_TRAIL'"
             (click)="setTab('AUDIT_TRAIL')"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
+            <i class="ph-light ph-file-text"></i>
             <span>Audit Log</span>
             <span class="tab-counter font-mono">{{ store.activityLogs().length }}</span>
           </button>
@@ -82,14 +65,9 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
             <div class="rbac-authority-banner" [class.banner-lead]="store.canManageGovernance()">
               <span class="banner-icon">
                 @if (store.canManageGovernance()) {
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                  </svg>
+                  <i class="ph-light ph-shield-check"></i>
                 } @else {
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                  </svg>
+                  <i class="ph-light ph-lock-key"></i>
                 }
               </span>
               <div class="banner-body">
@@ -103,7 +81,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
               </div>
             </div>
 
-            <!-- Team Access Table -->
+            <!-- Team Access Table (Open-Air Surfaces) -->
             <div class="gov-table-container">
               <table class="gov-matrix-table">
                 <thead>
@@ -273,7 +251,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
               <!-- Project Quality & Failure Rate -->
               <div class="analytics-subcard">
                 <div class="subcard-head">
-                  <h3 class="subcard-heading">Project Quality &amp; Rework Bottlenecks</h3>
+                  <h3 class="subcard-heading font-serif">Project Quality &amp; Rework Bottlenecks</h3>
                   <p class="subcard-sub">Failure rates, deployed items, and recovery overhead points by project</p>
                 </div>
                 <div class="project-breakdown-list">
@@ -281,8 +259,8 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
                     <div class="project-stat-item">
                       <div class="item-head">
                         <div class="code-title-wrap">
-                          <span class="proj-code-badge" [style.color]="item.color">{{ item.projectCode }}</span>
-                          <strong class="item-name">{{ item.projectName }}</strong>
+                          <span class="proj-code-badge font-mono" [style.color]="item.color">{{ item.projectCode }}</span>
+                          <strong class="item-name font-serif">{{ item.projectName }}</strong>
                         </div>
                         <div class="item-stats font-mono">
                           <span>{{ item.deployedTasks }} Staged</span>
@@ -305,7 +283,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
               <!-- Slippage Root Cause Distribution -->
               <div class="analytics-subcard">
                 <div class="subcard-head">
-                  <h3 class="subcard-heading">Deadline Slippage Root Causes</h3>
+                  <h3 class="subcard-heading font-serif">Deadline Slippage Root Causes</h3>
                   <p class="subcard-sub">Taxonomy distribution recorded through the Deadline Grace Protocol (FR-05)</p>
                 </div>
                 <div class="slippage-breakdown-list">
@@ -315,10 +293,10 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
                         <div class="slip-label-wrap">
                           <span class="slip-glyph">
                             @switch (slip.reason) {
-                              @case ('DEPENDENCY_BLOCKED') { 🔗 }
-                              @case ('SCOPE_EXPANDED') { 📐 }
-                              @case ('PRODUCTION_HOTFIX') { 🔥 }
-                              @case ('UNDERESTIMATED') { ⏱️ }
+                              @case ('DEPENDENCY_BLOCKED') { <i class="ph-light ph-link"></i> }
+                              @case ('SCOPE_EXPANDED') { <i class="ph-light ph-arrows-out"></i> }
+                              @case ('PRODUCTION_HOTFIX') { <i class="ph-light ph-fire"></i> }
+                              @case ('UNDERESTIMATED') { <i class="ph-light ph-timer"></i> }
                             }
                           </span>
                           <strong class="slip-name">{{ slip.label }}</strong>
@@ -342,7 +320,9 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
             <!-- Seal & Export Bar -->
             <div class="audit-top-bar">
               <div class="audit-seal-group">
-                <span class="seal-lock-icon">🔒</span>
+                <span class="seal-lock-icon">
+                  <i class="ph-light ph-lock-key"></i>
+                </span>
                 <div class="seal-meta">
                   <div class="seal-header-row">
                     <strong class="seal-title">LOCKED · APPEND-ONLY COMPLIANCE LEDGER</strong>
@@ -354,10 +334,12 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
 
               <div class="export-actions">
                 <button type="button" class="btn-export btn-export-csv" (click)="store.exportAuditLogCsv()">
-                  📥 Export CSV
+                  <i class="ph-light ph-download-simple"></i>
+                  <span>Export CSV</span>
                 </button>
                 <button type="button" class="btn-export btn-export-json" (click)="store.exportAuditLogJson()">
-                  📥 Export JSON
+                  <i class="ph-light ph-download-simple"></i>
+                  <span>Export JSON</span>
                 </button>
               </div>
             </div>
@@ -365,7 +347,9 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
             <!-- Filter Toolbar -->
             <div class="audit-filter-toolbar">
               <div class="audit-search-box">
-                <span class="search-glyph">🔍</span>
+                <span class="search-glyph">
+                  <i class="ph-light ph-magnifying-glass"></i>
+                </span>
                 <input
                   type="text"
                   class="audit-input"
@@ -374,7 +358,9 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
                   (ngModelChange)="searchQuery.set($event)"
                 />
                 @if (searchQuery()) {
-                  <button type="button" class="btn-clear-audit" (click)="searchQuery.set('')">✕</button>
+                  <button type="button" class="btn-clear-audit" (click)="searchQuery.set('')">
+                    <i class="ph-light ph-x"></i>
+                  </button>
                 }
               </div>
 
@@ -429,7 +415,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
                       <td class="tabular-nums text-secondary text-xs font-mono">{{ log.timestamp }}</td>
                       <td>
                         <div class="actor-cell-wrap">
-                          <span class="avatar-mini" style="background-color: var(--color-primary)">{{ log.actorAvatar }}</span>
+                          <span class="avatar-mini" style="background-color: var(--accent-primary)">{{ log.actorAvatar }}</span>
                           <span class="text-xs font-semibold">{{ log.actor }}</span>
                         </div>
                       </td>
@@ -466,24 +452,26 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
   `,
   styles: [`
     .gov-page-wrapper {
-      padding: 24px;
+      padding: 24px 28px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 22px;
       height: 100%;
       overflow-y: auto;
+      background: var(--bg-canvas);
     }
 
     .gov-header-card {
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 10px;
-      padding: 18px 24px;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      padding: 22px 28px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
       flex-wrap: wrap;
+      box-shadow: var(--shadow-soft);
     }
 
     .gov-title-col {
@@ -498,23 +486,33 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
       gap: 10px;
     }
 
-    .gov-shield-icon { font-size: 20px; }
+    .gov-shield-icon {
+      font-size: 20px;
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
+    }
 
     .gov-heading {
-      font-size: 18px;
-      font-weight: 800;
+      font-size: 22px;
+      font-weight: 500;
       color: var(--text-primary);
       margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-dot {
+      color: var(--accent-primary);
     }
 
     .gov-version-pill {
-      font-size: 10.5px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 10px;
-      background: rgba(124, 58, 237, 0.12);
-      border: 1px solid rgba(124, 58, 237, 0.35);
-      color: #7c3aed;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
+      border: 1px solid rgba(92, 115, 98, 0.2);
     }
 
     .gov-subtext {
@@ -526,26 +524,26 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
     .gov-tabs-bar {
       display: flex;
       align-items: center;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-pill);
       padding: 3px;
-      gap: 2px;
+      gap: 3px;
     }
 
     .gov-tab-btn {
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-secondary);
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.12s ease;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition-tactile);
     }
 
     .gov-tab-btn:hover {
@@ -554,53 +552,70 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
 
     .gov-tab-btn.active {
       background: var(--bg-surface);
-      color: var(--text-primary);
+      color: var(--accent-primary);
       box-shadow: var(--shadow-sm);
+      font-weight: 600;
     }
 
     .tab-counter {
       font-size: 10px;
-      font-weight: 700;
       padding: 1px 6px;
-      border-radius: 8px;
-      background: var(--color-primary);
-      color: #ffffff;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      color: var(--text-muted);
     }
 
     .gov-content-panel {
-      display: flex;
-      flex-direction: column;
+      flex: 1;
     }
 
     .gov-subpanel {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 20px;
     }
 
     .rbac-authority-banner {
-      background: rgba(148, 163, 184, 0.1);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 12px 18px;
       display: flex;
-      align-items: center;
-      gap: 14px;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 18px;
+      border-radius: var(--radius-inner);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      font-size: 12.5px;
     }
 
     .rbac-authority-banner.banner-lead {
-      background: rgba(16, 185, 129, 0.08);
-      border-color: rgba(16, 185, 129, 0.35);
+      background: var(--accent-primary-tint);
+      border-color: rgba(92, 115, 98, 0.3);
     }
 
-    .banner-icon { font-size: 20px; }
-    .banner-body p { font-size: 12px; color: var(--text-secondary); margin: 2px 0 0 0; }
+    .banner-icon {
+      font-size: 18px;
+      color: var(--accent-primary);
+      margin-top: 1px;
+    }
 
+    .banner-body strong {
+      display: block;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .banner-body p {
+      color: var(--text-secondary);
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    /* Open-Air Table */
     .gov-table-container {
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
       overflow-x: auto;
+      box-shadow: var(--shadow-soft);
     }
 
     .gov-matrix-table {
@@ -610,27 +625,28 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
     }
 
     .gov-matrix-table th {
-      padding: 11px 16px;
-      background: var(--bg-elevated);
+      padding: 12px 16px;
+      background: var(--bg-subtle);
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.04em;
-      border-bottom: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-hairline);
     }
 
     .matrix-row {
-      border-bottom: 1px solid var(--border-subtle);
-      transition: background-color 0.1s ease;
+      border-bottom: 1px solid var(--border-hairline);
+      transition: var(--transition-tactile);
     }
 
-    .matrix-row:hover { background: var(--bg-canvas); }
+    .matrix-row:hover {
+      background: var(--bg-subtle);
+    }
 
     .gov-matrix-table td {
       padding: 12px 16px;
       font-size: 12.5px;
-      vertical-align: middle;
     }
 
     .member-cell-wrap {
@@ -644,60 +660,75 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
       height: 28px;
       border-radius: 50%;
       color: #ffffff;
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
-    .member-meta { display: flex; flex-direction: column; }
+    .member-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
     .member-name { font-size: 13px; color: var(--text-primary); }
     .member-email { font-size: 11px; }
 
-    .squad-text { font-size: 11.5px; color: var(--text-secondary); }
-    .tech-role-pill { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    .squad-text { color: var(--text-secondary); font-size: 12px; }
+
+    .tech-role-pill {
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-hairline);
+    }
 
     .role-select {
       padding: 5px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-canvas);
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       color: var(--text-primary);
       font-size: 11.5px;
-      font-weight: 600;
       outline: none;
+      transition: var(--transition-tactile);
+    }
+
+    .role-select:focus {
+      border-color: var(--accent-primary);
+      background: var(--bg-surface);
     }
 
     .role-badge-static {
-      font-size: 10.5px;
+      font-size: 10px;
       font-weight: 700;
       padding: 2px 7px;
-      border-radius: 4px;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
       color: var(--text-secondary);
-    }
-
-    .role-badge-static[data-role="LEAD"], .role-badge-static[data-role="ADMIN"] {
-      color: #059669; border-color: #10b981;
+      border: 1px solid var(--border-hairline);
     }
 
     .budget-input-group {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
 
     .budget-num-input {
-      width: 54px;
+      width: 48px;
       padding: 4px 6px;
-      border-radius: 5px;
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-canvas);
+      border-radius: var(--radius-inner);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       color: var(--text-primary);
       font-size: 12px;
-      outline: none;
+      text-align: center;
     }
 
     .budget-unit { font-size: 11px; color: var(--text-muted); }
@@ -705,65 +736,69 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
     .capacity-bar-group {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 5px;
       min-width: 170px;
     }
 
     .bar-track {
       height: 6px;
-      background: var(--bg-canvas);
-      border-radius: 3px;
+      background: var(--border-hairline);
+      border-radius: var(--radius-pill);
       overflow: hidden;
-      border: 1px solid var(--border-subtle);
     }
 
-    .bar-fill { height: 100%; border-radius: 3px; }
-    .fill-optimal { background: #10b981; }
-    .fill-near { background: #f59e0b; }
-    .fill-over { background: #ef4444; }
+    .bar-fill {
+      height: 100%;
+      border-radius: var(--radius-pill);
+      transition: width 0.3s var(--ease-tactile);
+    }
+
+    .fill-optimal { background: var(--status-done); }
+    .fill-near { background: var(--accent-warn); }
+    .fill-over { background: var(--accent-danger); }
 
     .bar-details-row {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      font-size: 10.5px;
+      font-size: 10px;
+      color: var(--text-muted);
     }
 
-    .pts-ratio { font-weight: 700; color: var(--text-primary); }
-    .formula-caption { color: var(--text-muted); }
-    .text-penalty { color: #ea580c; font-weight: 600; }
+    .text-penalty { color: var(--accent-danger); font-weight: 600; }
 
     .status-chip {
-      font-size: 10.5px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 10px;
-      white-space: nowrap;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
     }
 
-    .chip-optimal { background: rgba(16, 185, 129, 0.12); color: #059669; }
-    .chip-near { background: rgba(245, 158, 11, 0.12); color: #d97706; }
-    .chip-over { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+    .chip-optimal { background: var(--status-done-bg); color: var(--status-done-text); }
+    .chip-near { background: var(--accent-warn-tint); color: var(--accent-warn); }
+    .chip-over { background: var(--status-blocked-bg); color: var(--status-blocked-text); }
 
-    /* ANALYTICS */
+    /* KPI CARDS */
     .kpi-cards-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
+      gap: 18px;
     }
 
-    @media (max-width: 860px) {
+    @media (max-width: 900px) {
       .kpi-cards-grid { grid-template-columns: 1fr; }
     }
 
     .gov-kpi-card {
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 16px 18px;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      padding: 20px 24px;
+      box-shadow: var(--shadow-soft);
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
     }
 
     .kpi-top-row {
@@ -772,12 +807,19 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
       justify-content: space-between;
     }
 
-    .kpi-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+    .kpi-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
 
-    .kpi-pill { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 8px; }
-    .pill-target { background: rgba(16, 185, 129, 0.12); color: #059669; }
-    .pill-rework { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
-    .pill-drift { background: rgba(245, 158, 11, 0.12); color: #d97706; }
+    .kpi-pill {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+    }
+
+    .pill-rework { background: var(--accent-danger-tint); color: var(--accent-danger); }
+    .pill-drift { background: var(--accent-warn-tint); color: var(--accent-warn); }
 
     .kpi-val-row {
       display: flex;
@@ -785,14 +827,24 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
       gap: 6px;
     }
 
-    .kpi-huge-number { font-size: 28px; font-weight: 800; color: var(--text-primary); }
-    .kpi-unit { font-size: 13px; color: var(--text-muted); font-weight: 600; }
-    .kpi-desc { font-size: 11.5px; color: var(--text-secondary); line-height: 1.4; margin: 0; }
+    .kpi-huge-number {
+      font-size: 34px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+    }
 
+    .kpi-unit { font-size: 12px; color: var(--text-muted); }
+    .kpi-desc { font-size: 11.5px; color: var(--text-muted); line-height: 1.45; margin: 0; }
+
+    .text-rework { color: var(--accent-danger); }
+    .text-drift { color: var(--accent-warn); }
+
+    /* Breakdown Panels */
     .analytics-split-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 18px;
     }
 
     @media (max-width: 900px) {
@@ -801,32 +853,34 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
 
     .analytics-subcard {
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 16px 18px;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      padding: 22px;
+      box-shadow: var(--shadow-soft);
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
     }
 
-    .subcard-head {
-      border-bottom: 1px solid var(--border-subtle);
-      padding-bottom: 8px;
+    .subcard-heading {
+      font-size: 17px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin: 0;
     }
 
-    .subcard-heading { font-size: 13.5px; font-weight: 700; color: var(--text-primary); margin: 0; }
-    .subcard-sub { font-size: 11.5px; color: var(--text-secondary); margin: 2px 0 0 0; }
+    .subcard-sub { font-size: 12px; color: var(--text-secondary); margin: 3px 0 0 0; }
 
     .project-breakdown-list, .slippage-breakdown-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
     }
 
     .project-stat-item, .slip-item {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 6px;
     }
 
     .item-head, .slip-top-row {
@@ -842,49 +896,62 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
     }
 
     .proj-code-badge {
-      font-size: 10px;
-      font-weight: 800;
-      font-family: var(--font-mono);
-      padding: 1px 6px;
-      border-radius: 3px;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
     }
 
-    .item-name, .slip-name { font-size: 12.5px; color: var(--text-primary); }
-    .item-stats, .slip-metric { font-size: 11px; color: var(--text-secondary); display: flex; gap: 8px; }
+    .item-name { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+    .item-stats { font-size: 11px; color: var(--text-muted); display: flex; gap: 8px; }
 
     .item-bar-track, .slip-track {
-      height: 7px;
-      background: var(--bg-canvas);
-      border-radius: 4px;
+      height: 6px;
+      background: var(--border-hairline);
+      border-radius: var(--radius-pill);
       overflow: hidden;
-      border: 1px solid var(--border-subtle);
     }
 
-    .item-bar-fill, .slip-fill { height: 100%; border-radius: 4px; }
-    .slip-fill[data-reason="DEPENDENCY_BLOCKED"] { background: #3b82f6; }
-    .slip-fill[data-reason="SCOPE_EXPANDED"] { background: #8b5cf6; }
-    .slip-fill[data-reason="PRODUCTION_HOTFIX"] { background: #ef4444; }
-    .slip-fill[data-reason="UNDERESTIMATED"] { background: #f59e0b; }
+    .item-bar-fill, .slip-fill {
+      height: 100%;
+      border-radius: var(--radius-pill);
+      transition: width 0.3s var(--ease-tactile);
+    }
 
     .item-foot {
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      color: var(--text-muted);
     }
 
-    /* AUDIT TRAIL */
+    .slip-glyph {
+      font-size: 14px;
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
+    }
+
+    .slip-name { font-size: 12.5px; color: var(--text-primary); }
+    .slip-metric { font-size: 11px; color: var(--text-muted); }
+
+    .slip-fill[data-reason="DEPENDENCY_BLOCKED"] { background: var(--accent-primary); }
+    .slip-fill[data-reason="SCOPE_EXPANDED"] { background: var(--accent-warn); }
+    .slip-fill[data-reason="PRODUCTION_HOTFIX"] { background: var(--accent-danger); }
+    .slip-fill[data-reason="UNDERESTIMATED"] { background: #7B68AE; }
+
+    /* AUDIT LOG */
     .audit-top-bar {
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 14px 18px;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      padding: 18px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
       flex-wrap: wrap;
+      box-shadow: var(--shadow-soft);
     }
 
     .audit-seal-group {
@@ -893,21 +960,40 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
       gap: 12px;
     }
 
-    .seal-lock-icon { font-size: 24px; }
-    .seal-header-row { display: flex; align-items: center; gap: 8px; }
-    .seal-title { font-size: 12.5px; color: var(--text-primary); letter-spacing: 0.04em; }
-
-    .soc-pill {
-      font-size: 9.5px;
-      font-weight: 800;
-      padding: 1px 6px;
-      border-radius: 4px;
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.35);
-      color: #059669;
+    .seal-lock-icon {
+      font-size: 22px;
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
     }
 
-    .seal-note { font-size: 11.5px; color: var(--text-secondary); margin: 2px 0 0 0; }
+    .seal-header-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .seal-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text-primary);
+    }
+
+    .soc-pill {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
+    }
+
+    .seal-note {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      margin: 2px 0 0 0;
+    }
 
     .export-actions {
       display: flex;
@@ -916,20 +1002,25 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
     }
 
     .btn-export {
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+      font-size: 11.5px;
       font-weight: 600;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-primary);
       cursor: pointer;
-      transition: all 0.12s ease;
+      transition: var(--transition-tactile);
     }
 
     .btn-export:hover {
-      background: var(--bg-elevated);
-      border-color: var(--border-strong);
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
+      border-color: rgba(92, 115, 98, 0.35);
+      transform: translateY(-1px);
     }
 
     .audit-filter-toolbar {
@@ -937,43 +1028,56 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-pill);
+      padding: 8px 16px;
     }
 
     .audit-search-box {
-      flex: 1;
-      min-width: 240px;
       position: relative;
       display: flex;
       align-items: center;
+      width: 280px;
     }
 
     .search-glyph {
       position: absolute;
       left: 10px;
-      font-size: 11px;
+      font-size: 13px;
       color: var(--text-muted);
       pointer-events: none;
+      display: flex;
+      align-items: center;
     }
 
     .audit-input {
       width: 100%;
-      padding: 6px 26px 6px 28px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-surface);
+      padding: 6px 26px 6px 30px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       color: var(--text-primary);
       font-size: 12px;
       outline: none;
+      transition: var(--transition-tactile);
+    }
+
+    .audit-input:focus {
+      background: var(--bg-surface);
+      border-color: var(--accent-primary);
     }
 
     .btn-clear-audit {
       position: absolute;
-      right: 6px;
+      right: 8px;
       background: transparent;
       border: none;
       color: var(--text-muted);
       cursor: pointer;
-      font-size: 11px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
     }
 
     .audit-filter-item {
@@ -982,19 +1086,28 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
       gap: 6px;
     }
 
-    .filter-lbl { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
+    .filter-lbl { font-size: 11.5px; font-weight: 500; color: var(--text-secondary); }
 
     .audit-select {
-      padding: 5px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-surface);
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       color: var(--text-primary);
       font-size: 11.5px;
       outline: none;
+      transition: var(--transition-tactile);
     }
 
-    .actor-cell-wrap { display: flex; align-items: center; gap: 6px; }
+    .audit-select:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .records-counter {
+      margin-left: auto;
+    }
+
+    .actor-cell-wrap { display: flex; align-items: center; gap: 7px; }
     .avatar-mini {
       width: 20px;
       height: 20px;
@@ -1009,29 +1122,29 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
 
     .action-chip {
       font-size: 9.5px;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 3px;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
     }
 
-    .action-chip[data-action="STATUS_CHANGED"] { color: #2563eb; border-color: #3b82f6; }
-    .action-chip[data-action="REWORK_PENALTY"] { color: #dc2626; border-color: #ef4444; }
-    .action-chip[data-action="SLIPPAGE_LOGGED"] { color: #d97706; border-color: #f59e0b; }
-    .action-chip[data-action="MEMBER_ROLE_UPDATED"] { color: #059669; border-color: #10b981; }
+    .action-chip[data-action="STATUS_CHANGED"] { color: var(--accent-primary); border-color: rgba(92, 115, 98, 0.3); }
+    .action-chip[data-action="REWORK_PENALTY"] { color: var(--accent-danger); border-color: rgba(200, 109, 81, 0.3); }
+    .action-chip[data-action="SLIPPAGE_LOGGED"] { color: var(--accent-warn); border-color: rgba(197, 155, 78, 0.3); }
+    .action-chip[data-action="MEMBER_ROLE_UPDATED"] { color: var(--status-done); border-color: rgba(78, 124, 89, 0.3); }
 
-    .target-cell-wrap { display: flex; flex-direction: column; }
-    .target-title { font-size: 12px; color: var(--text-primary); }
+    .target-cell-wrap { display: flex; flex-direction: column; gap: 1px; }
+    .target-title { font-size: 12.5px; color: var(--text-primary); font-weight: 500; }
 
     .details-cell-wrap { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .transition-tag {
       font-size: 10px;
-      padding: 1px 5px;
-      border-radius: 3px;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
     }
   `]

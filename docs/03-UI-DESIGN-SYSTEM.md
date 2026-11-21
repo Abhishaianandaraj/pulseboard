@@ -174,3 +174,45 @@ Deliverables assigned to teammates render a quiet lock indicator:
 
 ### 6.4 Minimalist Inline SVG Icons
 All core navigation items, view tabs, search bars, and action modals use clean, geometric 14–18px inline SVG icons rather than decorative emojis.
+
+---
+
+## 7. Kanso + Spartan UI + Phosphor Light Design System (v3.0)
+
+PulseBoard v3.0 introduces a comprehensive aesthetic and tactile interaction overhaul inspired by Japanese minimalism (**Kanso**), Spartan restraint, and editorial stationery design:
+
+### 7.1 Dual-Theme Semantic Tokens: Alabaster Light & Sumi Ink Dark
+
+| Design Token | Light Theme ("Alabaster & Sage") | Dark Theme ("Sumi Ink & Moss") | Role & Semantic Intent |
+|---|---|---|---|
+| `--bg-canvas` | `#F9F8F6` | `#141312` | Warm stationery alabaster paper / Sumi espresso charcoal canvas |
+| `--bg-surface` | `#FFFFFF` | `#1C1B19` | Elevated pure card paper / Sumi dark stone card surface |
+| `--bg-subtle` | `#F2EFE9` | `#252320` | Soft pill fill, table rows, and secondary wash |
+| `--border-hairline` | `#EBE8E2` | `#2A2825` | 1px warm stationery divider & crisp perimeter hairline |
+| `--text-primary` | `#1F1E1C` | `#F2EFE9` | Warm charcoal ink / warm ivory typography |
+| `--text-secondary`| `#6E6A63` | `#9E9990` | Muted stone descriptive prose |
+| `--text-muted` | `#8A857D` | `#78736B` | Low-priority metadata and timestamps |
+| `--accent-primary`| `#5C7362` (tint `#EEF2EF`)| `#6E8B74` (tint `rgba(110,139,116,0.14)`)| Muted sage green / soft moss-sage primary action |
+| `--accent-warn` | `#C59B4E` | `#D4A857` | Ochre warning & Key Path highlights |
+| `--accent-danger`| `#C86D51` (tint `#F9EFEA`)| `#D97B5E` (tint `rgba(217,123,94,0.14)`)| Terracotta error, blocker, and recovery overhead alerts |
+| `--shadow-soft` | `0 4px 20px -2px rgba(31,30,28,0.04)` | `0 4px 20px -2px rgba(0,0,0,0.25)` | Natural organic elevation |
+| `--shadow-float` | `0 12px 32px -4px rgba(31,30,28,0.08)` | `0 12px 32px -4px rgba(0,0,0,0.45)` | Floating modals and drawer elevation |
+
+### 7.2 Typography & Editorial Pairing
+- **Editorial Headings:** Google Font `Newsreader` (weights 300–500, italic) for page greetings, project titles, modal titles, and the `PulseBoard.` wordmark with a sage period.
+- **Controls & Metadata:** `Plus Jakarta Sans` (weights 400–600) for controls, status badges, buttons, and navigation labels.
+- **Figures:** `JetBrains Mono` with `tabular-nums` for story points, timestamps, and IDs.
+
+### 7.3 Phosphor Light Icons
+Integrated `@phosphor-icons/web` (`ph-light` 1.5px-equivalent hairline icons) across every navigation item, button, status badge, lock chip, and drawer control.
+
+### 7.4 Pill-First Geometry & Open-Air Surfaces
+- **Pill-First Geometry (`border-radius: var(--radius-pill)`):** Action buttons, filter chips, view switchers (`Board` / `Sprint` / `Gantt`), role tags, and sidebar items adopt rounded pill geometry.
+- **Open-Air Row Lists:** Card lists and data tables render inside unified soft paper containers (`border-radius: var(--radius-card); border: 1px solid var(--border-hairline)`) with 1px hairline dividers rather than nested box-in-box cards.
+- **Frosted Glass Backdrops:** Modals and the Task Drawer utilize `backdrop-filter: blur(6px)` and translucent scrims (`rgba(20, 19, 18, 0.45)`).
+
+### 7.5 Tactile Hover Micro-Interactions (`cubic-bezier(0.22, 1, 0.36, 1)`)
+- **Buttons & Pills:** Smooth `-1px` lift on hover (`transform: translateY(-1px)`), gentle color transitions, and `scale(0.98)` press feedback.
+- **Task Cards & Rows:** Elevation lift with soft border highlight shifting toward sage green (`border-color: rgba(92, 115, 98, 0.4)`).
+- **Interactive Avatar Stack Fan-Out:** Stacked overlapping avatars (`margin-left: -6px`) smoothly fan out (`margin-left: 2px`) on group hover so co-assignees are effortless to inspect.
+- **Sidebar Nav Items:** Smooth sliding background pill highlight with subtle icon scaling on hover.

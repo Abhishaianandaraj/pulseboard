@@ -11,8 +11,14 @@ import { TeamMember } from '../../models/task.model';
   template: `
     <div class="login-wrapper">
       <div class="login-theme-bar">
-        <button type="button" class="btn-theme-toggle" (click)="store.toggleTheme()" [title]="'Switch to ' + (store.theme() === 'dark' ? 'Light' : 'Dark') + ' Mode'">
-          {{ store.theme() === 'dark' ? 'Light Mode' : 'Dark Mode' }}
+        <button
+          type="button"
+          class="btn-theme-toggle"
+          (click)="store.toggleTheme()"
+          [title]="'Switch to ' + (store.theme() === 'dark' ? 'Alabaster & Sage' : 'Sumi Ink & Moss')"
+        >
+          <i class="ph-light" [class.ph-sun]="store.theme() === 'dark'" [class.ph-moon]="store.theme() !== 'dark'"></i>
+          <span>{{ store.theme() === 'dark' ? 'Alabaster Mode' : 'Sumi Mode' }}</span>
         </button>
       </div>
 
@@ -20,13 +26,11 @@ import { TeamMember } from '../../models/task.model';
         <div class="login-brand-header">
           <div class="brand-badge-row">
             <div class="brand-logo-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-              </svg>
+              <i class="ph-light ph-wave-sine"></i>
             </div>
-            <span class="brand-version-chip">PulseBoard V2</span>
+            <span class="brand-version-chip">v3.0 Kanso</span>
           </div>
-          <h1 class="login-title">Welcome to PulseBoard</h1>
+          <h1 class="login-title font-serif">PulseBoard<span class="brand-dot">.</span></h1>
           <p class="login-sub">Calm, portfolio-grade delivery management for high-velocity AI engineering teams</p>
         </div>
 
@@ -34,10 +38,7 @@ import { TeamMember } from '../../models/task.model';
         <div class="sso-section">
           <button type="button" class="btn-sso-primary" (click)="loginAs(store.currentUser().id)">
             <span class="sso-key-icon">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-              </svg>
+              <i class="ph-light ph-key"></i>
             </span>
             <span class="sso-text">Continue with Corporate SSO</span>
             <span class="sso-actor-pill">{{ store.currentUser().name.split(' ')[0] }}</span>
@@ -52,7 +53,7 @@ import { TeamMember } from '../../models/task.model';
         <!-- Quick Workspace Role Entry -->
         <div class="persona-selection-area">
           <span class="persona-section-title">Quick Workspace Role Entry</span>
-          <div class="persona-cards-grid">
+          <div class="persona-cards-grid custom-scroll">
             @for (member of store.teamMembers(); track member.id) {
               <div
                 class="persona-card"
@@ -73,14 +74,19 @@ import { TeamMember } from '../../models/task.model';
                     {{ store.getMemberLoadMetric(member.id).label }}
                   </span>
                 </div>
-                <span class="persona-enter-arrow">→</span>
+                <span class="persona-enter-arrow">
+                  <i class="ph-light ph-arrow-right"></i>
+                </span>
               </div>
             }
           </div>
         </div>
 
         <div class="login-footer">
-          <span class="compliance-tag">🔒 End-to-End Client Isolation · Zero External Telemetry · Air-Gap Ready</span>
+          <span class="compliance-tag">
+            <i class="ph-light ph-shield-check"></i>
+            Client Isolation · Zero External Telemetry · Air-Gap Ready
+          </span>
         </div>
       </div>
     </div>
@@ -99,35 +105,40 @@ import { TeamMember } from '../../models/task.model';
 
     .login-theme-bar {
       position: absolute;
-      top: 20px;
-      right: 24px;
+      top: 24px;
+      right: 28px;
     }
 
     .btn-theme-toggle {
-      padding: 6px 12px;
-      border-radius: 20px;
-      border: 1px solid var(--border-subtle);
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-hairline);
       background: var(--bg-surface);
       color: var(--text-secondary);
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 500;
       cursor: pointer;
-      transition: all 0.15s ease;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition-tactile);
     }
 
     .btn-theme-toggle:hover {
-      background: var(--bg-elevated);
+      background: var(--bg-subtle);
       color: var(--text-primary);
+      transform: translateY(-1px);
     }
 
     .login-card {
       width: 100%;
-      max-width: 580px;
+      max-width: 560px;
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 14px;
-      padding: 36px 32px;
-      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      padding: 38px 36px;
+      box-shadow: var(--shadow-float);
       display: flex;
       flex-direction: column;
       gap: 22px;
@@ -150,32 +161,37 @@ import { TeamMember } from '../../models/task.model';
     .brand-logo-icon {
       width: 38px;
       height: 38px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      border-radius: var(--radius-inner);
+      background: var(--accent-primary);
       color: #ffffff;
       font-size: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+      box-shadow: 0 4px 12px rgba(92, 115, 98, 0.25);
     }
 
     .brand-version-chip {
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 12px;
-      background: rgba(124, 58, 237, 0.12);
-      border: 1px solid rgba(124, 58, 237, 0.35);
-      color: #8b5cf6;
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-primary-tint);
+      border: 1px solid rgba(92, 115, 98, 0.2);
+      color: var(--accent-primary);
     }
 
     .login-title {
-      font-size: 22px;
-      font-weight: 800;
+      font-family: var(--font-serif);
+      font-size: 28px;
+      font-weight: 500;
       letter-spacing: -0.02em;
       color: var(--text-primary);
       margin: 4px 0 0 0;
+    }
+
+    .brand-dot {
+      color: var(--accent-primary);
     }
 
     .login-sub {
@@ -183,6 +199,7 @@ import { TeamMember } from '../../models/task.model';
       color: var(--text-secondary);
       line-height: 1.5;
       margin: 0;
+      max-width: 440px;
     }
 
     .sso-section {
@@ -193,32 +210,42 @@ import { TeamMember } from '../../models/task.model';
 
     .btn-sso-primary {
       width: 100%;
-      padding: 12px 18px;
-      border-radius: 8px;
-      background: var(--color-primary);
+      padding: 12px 20px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-primary);
       color: #ffffff;
       border: none;
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 13.5px;
+      font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
-      transition: background-color 0.15s ease, transform 0.1s ease;
-      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+      transition: var(--transition-tactile);
+      box-shadow: 0 4px 14px rgba(92, 115, 98, 0.3);
     }
 
     .btn-sso-primary:hover {
-      background: var(--color-primary-hover);
+      background: var(--accent-primary-hover);
       transform: translateY(-1px);
+    }
+
+    .btn-sso-primary:active {
+      transform: scale(0.99);
+    }
+
+    .sso-key-icon {
+      font-size: 16px;
+      display: flex;
+      align-items: center;
     }
 
     .sso-actor-pill {
       font-size: 11px;
-      background: rgba(255, 255, 255, 0.25);
-      padding: 2px 7px;
-      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.22);
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
       font-weight: 600;
     }
 
@@ -231,12 +258,12 @@ import { TeamMember } from '../../models/task.model';
     .divider-line {
       flex: 1;
       height: 1px;
-      background: var(--border-subtle);
+      background: var(--border-hairline);
     }
 
     .divider-label {
-      font-size: 10.5px;
-      font-weight: 700;
+      font-size: 10px;
+      font-weight: 600;
       letter-spacing: 0.05em;
       color: var(--text-muted);
     }
@@ -248,8 +275,8 @@ import { TeamMember } from '../../models/task.model';
     }
 
     .persona-section-title {
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 11px;
+      font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.04em;
       color: var(--text-secondary);
@@ -258,7 +285,7 @@ import { TeamMember } from '../../models/task.model';
     .persona-cards-grid {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 7px;
       max-height: 290px;
       overflow-y: auto;
       padding-right: 4px;
@@ -269,22 +296,23 @@ import { TeamMember } from '../../models/task.model';
       align-items: center;
       justify-content: space-between;
       padding: 10px 14px;
-      border-radius: 8px;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-inner);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: var(--transition-tactile);
     }
 
     .persona-card:hover {
-      background: var(--bg-elevated);
-      border-color: var(--color-primary);
-      transform: translateX(2px);
+      background: var(--bg-surface);
+      border-color: var(--accent-primary);
+      transform: translateY(-1px) translateX(2px);
+      box-shadow: var(--shadow-sm);
     }
 
     .persona-card.selected {
-      border-color: var(--color-primary);
-      background: rgba(37, 99, 235, 0.05);
+      border-color: var(--accent-primary);
+      background: var(--accent-primary-tint);
     }
 
     .persona-avatar-wrap {
@@ -309,22 +337,22 @@ import { TeamMember } from '../../models/task.model';
 
     .persona-role-indicator {
       font-size: 8.5px;
-      font-weight: 800;
-      padding: 1px 4px;
-      border-radius: 3px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: var(--radius-pill);
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
+      border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
     }
 
     .persona-role-indicator[data-role="LEAD"], .persona-role-indicator[data-role="ADMIN"] {
-      color: #059669;
-      border-color: #10b981;
+      color: var(--status-done);
+      border-color: rgba(78, 124, 89, 0.4);
     }
 
     .persona-role-indicator[data-role="QA"] {
-      color: #0891b2;
-      border-color: #06b6d4;
+      color: var(--status-deployed);
+      border-color: rgba(123, 104, 174, 0.4);
     }
 
     .persona-info {
@@ -342,6 +370,7 @@ import { TeamMember } from '../../models/task.model';
 
     .persona-name {
       font-size: 13px;
+      font-weight: 600;
       color: var(--text-primary);
     }
 
@@ -354,33 +383,42 @@ import { TeamMember } from '../../models/task.model';
       font-size: 11px;
     }
 
+    .text-muted {
+      color: var(--text-muted);
+    }
+
     .persona-pace-pill {
       font-size: 10px;
-      font-weight: 600;
+      font-weight: 500;
       color: var(--text-secondary);
     }
 
     .persona-enter-arrow {
-      font-size: 16px;
+      font-size: 14px;
       color: var(--text-muted);
-      transition: transform 0.15s ease, color 0.15s ease;
+      transition: var(--transition-tactile);
       margin-left: 8px;
+      display: flex;
+      align-items: center;
     }
 
     .persona-card:hover .persona-enter-arrow {
-      color: var(--color-primary);
+      color: var(--accent-primary);
       transform: translateX(3px);
     }
 
     .login-footer {
       text-align: center;
-      padding-top: 4px;
-      border-top: 1px solid var(--border-subtle);
+      padding-top: 6px;
+      border-top: 1px solid var(--border-hairline);
     }
 
     .compliance-tag {
       font-size: 10.5px;
       color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
   `]
 })

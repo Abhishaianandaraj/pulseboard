@@ -23,7 +23,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       <!-- 1. Top Execution Toolbar -->
       <div class="workspace-toolbar">
         <div class="toolbar-left">
-          <!-- View Switcher Tabs -->
+          <!-- View Switcher Tabs (Pill Geometry) -->
           <div class="view-switch-tabs">
             <button
               type="button"
@@ -31,12 +31,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
               [class.active]="store.currentView() === 'BOARD'"
               (click)="switchView('BOARD')"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="7" height="9"></rect>
-                <rect x="14" y="3" width="7" height="5"></rect>
-                <rect x="14" y="12" width="7" height="9"></rect>
-                <rect x="3" y="16" width="7" height="5"></rect>
-              </svg>
+              <i class="ph-light ph-kanban"></i>
               <span>Board</span>
             </button>
             <button
@@ -45,14 +40,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
               [class.active]="store.currentView() === 'SPRINT'"
               (click)="switchView('SPRINT')"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="8" y1="6" x2="21" y2="6"></line>
-                <line x1="8" y1="12" x2="21" y2="12"></line>
-                <line x1="8" y1="18" x2="21" y2="18"></line>
-                <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                <line x1="3" y1="18" x2="3.01" y2="18"></line>
-              </svg>
+              <i class="ph-light ph-list-dashes"></i>
               <span>Sprint</span>
             </button>
             <button
@@ -61,11 +49,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
               [class.active]="store.currentView() === 'TIMELINE'"
               (click)="switchView('TIMELINE')"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="4" y1="6" x2="16" y2="6"></line>
-                <line x1="8" y1="12" x2="20" y2="12"></line>
-                <line x1="6" y1="18" x2="14" y2="18"></line>
-              </svg>
+              <i class="ph-light ph-chart-horizontal"></i>
               <span>Gantt</span>
             </button>
           </div>
@@ -73,10 +57,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
           <!-- Search Input -->
           <div class="search-box-wrap">
             <span class="search-icon">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
+              <i class="ph-light ph-magnifying-glass"></i>
             </span>
             <input
               type="text"
@@ -86,11 +67,13 @@ import { ImportModalComponent } from '../../components/import-modal.component';
               (ngModelChange)="store.searchQuery.set($event)"
             />
             @if (store.searchQuery()) {
-              <button type="button" class="btn-clear" (click)="store.searchQuery.set('')">✕</button>
+              <button type="button" class="btn-clear" (click)="store.searchQuery.set('')">
+                <i class="ph-light ph-x"></i>
+              </button>
             }
           </div>
 
-          <!-- Priority Filter Chips -->
+          <!-- Priority Filter Chips (Pill Geometry) -->
           <div class="priority-chips">
             <button
               type="button"
@@ -136,11 +119,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
             (click)="openSmartImport()"
             title="Import deliverables via structured JSON"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
+            <i class="ph-light ph-tray-arrow-down"></i>
             <span>Smart Import</span>
           </button>
           <button
@@ -149,7 +128,8 @@ import { ImportModalComponent } from '../../components/import-modal.component';
             [disabled]="!store.canCreateTasks()"
             (click)="openNewTaskModal()"
           >
-            + New Task
+            <i class="ph-light ph-plus"></i>
+            <span>New Task</span>
           </button>
         </div>
       </div>
@@ -213,10 +193,14 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                             <span class="card-proj-badge" [style.color]="proj.color">{{ proj.code }}</span>
                           }
                           @if (task.blocked) {
-                            <span class="card-blocked-tag">Blocked</span>
+                            <span class="card-blocked-tag">
+                              <i class="ph-light ph-warning"></i> Blocked
+                            </span>
                           }
                           @if (!store.canEditTask(task)) {
-                            <span class="card-lock-badge" title="Read-only · Teammate task">🔒 Read-only</span>
+                            <span class="card-lock-badge" title="Read-only · Teammate task">
+                              <i class="ph-light ph-lock-key"></i> Read-only
+                            </span>
                           }
                         </div>
                         <span class="card-pts font-mono">{{ task.effortPoints }}p</span>
@@ -228,16 +212,18 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                         <div class="card-meta-left">
                           <span class="card-p-badge" [attr.data-priority]="task.priority">{{ task.priority }}</span>
                           @if (task.subtasks.length > 0) {
-                            <span class="card-checklist-tag text-xs font-mono">
-                              ☑ {{ getCompletedSubtasks(task) }}/{{ task.subtasks.length }}
+                            <span class="card-checklist-tag font-mono">
+                              <i class="ph-light ph-check-square"></i> {{ getCompletedSubtasks(task) }}/{{ task.subtasks.length }}
                             </span>
                           }
                           @if (isCriticalPath(task.id)) {
-                            <span class="key-path-tag" title="Key Path deliverable">Key Path</span>
+                            <span class="key-path-tag" title="Key Path deliverable">
+                              <i class="ph-light ph-flame"></i> Key
+                            </span>
                           }
                         </div>
 
-                        <!-- Stacked Avatars for Co-Assignees -->
+                        <!-- Stacked Avatars for Co-Assignees (Fan-Out on Group Hover) -->
                         <div class="avatar-stack">
                           @for (m of store.getTaskMembers(task); track m.id) {
                             <span
@@ -272,7 +258,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                   <th style="width: 90px;">Priority</th>
                   <th style="width: 70px;">Points</th>
                   <th style="width: 105px;">Due Date</th>
-                  <th style="width: 155px;">Status</th>
+                  <th style="width: 165px;">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -288,13 +274,19 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                       <div class="sprint-title-wrap">
                         <strong class="sprint-task-title">{{ task.title }}</strong>
                         @if (task.blocked) {
-                          <span class="card-blocked-tag">Blocked</span>
+                          <span class="card-blocked-tag">
+                            <i class="ph-light ph-warning"></i> Blocked
+                          </span>
                         }
                         @if (!store.canEditTask(task)) {
-                          <span class="card-lock-badge">🔒 Read-only</span>
+                          <span class="card-lock-badge">
+                            <i class="ph-light ph-lock-key"></i> Read-only
+                          </span>
                         }
                         @if (isCriticalPath(task.id)) {
-                          <span class="key-path-tag">Key Path</span>
+                          <span class="key-path-tag">
+                            <i class="ph-light ph-flame"></i> Key
+                          </span>
                         }
                       </div>
                     </td>
@@ -344,7 +336,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
               <div class="gantt-stats-row">
                 <span class="gantt-stat-pill">{{ store.filteredTasks().length }} Deliverables</span>
                 <span class="gantt-stat-pill key-path-pill">
-                  🔥 {{ store.ganttScheduleMetrics().criticalPathTaskIds.size }} on Key Path
+                  <i class="ph-light ph-flame"></i> {{ store.ganttScheduleMetrics().criticalPathTaskIds.size }} on Key Path
                 </span>
               </div>
 
@@ -355,7 +347,8 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                   [class.active]="showKeyPath()"
                   (click)="toggleKeyPath()"
                 >
-                  🔥 Key Path: {{ showKeyPath() ? 'ON' : 'OFF' }}
+                  <i class="ph-light ph-flame"></i>
+                  <span>Key Path: {{ showKeyPath() ? 'ON' : 'OFF' }}</span>
                 </button>
                 <button
                   type="button"
@@ -363,7 +356,8 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                   [class.active]="showScheduleShift()"
                   (click)="toggleScheduleShift()"
                 >
-                  📐 Schedule Shift: {{ showScheduleShift() ? 'ON' : 'OFF' }}
+                  <i class="ph-light ph-arrows-left-right"></i>
+                  <span>Schedule Shift: {{ showScheduleShift() ? 'ON' : 'OFF' }}</span>
                 </button>
               </div>
             </div>
@@ -371,7 +365,9 @@ import { ImportModalComponent } from '../../components/import-modal.component';
             <!-- Schedule Domino Conflict Banner -->
             @if (store.ganttScheduleMetrics().hasConflicts) {
               <div class="gantt-conflict-bar">
-                <span class="conflict-glyph">⚠️</span>
+                <span class="conflict-glyph">
+                  <i class="ph-light ph-warning-circle"></i>
+                </span>
                 <div class="conflict-text">
                   <strong>Prerequisite Overlap Risk Detected</strong>
                   <p>Upstream deliverables finish after downstream successor dates. Automatic cascade alignment is available.</p>
@@ -382,7 +378,8 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                   [disabled]="!store.canEditTasks()"
                   (click)="store.cascadeShiftDates()"
                 >
-                  ⚡ Auto-Shift Dependent Dates
+                  <i class="ph-light ph-lightning"></i>
+                  <span>Auto-Shift Dependent Dates</span>
                 </button>
               </div>
             }
@@ -408,7 +405,9 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                           <span class="key-path-tag">Key</span>
                         }
                         @if (task.dependencies.length > 0) {
-                          <span class="dep-pill font-mono">🔗 {{ task.dependencies.length }}</span>
+                          <span class="dep-pill font-mono">
+                            <i class="ph-light ph-link"></i> {{ task.dependencies.length }}
+                          </span>
                         }
                       </div>
                       <span class="font-mono text-muted text-xs">{{ task.effortPoints }}p</span>
@@ -418,7 +417,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
               </div>
 
               <!-- Right 30-Day Grid -->
-              <div class="gantt-right-grid">
+              <div class="gantt-right-grid custom-scroll">
                 <!-- Day Header -->
                 <div class="gantt-calendar-header">
                   @for (day of timelineDays; track day) {
@@ -441,13 +440,13 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                   <svg class="gantt-svg-overlay" width="900" [attr.height]="store.filteredTasks().length * 52">
                     <defs>
                       <marker id="arrow-normal" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--color-primary)" />
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent-primary)" />
                       </marker>
                       <marker id="arrow-key" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f97316" />
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent-warn)" />
                       </marker>
                       <marker id="arrow-conflict" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ef4444" />
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent-danger)" />
                       </marker>
                     </defs>
                     @for (conn of getGanttConnectors(); track conn.upstreamId + '-' + conn.downstreamId) {
@@ -486,8 +485,8 @@ import { ImportModalComponent } from '../../components/import-modal.component';
                         [class.is-blocked]="task.blocked"
                       >
                         <div class="bar-content-row">
-                          @if (task.blocked) { <span>🚫</span> }
-                          @if (task.slipReason) { <span>⚠️</span> }
+                          @if (task.blocked) { <i class="ph-light ph-warning"></i> }
+                          @if (task.slipReason) { <i class="ph-light ph-arrows-clockwise"></i> }
                           <span class="bar-title text-truncate">{{ task.title }}</span>
                           <span class="bar-date font-mono">{{ task.dueDate | slice:5:10 }}</span>
                         </div>
@@ -506,8 +505,10 @@ import { ImportModalComponent } from '../../components/import-modal.component';
         <div class="modal-backdrop" (click)="closeNewTaskModal()">
           <div class="modal-card" (click)="$event.stopPropagation()">
             <div class="modal-head">
-              <h3>Create New Deliverable</h3>
-              <button type="button" class="btn-close" (click)="closeNewTaskModal()">✕</button>
+              <h3 class="font-serif">Create New Deliverable</h3>
+              <button type="button" class="btn-close" (click)="closeNewTaskModal()">
+                <i class="ph-light ph-x"></i>
+              </button>
             </div>
             <div class="modal-body custom-scroll">
               <div class="form-group">
@@ -603,12 +604,13 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       flex-direction: column;
       height: 100%;
       overflow: hidden;
+      background: var(--bg-canvas);
     }
 
     .workspace-toolbar {
-      padding: 12px 24px;
+      padding: 10px 24px;
       background: var(--bg-surface);
-      border-bottom: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -626,23 +628,26 @@ import { ImportModalComponent } from '../../components/import-modal.component';
     .view-switch-tabs {
       display: flex;
       align-items: center;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-pill);
       padding: 3px;
       gap: 2px;
     }
 
     .tab-btn {
-      padding: 5px 12px;
-      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: var(--radius-pill);
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 500;
       color: var(--text-secondary);
       background: transparent;
       border: none;
       cursor: pointer;
-      transition: all 0.12s ease;
+      transition: var(--transition-tactile);
     }
 
     .tab-btn:hover {
@@ -651,8 +656,9 @@ import { ImportModalComponent } from '../../components/import-modal.component';
 
     .tab-btn.active {
       background: var(--bg-surface);
-      color: var(--text-primary);
+      color: var(--accent-primary);
       box-shadow: var(--shadow-sm);
+      font-weight: 600;
     }
 
     .search-box-wrap {
@@ -664,54 +670,72 @@ import { ImportModalComponent } from '../../components/import-modal.component';
 
     .search-icon {
       position: absolute;
-      left: 10px;
-      font-size: 12px;
+      left: 12px;
+      font-size: 13px;
       color: var(--text-muted);
       pointer-events: none;
+      display: flex;
+      align-items: center;
     }
 
     .search-input {
       width: 100%;
-      padding: 6px 26px 6px 28px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-canvas);
+      padding: 6px 28px 6px 32px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       color: var(--text-primary);
       font-size: 12px;
       outline: none;
+      transition: var(--transition-tactile);
+    }
+
+    .search-input:focus {
+      background: var(--bg-surface);
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 2px var(--accent-primary-tint);
     }
 
     .btn-clear {
       position: absolute;
-      right: 6px;
+      right: 8px;
       background: transparent;
       border: none;
       color: var(--text-muted);
       cursor: pointer;
-      font-size: 11px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
     }
 
     .priority-chips {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
     }
 
     .p-chip {
-      padding: 4px 8px;
-      border-radius: 12px;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
       font-size: 11px;
-      font-weight: 600;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
+      font-weight: 500;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
       cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+
+    .p-chip:hover {
+      background: var(--bg-surface);
+      color: var(--text-primary);
     }
 
     .p-chip.active {
-      background: var(--bg-elevated);
-      color: var(--text-primary);
-      border-color: var(--border-strong);
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
+      border-color: rgba(92, 115, 98, 0.35);
+      font-weight: 600;
     }
 
     .toolbar-right {
@@ -721,32 +745,40 @@ import { ImportModalComponent } from '../../components/import-modal.component';
     }
 
     .btn-action {
-      padding: 7px 14px;
-      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
-      border: none;
-      transition: all 0.15s ease;
+      border: 1px solid transparent;
+      transition: var(--transition-tactile);
     }
 
     .btn-smart-import {
-      background: rgba(124, 58, 237, 0.12);
-      border: 1px solid rgba(124, 58, 237, 0.4);
-      color: #8b5cf6;
+      background: var(--bg-subtle);
+      border-color: var(--border-hairline);
+      color: var(--text-secondary);
     }
 
     .btn-smart-import:hover:not(:disabled) {
-      background: rgba(124, 58, 237, 0.2);
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
+      border-color: rgba(92, 115, 98, 0.3);
+      transform: translateY(-1px);
     }
 
     .btn-new-task {
-      background: var(--color-primary);
+      background: var(--accent-primary);
       color: #ffffff;
+      box-shadow: var(--shadow-sm);
     }
 
     .btn-new-task:hover:not(:disabled) {
-      background: var(--color-primary-hover);
+      background: var(--accent-primary-hover);
+      transform: translateY(-1px);
     }
 
     .workspace-viewport {
@@ -765,25 +797,25 @@ import { ImportModalComponent } from '../../components/import-modal.component';
     }
 
     .kanban-column {
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
-      border-radius: 10px;
-      padding: 12px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      padding: 14px;
       display: flex;
       flex-direction: column;
-      min-height: calc(100vh - 200px);
+      min-height: calc(100vh - 190px);
     }
 
     .kanban-column.col-deployed-highlight {
       background: var(--status-deployed-bg);
-      border-color: var(--status-deployed);
+      border-color: rgba(123, 104, 174, 0.35);
     }
 
     .col-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       padding: 0 4px;
     }
 
@@ -794,36 +826,34 @@ import { ImportModalComponent } from '../../components/import-modal.component';
     }
 
     .col-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
     }
 
     .col-name {
-      font-size: 13px;
-      font-weight: 700;
+      font-size: 12.5px;
+      font-weight: 600;
       color: var(--text-primary);
       margin: 0;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: -0.01em;
     }
 
     .col-count {
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 10.5px;
+      font-weight: 600;
       padding: 1px 7px;
-      border-radius: 10px;
+      border-radius: var(--radius-pill);
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
+      border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
     }
 
     .lead-check-tag {
-      font-size: 10px;
-      font-weight: 800;
-      text-transform: uppercase;
-      padding: 2px 6px;
-      border-radius: 4px;
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: var(--radius-pill);
       background: var(--status-deployed);
       color: #ffffff;
     }
@@ -838,29 +868,29 @@ import { ImportModalComponent } from '../../components/import-modal.component';
 
     .task-card {
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 12px 14px;
+      border: 1px solid var(--border-hairline);
+      border-radius: 14px;
+      padding: 14px 16px;
       box-shadow: var(--shadow-sm);
       cursor: grab;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+      gap: 8px;
+      transition: var(--transition-tactile);
     }
 
     .task-card:hover {
       transform: translateY(-2px);
       box-shadow: var(--shadow-md);
-      border-color: var(--border-strong);
+      border-color: rgba(92, 115, 98, 0.4);
     }
 
     .task-card.card-is-deployed {
-      border-color: var(--status-deployed);
+      border-color: rgba(123, 104, 174, 0.4);
     }
 
     .task-card.card-is-blocked {
-      border-color: #ef4444;
+      border-color: rgba(200, 109, 81, 0.5);
     }
 
     .task-card-top {
@@ -884,50 +914,50 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       font-size: 10px;
       font-weight: 700;
       font-family: var(--font-mono);
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
     }
 
     .card-blocked-tag {
-      font-size: 9px;
-      font-weight: 700;
-      padding: 1px 4px;
-      border-radius: 3px;
-      background: rgba(239, 68, 68, 0.15);
-      color: #dc2626;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 9.5px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--status-blocked-bg);
+      color: var(--status-blocked-text);
     }
 
     .card-lock-badge {
-      font-size: 9px;
-      font-weight: 700;
-      padding: 1px 5px;
-      border-radius: 3px;
-      background: var(--bg-hover);
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 9.5px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
       color: var(--text-muted);
-      border: 1px solid var(--border-subtle);
-    }
-
-    .modal-assignee-pool {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
-    .truncate-names {
-      max-width: 110px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      border: 1px solid var(--border-hairline);
     }
 
     .card-pts {
-      font-size: 11px;
+      font-size: 10.5px;
       color: var(--text-muted);
+      background: var(--bg-subtle);
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
     }
 
     .card-title {
       font-size: 13px;
+      font-weight: 600;
       color: var(--text-primary);
-      line-height: 1.4;
+      line-height: 1.45;
     }
 
     .card-footer {
@@ -945,11 +975,11 @@ import { ImportModalComponent } from '../../components/import-modal.component';
 
     .card-p-badge {
       font-size: 9.5px;
-      font-weight: 700;
-      padding: 1px 5px;
-      border-radius: 3px;
-      background: var(--badge-medium-bg);
-      color: var(--badge-medium-text);
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
     }
 
     .card-p-badge[data-priority="CRITICAL"] {
@@ -957,38 +987,39 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       color: var(--badge-critical-text);
     }
 
+    .card-p-badge[data-priority="HIGH"] {
+      background: var(--badge-high-bg);
+      color: var(--badge-high-text);
+    }
+
     .card-checklist-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
       font-size: 10.5px;
       color: var(--text-secondary);
     }
 
     .key-path-tag {
-      font-size: 9px;
-      font-weight: 800;
-      padding: 1px 4px;
-      border-radius: 3px;
-      background: rgba(249, 115, 22, 0.15);
-      color: #f97316;
-    }
-
-    .card-assignee-avatar {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      color: #ffffff;
-      font-size: 9.5px;
-      font-weight: 700;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
+      gap: 2px;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-warn-tint);
+      color: var(--accent-warn);
+      border: 1px solid rgba(197, 155, 78, 0.3);
     }
 
     /* SPRINT TABLE */
     .sprint-table-card {
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
       overflow-x: auto;
+      box-shadow: var(--shadow-soft);
     }
 
     .sprint-data-table {
@@ -998,63 +1029,76 @@ import { ImportModalComponent } from '../../components/import-modal.component';
     }
 
     .sprint-data-table th {
-      padding: 10px 14px;
-      background: var(--bg-elevated);
+      padding: 12px 16px;
+      background: var(--bg-subtle);
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.04em;
-      border-bottom: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-hairline);
     }
 
     .sprint-row {
-      border-bottom: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-hairline);
       cursor: pointer;
-      transition: background-color 0.1s ease;
+      transition: var(--transition-tactile);
     }
 
     .sprint-row:hover {
-      background: var(--bg-canvas);
+      background: var(--bg-subtle);
     }
 
     .sprint-data-table td {
-      padding: 11px 14px;
+      padding: 12px 16px;
       font-size: 12.5px;
     }
 
     .sprint-title-wrap {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }
 
     .sprint-task-title {
       color: var(--text-primary);
-      font-size: 12.5px;
+      font-size: 13px;
+      font-weight: 600;
     }
 
     .table-member-cell {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+    }
+
+    .truncate-names {
+      max-width: 110px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .sprint-select-status {
-      padding: 4px 8px;
-      border-radius: 5px;
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-canvas);
+      padding: 5px 10px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       color: var(--text-primary);
       font-size: 11.5px;
       outline: none;
+      transition: var(--transition-tactile);
+    }
+
+    .sprint-select-status:hover {
+      border-color: var(--accent-primary);
     }
 
     /* GANTT */
     .gantt-wrapper {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
     }
 
     .gantt-sub-toolbar {
@@ -1063,9 +1107,10 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       justify-content: space-between;
       gap: 12px;
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 10px 16px;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      padding: 12px 18px;
+      box-shadow: var(--shadow-soft);
       flex-wrap: wrap;
     }
 
@@ -1077,18 +1122,18 @@ import { ImportModalComponent } from '../../components/import-modal.component';
 
     .gantt-stat-pill {
       font-size: 11px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 10px;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
     }
 
     .key-path-pill {
-      background: rgba(249, 115, 22, 0.12);
-      border-color: #f97316;
-      color: #ea580c;
+      background: var(--accent-warn-tint);
+      border-color: rgba(197, 155, 78, 0.3);
+      color: var(--accent-warn);
     }
 
     .gantt-toggle-group {
@@ -1098,27 +1143,37 @@ import { ImportModalComponent } from '../../components/import-modal.component';
     }
 
     .btn-gantt-opt {
-      padding: 5px 10px;
-      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: var(--radius-pill);
       font-size: 11.5px;
-      font-weight: 600;
-      background: var(--bg-canvas);
-      border: 1px solid var(--border-subtle);
+      font-weight: 500;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
       cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+
+    .btn-gantt-opt:hover {
+      color: var(--text-primary);
+      border-color: var(--border-strong);
     }
 
     .btn-gantt-opt.active {
-      background: var(--color-primary);
-      color: #ffffff;
-      border-color: var(--color-primary);
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
+      border-color: rgba(92, 115, 98, 0.35);
+      font-weight: 600;
     }
 
     .gantt-conflict-bar {
-      background: rgba(239, 68, 68, 0.08);
-      border: 1px solid rgba(239, 68, 68, 0.35);
-      border-radius: 8px;
-      padding: 10px 16px;
+      background: var(--accent-danger-tint);
+      border: 1px solid rgba(200, 109, 81, 0.3);
+      border-radius: var(--radius-inner);
+      padding: 12px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -1126,46 +1181,66 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       flex-wrap: wrap;
     }
 
-    .conflict-glyph { font-size: 18px; }
-    .conflict-text p { font-size: 11.5px; color: var(--text-secondary); margin: 2px 0 0 0; }
+    .conflict-glyph {
+      font-size: 18px;
+      color: var(--accent-danger);
+      display: flex;
+      align-items: center;
+    }
+
+    .conflict-text p {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      margin: 2px 0 0 0;
+    }
 
     .btn-auto-align {
-      padding: 6px 12px;
-      border-radius: 6px;
-      background: #dc2626;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-danger);
       color: #ffffff;
       border: none;
       font-size: 11.5px;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+
+    .btn-auto-align:hover {
+      background: var(--accent-danger-hover);
+      transform: translateY(-1px);
     }
 
     .gantt-split-board {
       display: flex;
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
       overflow: hidden;
+      box-shadow: var(--shadow-soft);
     }
 
     .gantt-left-tree {
       width: 340px;
       min-width: 340px;
-      border-right: 1px solid var(--border-subtle);
+      border-right: 1px solid var(--border-hairline);
       display: flex;
       flex-direction: column;
     }
 
     .gantt-tree-header {
-      height: 40px;
-      padding: 0 14px;
+      height: 42px;
+      padding: 0 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: var(--bg-elevated);
-      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border-hairline);
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 600;
       text-transform: uppercase;
       color: var(--text-muted);
     }
@@ -1178,43 +1253,46 @@ import { ImportModalComponent } from '../../components/import-modal.component';
     .gantt-tree-item {
       height: 52px;
       box-sizing: border-box;
-      padding: 0 14px;
-      border-bottom: 1px solid var(--border-subtle);
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
       cursor: pointer;
-      transition: background-color 0.1s ease;
+      transition: var(--transition-tactile);
     }
 
     .gantt-tree-item:hover {
-      background: var(--bg-canvas);
+      background: var(--bg-subtle);
     }
 
     .gantt-tree-item.is-key-row {
-      border-left: 3px solid #f97316;
+      border-left: 3px solid var(--accent-warn);
     }
 
     .tree-item-title-wrap {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
       overflow: hidden;
       flex: 1;
     }
 
     .tree-title {
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 12.5px;
+      font-weight: 500;
       color: var(--text-primary);
     }
 
     .dep-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
       font-size: 9.5px;
-      background: var(--badge-medium-bg);
-      color: var(--badge-medium-text);
-      padding: 1px 5px;
-      border-radius: 3px;
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
     }
 
     .gantt-right-grid {
@@ -1227,10 +1305,10 @@ import { ImportModalComponent } from '../../components/import-modal.component';
 
     .gantt-calendar-header {
       width: 900px;
-      height: 40px;
+      height: 42px;
       display: flex;
-      background: var(--bg-elevated);
-      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border-hairline);
     }
 
     .gantt-day-tick {
@@ -1239,10 +1317,10 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       display: flex;
       align-items: center;
       justify-content: center;
-      border-right: 1px dashed var(--border-subtle);
+      border-right: 1px dashed var(--border-hairline);
       font-size: 11px;
       color: var(--text-muted);
-      font-weight: 600;
+      font-weight: 500;
     }
 
     .gantt-track-area {
@@ -1260,7 +1338,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
     .day-v-line {
       width: 30px;
       min-width: 30px;
-      border-right: 1px dashed var(--border-subtle);
+      border-right: 1px dashed var(--border-hairline);
       height: 100%;
     }
 
@@ -1274,13 +1352,13 @@ import { ImportModalComponent } from '../../components/import-modal.component';
 
     .gantt-path {
       fill: none;
-      stroke: var(--color-primary);
+      stroke: var(--accent-primary);
       stroke-width: 2;
-      opacity: 0.8;
+      opacity: 0.85;
     }
 
-    .gantt-path.path-key { stroke: #f97316; stroke-width: 2.5; }
-    .gantt-path.path-conflict { stroke: #ef4444; stroke-width: 2.5; stroke-dasharray: 4 2; }
+    .gantt-path.path-key { stroke: var(--accent-warn); stroke-width: 2.5; }
+    .gantt-path.path-conflict { stroke: var(--accent-danger); stroke-width: 2.5; stroke-dasharray: 4 2; }
 
     .gantt-bar-lane {
       position: absolute;
@@ -1294,8 +1372,8 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       position: absolute;
       top: 6px;
       height: 12px;
-      border-radius: 4px;
-      background: rgba(148, 163, 184, 0.25);
+      border-radius: var(--radius-pill);
+      background: rgba(148, 163, 184, 0.2);
       border: 1px dashed var(--text-muted);
       z-index: 2;
       overflow: hidden;
@@ -1308,17 +1386,22 @@ import { ImportModalComponent } from '../../components/import-modal.component';
 
     .gantt-live-bar {
       position: absolute;
-      top: 15px;
-      height: 26px;
-      border-radius: 5px;
+      top: 14px;
+      height: 28px;
+      border-radius: var(--radius-pill);
       color: #ffffff;
       font-size: 11px;
       font-weight: 600;
       display: flex;
       align-items: center;
-      padding: 0 8px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+      padding: 0 10px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
       z-index: 3;
+      transition: var(--transition-tactile);
+    }
+
+    .gantt-live-bar:hover {
+      transform: translateY(-1px);
     }
 
     .gantt-live-bar[data-status="TODO"] { background: var(--status-todo); }
@@ -1327,7 +1410,7 @@ import { ImportModalComponent } from '../../components/import-modal.component';
     .gantt-live-bar[data-status="DONE"] { background: var(--status-done); }
 
     .gantt-live-bar.is-key-bar {
-      box-shadow: 0 0 0 2px #f97316, 0 2px 6px rgba(249, 115, 22, 0.35);
+      box-shadow: 0 0 0 2px var(--accent-warn), 0 2px 8px rgba(197, 155, 78, 0.35);
     }
 
     .bar-content-row {
@@ -1345,8 +1428,8 @@ import { ImportModalComponent } from '../../components/import-modal.component';
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(10, 14, 20, 0.55);
-      backdrop-filter: blur(2px);
+      background: rgba(20, 19, 18, 0.45);
+      backdrop-filter: blur(6px);
       z-index: 95;
       display: flex;
       align-items: center;
@@ -1356,11 +1439,11 @@ import { ImportModalComponent } from '../../components/import-modal.component';
 
     .modal-card {
       width: 100%;
-      max-width: 520px;
+      max-width: 540px;
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-float);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -1371,66 +1454,151 @@ import { ImportModalComponent } from '../../components/import-modal.component';
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border-subtle);
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border-hairline);
     }
 
-    .modal-head h3 { font-size: 15px; font-weight: 700; margin: 0; }
-    .btn-close { background: transparent; border: none; font-size: 16px; cursor: pointer; color: var(--text-muted); }
+    .modal-head h3 { font-size: 18px; font-weight: 500; margin: 0; }
+    .btn-close {
+      background: transparent;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      transition: var(--transition-tactile);
+    }
+    .btn-close:hover { color: var(--text-primary); }
 
     .modal-body {
-      padding: 20px;
+      padding: 22px 24px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
       overflow-y: auto;
     }
 
-    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
     .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
     .form-label { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
-    .form-label.required::after { content: ' *'; color: #ef4444; }
+    .form-label.required::after { content: ' *'; color: var(--accent-danger); }
 
     .form-input, .form-select, .form-textarea {
-      padding: 7px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-canvas);
+      padding: 8px 12px;
+      border-radius: var(--radius-inner);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       color: var(--text-primary);
-      font-size: 12px;
+      font-size: 12.5px;
       outline: none;
+      transition: var(--transition-tactile);
     }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      background: var(--bg-surface);
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 2px var(--accent-primary-tint);
+    }
+
+    .modal-assignee-pool {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .pool-chip-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+      font-size: 11px;
+      cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+
+    .pool-chip-btn:hover {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+    }
+
+    .pool-chip-btn.selected {
+      background: var(--accent-primary-tint);
+      border-color: rgba(92, 115, 98, 0.35);
+      color: var(--accent-primary);
+      font-weight: 600;
+    }
+
+    .chip-avatar-sm {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      color: #ffffff;
+      font-size: 8.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    .capacity-mini-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .capacity-mini-dot[data-status="OPTIMAL"] { background: var(--status-done); }
+    .capacity-mini-dot[data-status="NEAR_CAPACITY"] { background: var(--accent-warn); }
+    .capacity-mini-dot[data-status="OVER_BUDGET"] { background: var(--accent-danger); }
 
     .modal-actions {
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 8px;
-      padding: 14px 20px;
-      border-top: 1px solid var(--border-subtle);
-      background: var(--bg-elevated);
+      gap: 10px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
     }
 
     .btn-cancel {
-      padding: 7px 14px;
-      border-radius: 6px;
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
       background: transparent;
-      border: 1px solid var(--border-subtle);
+      border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
       font-size: 12px;
+      font-weight: 500;
       cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+
+    .btn-cancel:hover {
+      background: var(--bg-surface);
+      color: var(--text-primary);
     }
 
     .btn-submit {
-      padding: 7px 16px;
-      border-radius: 6px;
-      background: var(--color-primary);
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-primary);
       border: none;
       color: #ffffff;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition-tactile);
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: var(--accent-primary-hover);
+      transform: translateY(-1px);
     }
   `]
 })
