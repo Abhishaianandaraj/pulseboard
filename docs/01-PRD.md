@@ -228,3 +228,7 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
      - Review & edit staged deliverables prior to committing to workspace.
      - Co-assignee toggles with real-time capacity budget comfort dots (`OPTIMAL`, `NEAR_CAPACITY`, `OVER_BUDGET`).
      - Ingested tasks automatically record an `[AI_EXTRACTED]` entry under `ActivityActionType = 'AI_PROMPT_EXTRACTION'` in the immutable compliance audit ledger.
+  4. **Compound Multi-Task NLP Parsing & Title Cleaning (v3.1.1):**
+     - Splits compound spoken/typed prompts on mid-sentence task boundaries (`,\s*(?:and\s+)?(?:also\s+)?(?:create\s+|add\s+)?(?:a|an|another)\s+...`) as well as sequential conjunctions.
+     - Supports hyphenated and spaced story point formats (`/\b(\d+)\s*-?\s*(?:points?|pts?)\b/i`, e.g. "5-point" and "3 points").
+     - Strips conversational boilerplate prefixes and trailing metadata/dependency clauses, outputting concise, actionable deliverable titles with proper capitalization (e.g., "Implement RBAC route guards and role middleware").

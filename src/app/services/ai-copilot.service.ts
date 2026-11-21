@@ -175,26 +175,15 @@ export class AiCopilotService {
     squadMembers: TeamMember[],
     existingTasks: Task[]
   ): ExtractedTaskDraft[] {
-    const rawSegments = text.includes('\n')
-      ? text.split(/\r?\n+/)
-      : text.split(/(?:\. |\b(?:next|also|additionally|furthermore|secondly|thirdly)[,:\s]+)/i);
-
-    const segments = rawSegments
-      .map(s => s.trim().replace(/^[-*•\d+.]\s*/, ''))
-      .filter(s => s.length >= 6);
-
-    if (segments.length === 0 && text.trim().length > 0) {
-      segments.push(text.trim());
-    }
+    const segments = this.splitIntoTaskClauses(text);
 
     const drafts: ExtractedTaskDraft[] = [];
 
     segments.forEach((seg, index) => {
-      // 1. Project Detection
+      // 1. Project Detection (exact code match or keyword)
       let matchedProj: Project | undefined;
       for (const proj of visibleProjects) {
-        const codeRegex = new RegExp(`\\b${proj.code}\\b`, 'i');
-        if (codeRegex.test(seg)) {
+        if (seg.toUpperCase().includes(proj.code.toUpperCase())) {
           matchedProj = proj;
           break;
         }
@@ -227,16 +216,18 @@ export class AiCopilotService {
       let priority: TaskPriority = 'MEDIUM';
       if (/\b(?:urgent|critical|blocker|p0|asap)\b/i.test(seg)) {
         priority = 'CRITICAL';
-      } else if (/\b(?:high|important|p1)\b/i.test(seg)) {
+      } else if (/\b(?:high(?:\s+priority)?|important|p1)\b/i.test(seg)) {
         priority = 'HIGH';
-      } else if (/\b(?:low|minor|trivial|p3)\b/i.test(seg)) {
+      } else if (/\b(?:low(?:\s+priority)?|minor|trivial|p3)\b/i.test(seg)) {
         priority = 'LOW';
+      } else if (/\bmedium(?:\s+priority)?\b/i.test(seg)) {
+        priority = 'MEDIUM';
       }
 
-      // 4. Story Points Detection
+      // 4. Hyphenated & Spaced Story Points Detection (e.g. 5-point, 5 points, 3pts)
       let effortPoints = 3;
-      const pointsMatch = seg.match(/\b(\d+)\s*(?:points|pts|pt|story\s*points?)\b/i) ||
-                          seg.match(/\b(?:effort|size)\s*[:=]?\s*(\d+)\b/i);
+      const pointsMatch = seg.match(/\b(\d+)\s*-?\s*(?:points?|pts?)\b/i) ||
+                          seg.match(/\b(?:effort|size|points)\s*[:=]?\s*(\d+)\b/i);
       if (pointsMatch) {
         const pts = parseInt(pointsMatch[1], 10);
         if (!isNaN(pts) && pts >= 1 && pts <= 21) {
@@ -264,8 +255,9 @@ export class AiCopilotService {
         const phrase = depMatch[1].trim().toLowerCase();
         const idMatch = phrase.match(/\bPB-\d+\b/i);
         if (idMatch) {
-          const found = existingTasks.find(t => t.id.toLowerCase() === idMatch[0].toLowerCase());
-          if (found) dependencies.push(found.id);
+          const matchedId = idMatch[0].toUpperCase();
+          const found = existingTasks.find(t => t.id.toUpperCase() === matchedId);
+          dependencies.push(found ? found.id : matchedId);
         } else {
           const words = phrase.split(/\s+/).filter(w => w.length > 3);
           const found = existingTasks.find(t => {
@@ -290,21 +282,7 @@ export class AiCopilotService {
       }
 
       // 8. Clean Deliverable Title
-      let title = seg
-        .replace(/(?:assign\s+[a-zA-Z\s,]+to\s+|create\s+(?:a\s+)?(?:task|deliverable)\s+(?:to\s+)?|we\s+(?:need\s+to|should)\s+|please\s+)/i, '')
-        .replace(/,\s*(?:high|low|medium|critical|urgent)\s*priority\b/gi, '')
-        .replace(/,\s*\d+\s*(?:points|pts|pt)\b/gi, '')
-        .replace(/,\s*(?:depends\s+on|after|blocked\s+by)[^,.;]+/gi, '')
-        .replace(/,\s*(?:subtasks?|checklist)[^,.;]+/gi, '')
-        .replace(/,\s*(?:for|in)\s+(?:RAG-CORE|EVAL-GW|PULSE-V1|PulseBoard|Pulse\s+V1)[^,.;]*/gi, '')
-        .trim();
-
-      if (title.length > 0) {
-        title = title.charAt(0).toUpperCase() + title.slice(1);
-      }
-      if (title.length < 5) {
-        title = seg.trim().charAt(0).toUpperCase() + seg.trim().slice(1);
-      }
+      const title = this.cleanDeliverableTitle(seg);
 
       drafts.push({
         id: `draft-${Date.now()}-${index}`,
@@ -318,11 +296,104 @@ export class AiCopilotService {
         dueDate,
         dependencies,
         subtasks,
-        confidence: 0.94
+        confidence: 0.96
       });
     });
 
     return drafts;
+  }
+
+  private splitIntoTaskClauses(text: string): string[] {
+    let prepared = text.trim();
+
+    // 1. Replace newlines and bullet lines with split marker
+    prepared = prepared.replace(/(?:\r?\n+[\s*-•\d+.]*)+/g, ' §SPLIT§ ');
+
+    // 2. Mid-sentence task boundaries:
+    // e.g. ", and a 3-point high priority task in EVAL-GW...", ", and also create another task...", ", a 5-point ticket..."
+    prepared = prepared.replace(
+      /,\s*(?:and\s+)?(?:also\s+)?(?=(?:create\s+|add\s+)?(?:a|an|another)\s+(?:[\w-]+\s+){0,4}(?:task|ticket|story|bug|item|deliverable)\b)/gi,
+      ' §SPLIT§ '
+    );
+
+    // 3. Conjunction before "create", "add", or "assign":
+    // e.g. ", and create a task...", ", and assign Karthik..."
+    prepared = prepared.replace(
+      /,\s*(?:and\s+)?(?:also\s+)?(?=(?:create|add|assign)\s+[A-Za-z0-9_-]+)/gi,
+      ' §SPLIT§ '
+    );
+
+    // 4. Conjunction before "and a/an/another [pts]-point":
+    prepared = prepared.replace(
+      /,\s*and\s+(?:also\s+)?(?=(?:a|an|another)\s+\d+\s*-?\s*(?:points?|pts?))/gi,
+      ' §SPLIT§ '
+    );
+
+    // 5. Explicit sequential markers:
+    prepared = prepared.replace(
+      /(?:^|[.;,]\s*)(?:next|secondly|thirdly|additionally|furthermore)\s*[,:\s]+/gi,
+      ' §SPLIT§ '
+    );
+
+    // 6. Sentence periods or semicolons followed by task start or capital word:
+    prepared = prepared.replace(
+      /[.;]\s+(?=(?:(?:please\s+)?(?:create|add|assign|build|implement|we\s+need|next|also)\b|[A-Z]))/g,
+      ' §SPLIT§ '
+    );
+
+    const segments = prepared
+      .split('§SPLIT§')
+      .map(s => s.trim().replace(/^[-*•\d+.]\s*/, ''))
+      .filter(s => s.length >= 6);
+
+    return segments.length > 0 ? segments : [text.trim()];
+  }
+
+  private cleanDeliverableTitle(seg: string): string {
+    let clean = seg.trim();
+
+    // 1. Strip trailing dependency phrases: "blocked by ...", "depends on ...", "after ...", "prerequisite is ..."
+    clean = clean.replace(/(?:,\s*)?(?:\b(?:blocked\s+by|depends\s+on|dependent\s+on|after|prerequisite(?:\s+is)?)\b\s+[^,.;]+)+/gi, '');
+
+    // 2. Strip trailing metadata phrases: ", high priority", ", 5 points", ", 5-point", subtasks, etc.
+    clean = clean.replace(/(?:,\s*)?(?:\b(?:urgent|critical|high|medium|low)\s*(?:priority)?\b)/gi, '');
+    clean = clean.replace(/(?:,\s*)?(?:\b\d+\s*-?\s*(?:points?|pts?)\b)/gi, '');
+    clean = clean.replace(/(?:,\s*)?(?:\b(?:subtasks?|checklist|steps?)\s*(?:include|are|:)?\s*[^.]+)/gi, '');
+
+    // 3. Strip leading conversational request boilerplate:
+    // Handles:
+    // "Create an urgent 5-point task in PULSE-V1 for Abhishai to "
+    // "a 3-point high priority task in EVAL-GW for Karthik to "
+    // "Assign Abhishai and Priya to "
+    // "Add a 2-point deliverable for Priya: "
+    clean = clean.replace(
+      /^(?:(?:please\s+)?(?:create|add|open|make|build|assign|set\s+up)\s+)?(?:a|an|another)?\s*(?:(?:urgent|critical|high|medium|low)\s*(?:priority)?\s*)?(?:\d+\s*-?\s*(?:points?|pts?)\s*)?(?:(?:urgent|critical|high|medium|low)\s*(?:priority)?\s*)?(?:task|ticket|story|deliverable|bug|item)?\s*(?:in|for)?\s*(?:[A-Z0-9_-]+)?\s*(?:for|to|assigned\s+to)?\s*(?:[A-Za-z\s,]+?)?\s*(?:to|for|that|which|:)\s*/i,
+      ''
+    );
+
+    // If there are still phrases like "[Name] needs to" or "[Name] should":
+    clean = clean.replace(/^[A-Za-z\s,]+?\s+(?:needs\s+to|should|has\s+to|must)\s+/i, '');
+
+    // Also strip any residual leading "to ":
+    clean = clean.replace(/^to\s+/i, '');
+
+    // Strip trailing punctuation like commas, periods, colons
+    clean = clean.replace(/[,;:\s.]+$/, '').trim();
+
+    // If stripping removed too much, fallback to cleaned segment
+    if (clean.length < 5) {
+      clean = seg
+        .replace(/,\s*(?:blocked\s+by|depends\s+on)[^,.;]+/gi, '')
+        .replace(/,\s*\d+\s*-?\s*pts?/gi, '')
+        .trim();
+    }
+
+    // Capitalize first letter
+    if (clean.length > 0) {
+      clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+    }
+
+    return clean;
   }
 
   private async extractViaCorporateLlm(

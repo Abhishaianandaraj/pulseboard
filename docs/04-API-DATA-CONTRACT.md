@@ -448,3 +448,12 @@ export type ActivityActionType =
   }
 ]
 ```
+
+
+### 6.4 Compound Multi-Task NLP Parsing Contract (v3.1.1)
+- **Mid-sentence boundary regex**:
+  `,\s*(?:and\s+)?(?:also\s+)?(?=(?:create\s+|add\s+)?(?:a|an|another)\s+(?:[\w-]+\s+){0,4}(?:task|ticket|story|bug|item|deliverable)\b)`
+- **Hyphenated and spaced story points regex**:
+  `\b(\d+)\s*-?\s*(?:points?|pts?)\b`
+- **Actionable title sanitizer**:
+  Strips conversational boilerplate prefixes (`Create/Add [a/an] [priority] [points] task in [PROJECT] for [ASSIGNEES] to ...`) and trailing dependency/points clauses, yielding actionable deliverable titles capitalized cleanly.

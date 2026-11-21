@@ -83,6 +83,8 @@ Every release candidate, pull request, and staging deployment must execute and s
 ### 1.10 Prompt with AI & Voice Dictation Quality Gate (v3.1)
 - [x] **Live Speech Recognition Integration:** `Web Speech API` starts and stops cleanly via pulsing microphone toggle; interim transcripts display in real time without crashing on unsupported browsers.
 - [x] **Dual-Mode NLP Parsing:** Deterministic local parser reliably extracts project codes (`RAG-CORE`, `EVAL-GW`, `PULSE-V1`), co-assignees, priority, story points, due dates, subtasks, and upstream dependencies. Corporate LLM mode handles offline scenarios with seamless automatic fallback to local NLP.
+- [x] **Compound Multi-Task Clause Splitting (v3.1.1):** Accurately splits compound sentences with mid-sentence boundaries (`,\s*and\s+(?:also\s+)?(?:create\s+|add\s+)?(?:a|an|another)...`) into distinct task drafts.
+- [x] **Hyphenated Points & Clean Title Extraction (v3.1.1):** Parses both `5-point` and `5 points`, extracts clean action titles (stripping conversational boilerplate), and capitalizes deliverable names.
 - [x] **Staging & Editing Quality Gate:** Users can edit deliverable titles, projects, co-assignees (with live capacity status indicators), points, and priorities before committing.
 - [x] **Immutable Provenance Audit:** Committing deliverables created via the AI prompt composer logs an `AI_PROMPT_EXTRACTION` activity record tagged with `[AI_EXTRACTED]` in the activity ledger.
 - [x] **RBAC Gate:** `VIEWER` persona cannot open or commit tasks via `Prompt with AI`.
@@ -90,6 +92,11 @@ Every release candidate, pull request, and staging deployment must execute and s
 ---
 
 ## 2. Release Changelog
+
+### `v3.1.1` (Compound Multi-Task NLP Splitting & Clean Title Extraction)
+- **Mid-Sentence Task Boundary Splitting:** Upgraded `AiCopilotService.extractViaLocalNlp` with a multi-clause splitter that detects compound tasks separated by commas, conjunctions, and task creation verbs (`,\s*(?:and\s+)?(?:also\s+)?(?:create\s+|add\s+)?(?:a|an|another)\s+...`).
+- **Hyphenated Story Points Parsing:** Enhanced story points matcher to support `/\b(\d+)\s*-?\s*(?:points?|pts?)\b/i`, handling `5-point`, `3-point`, `5 points`, and `3pts` interchangeably.
+- **Actionable Deliverable Title Sanitization:** Added `cleanDeliverableTitle` to strip conversational prefixes (e.g., `Create an urgent 5-point task in PULSE-V1 for Abhishai to...`), trailing dependency clauses (`blocked by...`, `depends on...`), and metadata, outputting crisp, capitalized deliverable titles.
 
 ### `v3.1.0` (Prompt with AI Voice & NLP Task Composer)
 - **Standalone "Prompt with AI" Modal (`AiPromptModalComponent`):**

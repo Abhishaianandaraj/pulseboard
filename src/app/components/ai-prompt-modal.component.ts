@@ -134,7 +134,7 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
               class="prompt-textarea custom-scroll"
               rows="4"
               [(ngModel)]="promptText"
-              placeholder="Speak or type naturally — e.g., 'Assign Abhishai and Priya to build the Postgres audit log schema for Pulse V1, high priority, 5 points, depends on API gateway auth. Next, assign Karthik to run Triton FP8 latency evals on Eval GW, critical priority, 3 points.'"
+              placeholder="Speak or type naturally — e.g., 'Create an urgent 5-point task in PULSE-V1 for Abhishai to implement RBAC route guards and role middleware blocked by PB-101, and a 3-point high priority task in EVAL-GW for Karthik to configure latency telemetry'"
             ></textarea>
 
             <div class="prompt-box-footer">
@@ -1013,7 +1013,7 @@ export class AiPromptModalComponent {
   }
 
   loadSampleStandupPrompt(): void {
-    this.promptText = `Assign Abhishai and Priya to build the Postgres audit log schema for Pulse V1, high priority, 5 points, depends on API gateway auth. Next, assign Karthik to run Triton FP8 latency evals on Eval GW, critical priority, 3 points. Also Abhishai needs to update the CSS theme tokens for PulseBoard, 2 points.`;
+    this.promptText = `Create an urgent 5-point task in PULSE-V1 for Abhishai to implement RBAC route guards and role middleware blocked by PB-101, and a 3-point high priority task in EVAL-GW for Karthik to configure latency telemetry`;
   }
 
   async runExtraction(): Promise<void> {
