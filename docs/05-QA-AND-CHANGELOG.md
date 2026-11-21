@@ -52,6 +52,7 @@ Every release candidate, pull request, and staging deployment must execute and s
 - [x] **Auto-Member Registration:** JSON referencing an unknown assignee name automatically adds the member with the supplied or default role (`Full-Stack Dev`) and displays the new member in the sidebar.
 - [x] **Project Mapping:** Tasks with `projectCode: "EVAL-GW"` correctly link to the `EVAL-GW` project ID upon import.
 - [x] **Batch Import Performance:** Importing a payload of 20 tasks executes in < 150ms with instantaneous Signal state reactivity.
+- [x] **Modal Visual Hierarchy & Alignment Gate:** `STEP 1` and `STEP 2` badges render non-wrapping pill geometry (`white-space: nowrap; flex-shrink: 0; padding: 3px 10px; border-radius: 9999px;`). Auto-Squad Onboarding badge and primary CTA button (`Import to Workspace`) stay strictly on single horizontal lines with crisp disabled/enabled contrast. Decorative sparkles replaced with clean Phosphor Light code icon (`ph-file-code`).
 
 ### 1.7 Theme & UI Parity Gate
 - [x] **Light Mode Verification:** All surfaces, cards, modals, and drawers render high-contrast `#f8fafc` canvas with `#ffffff` cards and `#e2e8f0` subtle borders across all 5 pages.

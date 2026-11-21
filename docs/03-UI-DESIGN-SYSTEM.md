@@ -216,3 +216,9 @@ Integrated `@phosphor-icons/web` (`ph-light` 1.5px-equivalent hairline icons) ac
 - **Task Cards & Rows:** Elevation lift with soft border highlight shifting toward sage green (`border-color: rgba(92, 115, 98, 0.4)`).
 - **Interactive Avatar Stack Fan-Out:** Stacked overlapping avatars (`margin-left: -6px`) smoothly fan out (`margin-left: 2px`) on group hover so co-assignees are effortless to inspect.
 - **Sidebar Nav Items:** Smooth sliding background pill highlight with subtle icon scaling on hover.
+
+### 7.6 Smart Import Modal Ergonomics & Visual Alignment
+- **Strict Badge & Pill Geometry:** `STEP 1` and `STEP 2` badges adopt identical horizontal pill geometry (`display: inline-flex; align-items: center; white-space: nowrap; padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 600; flex-shrink: 0;`), completely eliminating text-wrapping artifacts.
+- **Footer Metadata Badge:** The `Auto-Squad Onboarding` pill enforces `white-space: nowrap; flex-shrink: 0; display: inline-flex;` with subtle hairline border styling on `var(--bg-surface)`.
+- **Primary Action CTA (`btn-import`):** Enforces single-line flex alignment (`display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; padding: 8px 18px;`) with crisp disabled styling (`background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-hairline)`) when JSON is absent or invalid, transitioning to high-contrast sage green (`var(--accent-primary)`) when valid JSON is provided.
+- **Clean Phosphor Light Icons:** Decorative emojis and sparkles replaced with semantic Phosphor Light glyphs (`<i class="ph-light ph-file-code"></i>` for sample JSON loading and `<i class="ph-light ph-tray-arrow-down"></i>` for workspace ingestion).

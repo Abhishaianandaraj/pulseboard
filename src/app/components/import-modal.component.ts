@@ -55,7 +55,7 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
               <strong class="step-title">Paste Structured JSON</strong>
             </div>
             <button type="button" class="btn-load-sample" (click)="loadSampleJson()">
-              <i class="ph-light ph-sparkle"></i>
+              <i class="ph-light ph-file-code"></i>
               <span>Load Sample Delivery JSON</span>
             </button>
           </div>
@@ -192,28 +192,36 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
     .step-card {
       padding: 14px 18px;
       border-radius: var(--radius-inner);
-      background: var(--accent-primary-tint);
-      border: 1px solid rgba(92, 115, 98, 0.3);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 16px;
     }
     .step-info {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      min-width: 0;
     }
     .step-badge {
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
       background: var(--accent-primary);
       color: #ffffff;
-      border-radius: var(--radius-pill);
+      line-height: 1.2;
     }
     .step-badge.step-2 {
       background: var(--accent-warn);
+      color: #ffffff;
     }
     .step-title {
       font-size: 13px;
@@ -238,6 +246,7 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
+      flex-shrink: 0;
       transition: var(--transition-tactile);
       box-shadow: var(--shadow-sm);
     }
@@ -249,25 +258,36 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
+      padding: 2px 0 0 0;
     }
     .step-2-title-wrap {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      min-width: 0;
     }
     .btn-load-sample {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      border: none;
-      background: transparent;
+      gap: 6px;
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-surface);
       color: var(--accent-primary);
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 600;
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
       cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
       transition: var(--transition-tactile);
     }
-    .btn-load-sample:hover { text-decoration: underline; }
+    .btn-load-sample:hover {
+      background: var(--accent-primary-tint);
+      border-color: var(--accent-primary);
+      text-decoration: none;
+    }
 
     .json-textarea {
       width: 100%;
@@ -319,23 +339,30 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
     .footer-note {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 11px;
+      gap: 10px;
+      font-size: 11.5px;
       color: var(--text-muted);
+      min-width: 0;
     }
     .arch-tag {
-      font-weight: 700;
-      font-size: 9.5px;
-      padding: 1px 6px;
-      border-radius: var(--radius-pill);
+      font-weight: 600;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 9999px;
       background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
+      white-space: nowrap;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      line-height: 1.2;
     }
     .footer-actions {
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-shrink: 0;
     }
     .btn-cancel {
       padding: 8px 16px;
@@ -346,6 +373,8 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
       transition: var(--transition-tactile);
     }
     .btn-cancel:hover {
@@ -356,24 +385,33 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      white-space: nowrap;
       padding: 8px 18px;
       border-radius: var(--radius-pill);
-      background: var(--accent-primary);
-      color: #ffffff;
-      border: none;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
       transition: var(--transition-tactile);
     }
-    .btn-import:hover:not(:disabled) {
+    .btn-import:not(:disabled) {
+      background: var(--accent-primary);
+      color: #ffffff;
+      border: 1px solid transparent;
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-import:not(:disabled):hover {
       background: var(--accent-primary-hover);
       transform: translateY(-1px);
     }
     .btn-import:disabled {
-      opacity: 0.5;
+      background: var(--bg-surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border-hairline);
+      opacity: 0.65;
       cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
     }
   `]
 })
