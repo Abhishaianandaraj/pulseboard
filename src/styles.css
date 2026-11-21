@@ -189,8 +189,19 @@ html, body {
   background-color: var(--bg-canvas);
   color: var(--text-primary);
   line-height: 1.5;
+  letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button, input, select, textarea, optgroup {
+  font-family: inherit;
+  font-feature-settings: inherit;
+}
+
+h1, h2, h3, .font-serif {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
 }
 
 /* Editorial Serif Utility */
