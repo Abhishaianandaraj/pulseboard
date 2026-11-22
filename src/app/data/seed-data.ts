@@ -3,8 +3,48 @@ import {
   TeamMember,
   Task,
   ActivityLog,
-  SmartImportPayload
+  SmartImportPayload,
+  RolePermissionPolicy,
+  SystemRole
 } from '../models/task.model';
+
+export const DEFAULT_ROLE_PERMISSION_POLICIES: Record<SystemRole, RolePermissionPolicy> = {
+  ADMIN: {
+    role: 'ADMIN',
+    canCreateTasks: true,
+    canViewAllLogs: true,
+    canApproveSignOff: true,
+    canManageSharing: true
+  },
+  LEAD: {
+    role: 'LEAD',
+    canCreateTasks: true,
+    canViewAllLogs: true,
+    canApproveSignOff: true,
+    canManageSharing: true
+  },
+  VIEWER: {
+    role: 'VIEWER',
+    canCreateTasks: false,
+    canViewAllLogs: true,
+    canApproveSignOff: false,
+    canManageSharing: true
+  },
+  DEV: {
+    role: 'DEV',
+    canCreateTasks: true,
+    canViewAllLogs: false,
+    canApproveSignOff: false,
+    canManageSharing: false
+  },
+  QA: {
+    role: 'QA',
+    canCreateTasks: true,
+    canViewAllLogs: false,
+    canApproveSignOff: false,
+    canManageSharing: false
+  }
+};
 
 export const INITIAL_PROJECTS: Project[] = [
   {
@@ -420,6 +460,7 @@ export const INITIAL_LOGS: ActivityLog[] = [
     timestamp: 'Just now',
     actor: 'Priya Nair',
     actorAvatar: 'PN',
+    actorId: 'tm-2',
     action: 'DEPLOYED_TO_SERVER',
     taskId: 'PB-101',
     taskTitle: 'Deploy TensorRT-LLM Inference Server to Production Staging',
@@ -431,6 +472,7 @@ export const INITIAL_LOGS: ActivityLog[] = [
     timestamp: '15 mins ago',
     actor: 'Vikram Rao',
     actorAvatar: 'VR',
+    actorId: 'tm-5',
     action: 'REVIEW_NOTE_ADDED',
     taskId: 'PB-101',
     taskTitle: 'Deploy TensorRT-LLM Inference Server to Production Staging',
@@ -441,6 +483,7 @@ export const INITIAL_LOGS: ActivityLog[] = [
     timestamp: '2 hours ago',
     actor: 'Abhishai',
     actorAvatar: 'AB',
+    actorId: 'tm-1',
     action: 'BLOCKER_TOGGLED',
     taskId: 'PB-102',
     taskTitle: 'Hybrid Vector Search + BM25 Reranking Pipeline',
@@ -451,6 +494,7 @@ export const INITIAL_LOGS: ActivityLog[] = [
     timestamp: 'Yesterday at 5:40 PM',
     actor: 'Vikram Rao',
     actorAvatar: 'VR',
+    actorId: 'tm-5',
     action: 'REVIEW_NOTE_ADDED',
     taskId: 'PB-103',
     taskTitle: 'Streaming Function Calling Protocol for Multi-Agent Orchestrator',
@@ -461,6 +505,7 @@ export const INITIAL_LOGS: ActivityLog[] = [
     timestamp: 'Yesterday at 6:15 PM',
     actor: 'Vikram Rao',
     actorAvatar: 'VR',
+    actorId: 'tm-5',
     action: 'REWORK_PENALTY',
     taskId: 'PB-104',
     taskTitle: 'Red-Team Adversarial Jailbreak Suite for Gemini Guardrails',
@@ -471,6 +516,7 @@ export const INITIAL_LOGS: ActivityLog[] = [
     timestamp: 'Today at 09:30 AM',
     actor: 'Abhishai',
     actorAvatar: 'AB',
+    actorId: 'tm-1',
     action: 'SLIPPAGE_LOGGED',
     taskId: 'PB-102',
     taskTitle: 'Hybrid Vector Search + BM25 Reranking Pipeline',
@@ -481,6 +527,7 @@ export const INITIAL_LOGS: ActivityLog[] = [
     timestamp: 'Today at 10:45 AM',
     actor: 'Vikram Rao',
     actorAvatar: 'VR',
+    actorId: 'tm-5',
     action: 'MEMBER_ROLE_UPDATED',
     taskId: 'tm-3',
     taskTitle: 'Governance & RBAC Policy Update',
@@ -491,6 +538,7 @@ export const INITIAL_LOGS: ActivityLog[] = [
     timestamp: 'Today at 11:20 AM',
     actor: 'Vikram Rao',
     actorAvatar: 'VR',
+    actorId: 'tm-5',
     action: 'CASCADE_SHIFT_DATES',
     taskId: 'PB-106',
     taskTitle: 'Automated Dependency Cascade Shift',

@@ -165,3 +165,44 @@ PulseBoard implements a granular role-based authorization model across 5 enterpr
   - Strips invisible Unicode control characters (`\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F`).
 - Extracted deliverables undergo user staging validation before being committed to the reactive state store.
 - Deliverables created via the AI Copilot are tagged with `AI_PROMPT_EXTRACTION` in the append-only `ActivityLog`.
+
+
+---
+
+## 6. Granular Capability Policies & Scoped Audit Log Visibility (FR-12)
+
+### 6.1 Role Capability Policy Matrix (`RolePermissionPolicy`)
+PulseBoard features a dynamic capability policy engine defined in `task.model.ts` and managed in `TaskStoreService`:
+
+```ts
+export interface RolePermissionPolicy {
+  role: SystemRole;
+  canCreateTasks: boolean;
+  canViewAllLogs: boolean;
+  canApproveSignOff: boolean;
+  canManageSharing: boolean;
+}
+```
+
+Default capability policies persisted in `localStorage` under `pulseboard_permissions_v1`:
+| System Role | Create Tasks | View All Logs | Approve Sign-Off | Manage Sharing & Squads |
+|---|---|---|---|---|
+| **ADMIN** | ✅ `true` | ✅ `true` | ✅ `true` | ✅ `true` |
+| **LEAD** | ✅ `true` | ✅ `true` | ✅ `true` | ✅ `true` |
+| **VIEWER** (Delivery Manager) | ❌ `false` | ✅ `true` | ❌ `false` | ✅ `true` |
+| **DEV** | ✅ `true` | ❌ `false` | ❌ `false` | ❌ `false` |
+| **QA** | ✅ `true` | ❌ `false` | ❌ `false` | ❌ `false` |
+
+### 6.2 Scoped Audit Visibility Architecture
+1. **Computed Signal Isolation (`visibleActivityLogs`):**
+   - When `canCurrentUserViewAllLogs()` is `true` (Lead, Delivery Manager, Admin): Returns all logs belonging to projects within `visibleProjects()` or workspace-wide system logs.
+   - When `canCurrentUserViewAllLogs()` is `false` (Dev, QA): Strictly isolates the activity stream:
+     - `entry.actorId === currentUserId()`
+     - `entry.actor === currentUser().name`
+     - Referenced `taskId` has current user listed in its `assigneeIds`.
+2. **Audit Export Security:**
+   - Both CSV (`exportAuditLogCsv()`) and JSON (`exportAuditLogJson()`) compliance exports evaluate `visibleActivityLogs()` directly, preventing unauthorized data exfiltration of team-wide activity logs by non-lead personas.
+3. **Audit Ledger Events:**
+   - Any project membership modification emits `SHARING_UPDATED`.
+   - Any capability policy modification emits `PERMISSION_POLICY_UPDATED`.
+   - Both actions record actor ID and user name attribution.

@@ -232,3 +232,26 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
      - Splits compound spoken/typed prompts on mid-sentence task boundaries (`,\s*(?:and\s+)?(?:also\s+)?(?:create\s+|add\s+)?(?:a|an|another)\s+...`) as well as sequential conjunctions.
      - Supports hyphenated and spaced story point formats (`/\b(\d+)\s*-?\s*(?:points?|pts?)\b/i`, e.g. "5-point" and "3 points").
      - Strips conversational boilerplate prefixes and trailing metadata/dependency clauses, outputting concise, actionable deliverable titles with proper capitalization (e.g., "Implement RBAC route guards and role middleware").
+
+
+---
+
+### FR-12: Sharing & Permissions Window, Granular Role Capabilities, and Scoped Activity Logs
+- **Status:** ✅ Implemented (v3.2)
+- **Description:** A dedicated "Share & Permissions" modal (`app-share-permissions-modal`) providing granular project squad membership control and a runtime capability policy matrix (`canCreateTasks`, `canViewAllLogs`, `canApproveSignOff`, `canManageSharing`), paired with dynamic personal vs. full portfolio audit log visibility.
+- **Key Capabilities:**
+  1. **Share & Permissions Window:**
+     - Accessible via top header bar (`Share` pill) and project directory cards (`Share` button on each project).
+     - Section 1: Project Squad Access with target project selector, 1-click member toggle switches (`Member` vs `No Access`), and "Copy Workspace Link" with clipboard confirmation.
+     - Section 2: Role Capabilities & Audit Visibility Matrix across `DEV`, `QA`, `LEAD`, `VIEWER`, and `ADMIN`.
+  2. **Granular Role Permission Policies (`RolePermissionPolicy`):**
+     - Dynamic permission signals persisted in `localStorage` (`pulseboard_permissions_v1`).
+     - `DEV` / `QA`: `canCreateTasks: true`, `canViewAllLogs: false` (Personal view only), `canApproveSignOff: false`, `canManageSharing: false`.
+     - `VIEWER` (Delivery Manager): `canCreateTasks: false`, `canViewAllLogs: true` (Full portfolio audit), `canApproveSignOff: false`, `canManageSharing: true`.
+     - `LEAD` / `ADMIN`: All capabilities enabled (`true`).
+  3. **Personal vs. Full Portfolio Audit Log Scoping:**
+     - `visibleActivityLogs` computed signal: When `canCurrentUserViewAllLogs()` is true, displays all events in visible projects. When false, strictly scopes to events initiated by the user or tasks assigned to them.
+     - Audit export actions (CSV / JSON) strictly respect log visibility scope.
+     - Scope notification pill banners displayed in Recent Project Pulse (`MyDayComponent`) and the Governance Audit Ledger (`GovernanceComponent`).
+  4. **Immutable Audit Provenance:**
+     - Project membership toggles and role policy adjustments automatically emit `SHARING_UPDATED` and `PERMISSION_POLICY_UPDATED` events with actor ID attribution.

@@ -457,3 +457,72 @@ export type ActivityActionType =
   `\b(\d+)\s*-?\s*(?:points?|pts?)\b`
 - **Actionable title sanitizer**:
   Strips conversational boilerplate prefixes (`Create/Add [a/an] [priority] [points] task in [PROJECT] for [ASSIGNEES] to ...`) and trailing dependency/points clauses, yielding actionable deliverable titles capitalized cleanly.
+
+
+---
+
+## 7. Role Capability Policies & Scoped Activity Logs Data Contract (FR-12)
+
+### 7.1 Role Permission Policy Interface
+```typescript
+export interface RolePermissionPolicy {
+  role: SystemRole;
+  canCreateTasks: boolean;
+  canViewAllLogs: boolean;
+  canApproveSignOff: boolean;
+  canManageSharing: boolean;
+}
+```
+
+### 7.2 Activity Log & Action Types Extension
+```typescript
+export type ActivityActionType =
+  | 'STATUS_CHANGED'
+  | 'BLOCKER_TOGGLED'
+  | 'DEPLOYED_TO_SERVER'
+  | 'REVIEW_NOTE_ADDED'
+  | 'SMART_IMPORT'
+  | 'AI_PROMPT_EXTRACTION'
+  | 'WORKSPACE_RESET'
+  | 'TASK_CREATED'
+  | 'TASK_UPDATED'
+  | 'TASK_DELETED'
+  | 'REWORK_PENALTY'
+  | 'SLIPPAGE_LOGGED'
+  | 'DEPENDENCY_UPDATED'
+  | 'CASCADE_SHIFT_DATES'
+  | 'MEMBER_ROLE_UPDATED'
+  | 'SHARING_UPDATED'
+  | 'PERMISSION_POLICY_UPDATED';
+
+export interface ActivityLog {
+  id: string;
+  timestamp: string;
+  actor: string;
+  actorId?: string;
+  actorAvatar: string;
+  action: ActivityActionType;
+  taskId: string;
+  taskTitle: string;
+  details: string;
+  statusTransition?: {
+    from: TaskStatus;
+    to: TaskStatus;
+  };
+}
+```
+
+### 7.3 Store Mutation & Signal Contracts
+```typescript
+// Signals
+readonly rolePolicies: Signal<Record<SystemRole, RolePermissionPolicy>>;
+readonly canCurrentUserCreateTasks: Signal<boolean>;
+readonly canCurrentUserViewAllLogs: Signal<boolean>;
+readonly canCurrentUserManageSharing: Signal<boolean>;
+readonly canCurrentUserApproveSignOff: Signal<boolean>;
+readonly visibleActivityLogs: Signal<ActivityLog[]>;
+
+// Store Mutations
+toggleProjectMember(projectId: string, memberId: string): boolean;
+updateRolePermissionPolicy(role: SystemRole, patch: Partial<RolePermissionPolicy>): boolean;
+```

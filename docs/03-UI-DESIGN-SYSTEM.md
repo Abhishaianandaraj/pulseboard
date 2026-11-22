@@ -222,3 +222,21 @@ Integrated `@phosphor-icons/web` (`ph-light` 1.5px-equivalent hairline icons) ac
 - **Footer Metadata Badge:** The `Auto-Squad Onboarding` pill enforces `white-space: nowrap; flex-shrink: 0; display: inline-flex;` with subtle hairline border styling on `var(--bg-surface)`.
 - **Primary Action CTA (`btn-import`):** Enforces single-line flex alignment (`display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; padding: 8px 18px;`) with crisp disabled styling (`background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-hairline)`) when JSON is absent or invalid, transitioning to high-contrast sage green (`var(--accent-primary)`) when valid JSON is provided.
 - **Clean Phosphor Light Icons:** Decorative emojis and sparkles replaced with semantic Phosphor Light glyphs (`<i class="ph-light ph-file-code"></i>` for sample JSON loading and `<i class="ph-light ph-tray-arrow-down"></i>` for workspace ingestion).
+
+
+### 7.7 Share & Permissions Modal & Dynamic Audit Scope Indicators
+- **Frosted Glass Scrim & Modal Container:** Centered dialog with `backdrop-filter: blur(8px)`, `max-width: 740px`, `border-radius: 16px`, and `Newsreader` editorial header `"Share & Permissions."` with brand period.
+- **Dynamic Scope Banners:**
+  - Full Portfolio View: Muted sage green tint (`rgba(138, 158, 126, 0.08)`), `1px solid rgba(138, 158, 126, 0.25)`, and `<i class="ph-light ph-shield-check"></i>`.
+  - Personal Activity View: Warm amber tint (`rgba(200, 160, 60, 0.08)`), `1px solid rgba(200, 160, 60, 0.25)`, and `<i class="ph-light ph-lock-simple"></i>`.
+- **Project Squad Membership Controls:**
+  - Target project selection pills with project color dots and member count tags.
+  - "Copy Workspace Link" pill button with clipboard transition to `"Link Copied!"` for 2.2s.
+  - Squad members table with technical role avatars, system role tags, and interactive 1-click toggle switches (`Active` vs `Off`).
+- **Role Capabilities & Visibility Matrix:**
+  - Visual matrix covering `DEV`, `QA`, `LEAD`, `VIEWER`, and `ADMIN`.
+  - Checkbox toggle controls for `Create Deliverables`, `View All Logs`, and `Approve Sign-Off`.
+  - Graceful read-only state for non-management personas with lock indicator.
+- **Top Header Bar & Project Card Triggers:**
+  - Header bar: `<button class="btn-top-share"><i class="ph-light ph-users-three"></i> <span>Share</span></button>`.
+  - Project directory cards: `<button class="btn-proj-share"><i class="ph-light ph-users-three"></i> <span>Share</span></button>`.

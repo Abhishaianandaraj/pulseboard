@@ -136,6 +136,8 @@ export type ActivityActionType =
   | 'SMART_IMPORT_BATCH'
   | 'AI_PROMPT_EXTRACTION'
   | 'AI_EXTRACTED'
+  | 'SHARING_UPDATED'
+  | 'PERMISSION_POLICY_UPDATED'
   | 'PROJECT_CREATED'
   | 'MEMBER_ADDED'
   | 'WORKSPACE_RESET'
@@ -174,11 +176,20 @@ export interface CycleTimeMetrics {
   slippageBreakdowns: SlippageReasonBreakdown[];
 }
 
+export interface RolePermissionPolicy {
+  role: SystemRole;
+  canCreateTasks: boolean;
+  canViewAllLogs: boolean;
+  canApproveSignOff: boolean;
+  canManageSharing: boolean;
+}
+
 export interface ActivityLog {
   id: string;
   timestamp: string;
   actor: string;
   actorAvatar: string;
+  actorId?: string;
   action: ActivityActionType;
   taskId: string;
   taskTitle: string;

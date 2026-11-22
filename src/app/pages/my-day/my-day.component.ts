@@ -108,9 +108,9 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
                 <button
                   type="button"
                   class="btn-ai-prompt-mini"
-                  [disabled]="!store.canCreateTasks()"
+                  [disabled]="!store.canCurrentUserCreateTasks()"
                   (click)="openAiPromptModal()"
-                  title="Prompt with AI Voice & NLP Task Composer"
+                  [title]="store.canCurrentUserCreateTasks() ? 'Prompt with AI Voice & NLP Task Composer' : 'Task creation is restricted for ' + store.currentUserRole()"
                 >
                   <i class="ph-light ph-microphone"></i>
                   <span>Prompt with AI</span>
@@ -253,6 +253,15 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
                 </span>
                 <h2 class="section-title font-serif">Recent Project Pulse</h2>
               </div>
+              @if (store.canCurrentUserViewAllLogs()) {
+                <span class="pulse-scope-badge scope-portfolio font-mono" title="Lead & Delivery Manager Access: Full portfolio events visible">
+                  <i class="ph-light ph-shield-check"></i> Full Portfolio
+                </span>
+              } @else {
+                <span class="pulse-scope-badge scope-personal font-mono" title="Personal Scope: Showing events where you are actor or task assignee">
+                  <i class="ph-light ph-lock-simple"></i> Personal View
+                </span>
+              }
             </div>
 
             <div class="activity-feed-list custom-scroll">
@@ -614,6 +623,35 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       border-color: var(--accent-primary);
       color: var(--accent-primary);
       transform: translateY(-1px);
+    }
+
+    .btn-ai-prompt-mini:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .pulse-scope-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .pulse-scope-badge.scope-portfolio {
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
+      border: 1px solid rgba(92, 115, 98, 0.3);
+    }
+
+    .pulse-scope-badge.scope-personal {
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-hairline);
     }
 
     .btn-jump-workspace:hover {
@@ -1026,7 +1064,7 @@ export class MyDayComponent {
   });
 
   readonly recentLogs = computed(() => {
-    return this.store.activityLogs().slice(0, 8);
+    return this.store.visibleActivityLogs().slice(0, 8);
   });
 
   getProject(projectId: string) {

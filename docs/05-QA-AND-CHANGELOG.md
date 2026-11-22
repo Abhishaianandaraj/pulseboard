@@ -91,7 +91,40 @@ Every release candidate, pull request, and staging deployment must execute and s
 
 ---
 
+### 1.11 Sharing & Permissions Window & Scoped Activity Logs Gate (v3.2)
+- [x] **Modal Trigger Verification:** Clicking `Share` pill in the top header or `Share` on any project card in `/projects` opens `app-share-permissions-modal` with project preselection.
+- [x] **Project Squad Access Controls:** 1-click toggle switches grant or revoke squad membership (`Member` vs `No Access`). Non-lead sessions have toggles disabled with tooltip explanation.
+- [x] **Link Sharing:** "Copy Workspace Link" copies formatted deep-link with instantaneous `"Link Copied!"` visual feedback.
+- [x] **Role Capabilities & Visibility Matrix:** Toggling capabilities across `DEV`, `QA`, `LEAD`, `VIEWER`, and `ADMIN` dynamically updates `store.rolePolicies()`, persisted in `localStorage` (`pulseboard_permissions_v1`).
+- [x] **Task Creation Gating:** Restricting task creation immediately disables `+ New Task`, `Prompt with AI`, and `Smart Import` in the Delivery Workspace and My Day landing screen.
+- [x] **Personal vs. Full Portfolio Audit Scoping:**
+  - `DEV` and `QA` sessions only see events where they are actor or task assignee.
+  - `LEAD`, `VIEWER`, and `ADMIN` sessions see all events across visible projects.
+  - Both Recent Project Pulse (`MyDayComponent`) and the Governance Audit Ledger (`GovernanceComponent`) render calm Kanso scope pill banners indicating active view mode.
+- [x] **Compliance Export Scoping:** CSV and JSON exports evaluate `store.visibleActivityLogs()` directly, preventing unauthorized data exfiltration.
+- [x] **Audit Event Provenance:** Membership and capability changes emit `SHARING_UPDATED` and `PERMISSION_POLICY_UPDATED` events with actor ID attribution.
+
+---
+
 ## 2. Release Changelog
+
+### `v3.2.0` (Sharing & Permissions Window, Granular Role Capabilities & Scoped Activity Logs)
+- **Standalone "Share & Permissions" Window (`SharePermissionsModalComponent`):**
+  - Designed with frosted backdrop (`backdrop-filter: blur(8px)`), 16px radius, Newsreader header `"Share & Permissions."`, and dual-theme styling.
+  - Section 1: Project Squad Access with target project selector, 1-click member toggle switches (`Member` vs `No Access`), and "Copy Workspace Link" pill button with "Link Copied!" feedback.
+  - Section 2: Role Capabilities & Audit Visibility Matrix table for `DEV`, `QA`, `LEAD`, `VIEWER`, and `ADMIN` with interactive toggles for Create Deliverables, View All Logs, and Approve Sign-Off (read-only for non-management personas).
+- **Dynamic Role Capability Policy Matrix (`TaskStoreService`):**
+  - Added `RolePermissionPolicy` interface and `rolePolicies` signal, persisted in `localStorage` (`pulseboard_permissions_v1`).
+  - Added computed signals: `canCurrentUserCreateTasks`, `canCurrentUserViewAllLogs`, `canCurrentUserManageSharing`, and `canCurrentUserApproveSignOff`.
+  - Added mutations `toggleProjectMember(projectId, memberId)` and `updateRolePermissionPolicy(role, patch)` with immutable audit event logging.
+- **Dynamic Audit Log Scoping (Personal vs Full Portfolio):**
+  - Implemented `visibleActivityLogs` computed signal: full portfolio view for `LEAD`, `VIEWER`, and `ADMIN`; strictly personal event view for `DEV` and `QA`.
+  - Scoped CSV and JSON compliance exports to `visibleActivityLogs()`.
+  - Added calm Kanso scope notification pill banners in Recent Project Pulse (`MyDayComponent`) and the Governance Audit Ledger (`GovernanceComponent`).
+- **Global Header & Card Integration:**
+  - Added `Share` pill button in top header bar (`AppComponent`) alongside project selector pills.
+  - Added `Share` button on project cards (`ProjectsComponent`).
+  - Enforced creation restriction states across `New Task`, `Prompt with AI`, and `Smart Import` buttons.
 
 ### `v3.1.1` (Compound Multi-Task NLP Splitting & Clean Title Extraction)
 - **Mid-Sentence Task Boundary Splitting:** Upgraded `AiCopilotService.extractViaLocalNlp` with a multi-clause splitter that detects compound tasks separated by commas, conjunctions, and task creation verbs (`,\s*(?:and\s+)?(?:also\s+)?(?:create\s+|add\s+)?(?:a|an|another)\s+...`).

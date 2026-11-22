@@ -132,6 +132,17 @@
 
         <!-- Right: Current User Profile Pill & Sign Out -->
         <div class="top-user-group">
+          <!-- Share & Permissions Pill Button -->
+          <button
+            type="button"
+            class="btn-top-share"
+            (click)="openShareModal()"
+            title="Manage project squad sharing & role capability policies"
+          >
+            <i class="ph-light ph-users-three"></i>
+            <span>Share</span>
+          </button>
+
           <div class="user-profile-chip" [title]="'Logged in as ' + store.currentUser().name + ' (' + store.currentUser().role + ')'">
             <span class="user-chip-avatar" [style.background-color]="store.currentUser().color">
               {{ store.currentUser().avatar }}
@@ -163,4 +174,12 @@
 
   <!-- Global Standalone Slide-Over Task Inspection Drawer -->
   <app-task-drawer></app-task-drawer>
+
+  <!-- Global Share & Permissions Modal -->
+  @if (isShareModalOpen()) {
+    <app-share-permissions-modal
+      [initialProjectId]="shareModalProjectId()"
+      (close)="closeShareModal()"
+    ></app-share-permissions-modal>
+  }
 }

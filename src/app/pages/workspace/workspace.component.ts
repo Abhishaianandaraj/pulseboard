@@ -116,9 +116,9 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
           <button
             type="button"
             class="btn-action btn-ai-prompt"
-            [disabled]="!store.canCreateTasks()"
+            [disabled]="!store.canCurrentUserCreateTasks()"
             (click)="openAiPromptModal()"
-            title="Prompt with AI Voice & NLP Task Composer"
+            [title]="store.canCurrentUserCreateTasks() ? 'Prompt with AI Voice & NLP Task Composer' : 'Task creation is restricted for ' + store.currentUserRole()"
           >
             <i class="ph-light ph-microphone"></i>
             <span>Prompt with AI</span>
@@ -126,9 +126,9 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
           <button
             type="button"
             class="btn-action btn-smart-import"
-            [disabled]="!store.canCreateTasks()"
+            [disabled]="!store.canCurrentUserCreateTasks()"
             (click)="openSmartImport()"
-            title="Import deliverables via structured JSON"
+            [title]="store.canCurrentUserCreateTasks() ? 'Import deliverables via structured JSON' : 'Task creation is restricted for ' + store.currentUserRole()"
           >
             <i class="ph-light ph-tray-arrow-down"></i>
             <span>Smart Import</span>
@@ -136,8 +136,9 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
           <button
             type="button"
             class="btn-action btn-new-task"
-            [disabled]="!store.canCreateTasks()"
+            [disabled]="!store.canCurrentUserCreateTasks()"
             (click)="openNewTaskModal()"
+            [title]="store.canCurrentUserCreateTasks() ? 'Create new engineering deliverable' : 'Task creation is restricted for ' + store.currentUserRole()"
           >
             <i class="ph-light ph-plus"></i>
             <span>New Task</span>
@@ -772,6 +773,12 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       cursor: pointer;
       border: 1px solid transparent;
       transition: var(--transition-tactile);
+    }
+
+    .btn-action:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none !important;
     }
 
     .btn-ai-prompt {

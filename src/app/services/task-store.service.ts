@@ -21,13 +21,15 @@ import {
   ProjectBottleneckMetric,
   SlippageReasonBreakdown,
   CycleTimeMetrics,
-  ExtractedTaskDraft
+  ExtractedTaskDraft,
+  RolePermissionPolicy
 } from '../models/task.model';
 import {
   INITIAL_PROJECTS,
   INITIAL_TEAM_MEMBERS,
   INITIAL_TASKS,
-  INITIAL_LOGS
+  INITIAL_LOGS,
+  DEFAULT_ROLE_PERMISSION_POLICIES
 } from '../data/seed-data';
 
 const STORAGE_KEY_PROJECTS = 'pulseboard_v1_projects';
@@ -38,6 +40,7 @@ const STORAGE_KEY_THEME = 'pulseboard_v1_theme';
 const STORAGE_KEY_ACTIVE_PROJECT = 'pulseboard_v1_active_project';
 const STORAGE_KEY_CURRENT_USER = 'pulseboard_v1_current_user';
 const STORAGE_KEY_AUTH = 'pulseboard_v1_auth';
+const STORAGE_KEY_POLICIES = 'pulseboard_permissions_v1';
 
 @Injectable({
   providedIn: 'root'
@@ -48,6 +51,7 @@ export class TaskStoreService {
   readonly teamMembers = signal<TeamMember[]>(this.loadMembersWithDefaults());
   readonly tasks = signal<Task[]>(this.loadTasksWithDefaults());
   readonly activityLogs = signal<ActivityLog[]>(this.loadFromStorage(STORAGE_KEY_LOGS, INITIAL_LOGS));
+  readonly rolePolicies = signal<Record<SystemRole, RolePermissionPolicy>>(this.loadPoliciesWithDefaults());
   readonly currentView = signal<MethodologyView>('BOARD');
   readonly theme = signal<ThemeMode>(this.loadTheme());
 
@@ -64,11 +68,32 @@ export class TaskStoreService {
     return this.currentUser()?.systemRole || 'DEV';
   });
 
+  // Granular Dynamic Permission Computeds
+  readonly canCurrentUserCreateTasks = computed(() => {
+    const policy = this.rolePolicies()[this.currentUserRole()];
+    return policy ? policy.canCreateTasks : true;
+  });
+
+  readonly canCurrentUserViewAllLogs = computed(() => {
+    const policy = this.rolePolicies()[this.currentUserRole()];
+    return policy ? policy.canViewAllLogs : false;
+  });
+
+  readonly canCurrentUserManageSharing = computed(() => {
+    const policy = this.rolePolicies()[this.currentUserRole()];
+    return policy ? policy.canManageSharing : false;
+  });
+
+  readonly canCurrentUserApproveSignOff = computed(() => {
+    const policy = this.rolePolicies()[this.currentUserRole()];
+    return policy ? policy.canApproveSignOff : false;
+  });
+
   // RBAC Permission Computeds
-  readonly canCreateTasks = computed(() => this.currentUserRole() !== 'VIEWER');
+  readonly canCreateTasks = computed(() => this.canCurrentUserCreateTasks());
   readonly canEditTasks = computed(() => this.currentUserRole() !== 'VIEWER');
-  readonly canSignOffDone = computed(() => this.currentUserRole() === 'LEAD' || this.currentUserRole() === 'ADMIN');
-  readonly canApproveReview = computed(() => this.currentUserRole() === 'LEAD' || this.currentUserRole() === 'ADMIN');
+  readonly canSignOffDone = computed(() => this.canCurrentUserApproveSignOff());
+  readonly canApproveReview = computed(() => this.canCurrentUserApproveSignOff());
   readonly canManageGovernance = computed(() => this.currentUserRole() === 'LEAD' || this.currentUserRole() === 'ADMIN');
   readonly isViewer = computed(() => this.currentUserRole() === 'VIEWER');
 
@@ -83,6 +108,55 @@ export class TaskStoreService {
     }
     const curId = this.currentUserId();
     return this.projects().filter((p: Project) => (p.memberIds || []).includes(curId));
+  });
+
+  // Dynamic Activity Log Scoping: Full team vs. Personal logs
+  readonly visibleActivityLogs = computed<ActivityLog[]>(() => {
+    const allLogs = this.activityLogs();
+    const curUser = this.currentUser();
+    const curId = this.currentUserId();
+    const canViewAll = this.canCurrentUserViewAllLogs();
+    const visibleProjectIds = new Set(this.visibleProjects().map((p: Project) => p.id));
+    const visibleProjectCodes = new Set(this.visibleProjects().map((p: Project) => p.code));
+    const taskMap = new Map<string, Task>(this.tasks().map((t: Task) => [t.id, t]));
+
+    return allLogs.filter((log: ActivityLog) => {
+      // 1. Verify project visibility if log is associated with a project or task
+      if (log.taskId) {
+        const task = taskMap.get(log.taskId);
+        if (task && !visibleProjectIds.has(task.projectId)) {
+          return false;
+        }
+        // If taskId matches another project code that is not visible, filter it out
+        const isKnownProjectCode = this.projects().some((p: Project) => p.code === log.taskId);
+        if (isKnownProjectCode && !visibleProjectCodes.has(log.taskId)) {
+          return false;
+        }
+      }
+
+      // 2. Full team visibility for LEAD, VIEWER (Delivery Manager), and ADMIN
+      if (canViewAll) {
+        return true;
+      }
+
+      // 3. Granular Personal Visibility for DEV / QA:
+      // Current user is actor
+      if (log.actorId && log.actorId === curId) return true;
+      if (log.actor && curUser && log.actor === curUser.name) return true;
+
+      // Or current user is assigned to the target task
+      if (log.taskId) {
+        const task = taskMap.get(log.taskId);
+        if (task) {
+          const assignees = (task.assigneeIds && task.assigneeIds.length > 0)
+            ? task.assigneeIds
+            : (task.assigneeId ? [task.assigneeId] : []);
+          if (assignees.includes(curId)) return true;
+        }
+      }
+
+      return false;
+    });
   });
 
   // --- Project Workspace Filter ---
@@ -581,6 +655,13 @@ export class TaskStoreService {
         localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(this.activityLogs()));
       } catch (e) {}
     });
+
+    // Auto-persist role permission policies
+    effect(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY_POLICIES, JSON.stringify(this.rolePolicies()));
+      } catch (e) {}
+    });
   }
 
   // --- Session Persona Switcher (FR-01 Simulation) ---
@@ -733,9 +814,79 @@ export class TaskStoreService {
     return true;
   }
 
+  // --- Granular Project Membership & Role Policy Mutations (FR-12) ---
+  toggleProjectMember(projectId: string, memberId: string): boolean {
+    if (!this.canCurrentUserManageSharing()) {
+      console.warn('Unauthorized: current role cannot manage project membership');
+      return false;
+    }
+
+    const proj = this.projects().find(p => p.id === projectId);
+    const member = this.teamMembers().find(m => m.id === memberId);
+    if (!proj || !member) return false;
+
+    const currentMembers = Array.isArray(proj.memberIds) ? [...proj.memberIds] : [];
+    const isAlreadyMember = currentMembers.includes(memberId);
+    const nextMembers = isAlreadyMember
+      ? currentMembers.filter(id => id !== memberId)
+      : [...currentMembers, memberId];
+
+    if (nextMembers.length === 0) {
+      return false; // Retain at least 1 member on project
+    }
+
+    this.projects.update(projects =>
+      projects.map(p => p.id === projectId ? { ...p, memberIds: nextMembers } : p)
+    );
+
+    this.recordActivity({
+      actor: this.currentUser().name,
+      actorId: this.currentUserId(),
+      actorAvatar: this.currentUser().avatar,
+      action: 'SHARING_UPDATED',
+      taskId: proj.code,
+      taskTitle: `Project Membership: ${proj.name}`,
+      details: `${isAlreadyMember ? 'Revoked' : 'Granted'} access for ${member.name} (${member.role}) on project ${proj.name} (${proj.code})`
+    });
+
+    return true;
+  }
+
+  updateRolePermissionPolicy(role: SystemRole, patch: Partial<RolePermissionPolicy>): boolean {
+    if (!this.canCurrentUserManageSharing()) {
+      console.warn('Unauthorized: current role cannot update role policies');
+      return false;
+    }
+
+    this.rolePolicies.update(prev => ({
+      ...prev,
+      [role]: {
+        ...prev[role],
+        ...patch,
+        role
+      }
+    }));
+
+    const changesSummary = Object.entries(patch)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(', ');
+
+    this.recordActivity({
+      actor: this.currentUser().name,
+      actorId: this.currentUserId(),
+      actorAvatar: this.currentUser().avatar,
+      action: 'PERMISSION_POLICY_UPDATED',
+      taskId: `ROLE-${role}`,
+      taskTitle: `Role Policy Updated: ${role}`,
+      details: `Adjusted capabilities for ${role} [${changesSummary}]`
+    });
+
+    return true;
+  }
+
   // --- Compliance Audit Trail CSV Export ---
   exportAuditLogCsv(): void {
-    const logs = this.activityLogs();
+    const logs = this.visibleActivityLogs();
     const headers = ['Log ID', 'Timestamp', 'Actor', 'Action', 'Target ID', 'Target Title', 'Details', 'Transition From', 'Transition To'];
     const rows = logs.map(l => [
       `"${l.id}"`,
@@ -763,7 +914,7 @@ export class TaskStoreService {
 
   // --- Compliance Audit Trail JSON Export ---
   exportAuditLogJson(): void {
-    const logs = this.activityLogs();
+    const logs = this.visibleActivityLogs();
     const jsonContent = JSON.stringify(logs, null, 2);
     const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -1699,9 +1850,10 @@ export class TaskStoreService {
   }
 
   // --- Activity Audit Logger ---
-  recordActivity(log: Omit<ActivityLog, 'id' | 'timestamp'>): void {
+  recordActivity(log: Omit<ActivityLog, 'id' | 'timestamp'> & { actorId?: string }): void {
     const entry: ActivityLog = {
       ...log,
+      actorId: log.actorId || this.currentUserId(),
       id: `act-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: 'Just now'
     };
@@ -1718,6 +1870,20 @@ export class TaskStoreService {
       console.warn(`Failed to read ${key} from localStorage`, e);
     }
     return fallback;
+  }
+
+  private loadPoliciesWithDefaults(): Record<SystemRole, RolePermissionPolicy> {
+    const stored = this.loadFromStorage<Record<SystemRole, RolePermissionPolicy> | null>(STORAGE_KEY_POLICIES, null);
+    if (!stored) {
+      return { ...DEFAULT_ROLE_PERMISSION_POLICIES };
+    }
+    return {
+      ADMIN: { ...DEFAULT_ROLE_PERMISSION_POLICIES.ADMIN, ...(stored.ADMIN || {}) },
+      LEAD: { ...DEFAULT_ROLE_PERMISSION_POLICIES.LEAD, ...(stored.LEAD || {}) },
+      VIEWER: { ...DEFAULT_ROLE_PERMISSION_POLICIES.VIEWER, ...(stored.VIEWER || {}) },
+      DEV: { ...DEFAULT_ROLE_PERMISSION_POLICIES.DEV, ...(stored.DEV || {}) },
+      QA: { ...DEFAULT_ROLE_PERMISSION_POLICIES.QA, ...(stored.QA || {}) }
+    };
   }
 
   private loadProjectsWithDefaults(): Project[] {

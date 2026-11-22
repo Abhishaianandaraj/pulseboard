@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TaskStoreService } from '../../services/task-store.service';
 import { Project, Task, TeamMember } from '../../models/task.model';
+import { SharePermissionsModalComponent } from '../../components/share-permissions-modal.component';
 
 @Component({
   selector: 'app-projects',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SharePermissionsModalComponent],
   template: `
     <div class="projects-page-wrapper custom-scroll">
       <!-- Header -->
@@ -88,7 +89,7 @@ import { Project, Task, TeamMember } from '../../models/task.model';
               </div>
             </div>
 
-            <!-- Card Bottom: Stacked Squad Avatars + Open Workspace Action -->
+            <!-- Card Bottom: Stacked Squad Avatars + Actions -->
             <div class="proj-card-bottom">
               <div class="avatar-stack">
                 @for (mem of squadMembers; track mem.id) {
@@ -102,14 +103,28 @@ import { Project, Task, TeamMember } from '../../models/task.model';
                 }
               </div>
 
-              <button type="button" class="btn-open-workspace" (click)="openWorkspace(proj.id)">
-                <span>Open Workspace</span>
-                <i class="ph-light ph-arrow-right"></i>
-              </button>
+              <div class="card-bottom-actions">
+                <button type="button" class="btn-proj-share" (click)="openShare(proj.id)" title="Manage Project Sharing & Permissions">
+                  <i class="ph-light ph-users-three"></i>
+                  <span>Share</span>
+                </button>
+                <button type="button" class="btn-open-workspace" (click)="openWorkspace(proj.id)">
+                  <span>Open Workspace</span>
+                  <i class="ph-light ph-arrow-right"></i>
+                </button>
+              </div>
             </div>
           </div>
         }
       </div>
+
+      <!-- SHARE & PERMISSIONS MODAL -->
+      @if (isShareModalOpen()) {
+        <app-share-permissions-modal
+          [initialProjectId]="activeShareProjectId()"
+          (close)="closeShare()"
+        ></app-share-permissions-modal>
+      }
 
       <!-- CREATE PROJECT MODAL -->
       @if (isCreateModalOpen()) {
@@ -383,6 +398,35 @@ import { Project, Task, TeamMember } from '../../models/task.model';
       border-top: 1px solid var(--border-hairline);
     }
 
+    .card-bottom-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-proj-share {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition-tactile);
+    }
+
+    .btn-proj-share:hover {
+      background: var(--accent-primary-tint);
+      border-color: rgba(92, 115, 98, 0.3);
+      color: var(--accent-primary);
+      transform: translateY(-1px);
+    }
+
     .btn-open-workspace {
       display: inline-flex;
       align-items: center;
@@ -532,10 +576,22 @@ export class ProjectsComponent {
   protected readonly Math = Math;
 
   readonly isCreateModalOpen = signal<boolean>(false);
+  readonly isShareModalOpen = signal<boolean>(false);
+  readonly activeShareProjectId = signal<string | null>(null);
+
   newProjName = '';
   newProjCode = '';
   newProjSquad = 'Core AI Squad';
   newProjDesc = '';
+
+  openShare(projectId: string): void {
+    this.activeShareProjectId.set(projectId);
+    this.isShareModalOpen.set(true);
+  }
+
+  closeShare(): void {
+    this.isShareModalOpen.set(false);
+  }
 
   getProjectTasks(projectId: string): Task[] {
     return this.store.tasks().filter(t => t.projectId === projectId);

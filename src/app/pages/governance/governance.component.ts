@@ -51,7 +51,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
           >
             <i class="ph-light ph-file-text"></i>
             <span>Audit Log</span>
-            <span class="tab-counter font-mono">{{ store.activityLogs().length }}</span>
+            <span class="tab-counter font-mono">{{ store.visibleActivityLogs().length }}</span>
           </button>
         </div>
       </div>
@@ -344,6 +344,21 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
               </div>
             </div>
 
+            <!-- Scope Banner for Audit Log -->
+            <div class="audit-scope-banner" [class.is-personal]="!store.canCurrentUserViewAllLogs()">
+              @if (store.canCurrentUserViewAllLogs()) {
+                <div class="scope-banner-content">
+                  <i class="ph-light ph-shield-check banner-icon"></i>
+                  <span><strong>Full Portfolio Audit View:</strong> Tech Lead &amp; Delivery Manager access enabled. All workspace and cross-project events are visible.</span>
+                </div>
+              } @else {
+                <div class="scope-banner-content">
+                  <i class="ph-light ph-lock-simple banner-icon"></i>
+                  <span><strong>Personal Activity View:</strong> Full team audit logs are restricted to Tech Lead &amp; Delivery Manager. Displaying actions you initiated or deliverables assigned to you.</span>
+                </div>
+              }
+            </div>
+
             <!-- Filter Toolbar -->
             <div class="audit-filter-toolbar">
               <div class="audit-search-box">
@@ -379,6 +394,8 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
                 <select class="audit-select" [ngModel]="actionFilter()" (ngModelChange)="actionFilter.set($event)">
                   <option value="ALL">All Actions</option>
                   <option value="STATUS_CHANGED">STATUS_CHANGED</option>
+                  <option value="SHARING_UPDATED">SHARING_UPDATED</option>
+                  <option value="PERMISSION_POLICY_UPDATED">PERMISSION_POLICY_UPDATED</option>
                   <option value="REWORK_PENALTY">REWORK_PENALTY</option>
                   <option value="SLIPPAGE_LOGGED">SLIPPAGE_LOGGED</option>
                   <option value="CASCADE_SHIFT_DATES">CASCADE_SHIFT_DATES</option>
@@ -391,7 +408,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
               </div>
 
               <span class="records-counter font-mono text-muted text-xs">
-                Showing {{ filteredLogs().length }} of {{ store.activityLogs().length }} events
+                Showing {{ filteredLogs().length }} of {{ store.visibleActivityLogs().length }} events
               </span>
             </div>
 
@@ -1134,6 +1151,42 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
     .action-chip[data-action="REWORK_PENALTY"] { color: var(--accent-danger); border-color: rgba(200, 109, 81, 0.3); }
     .action-chip[data-action="SLIPPAGE_LOGGED"] { color: var(--accent-warn); border-color: rgba(197, 155, 78, 0.3); }
     .action-chip[data-action="MEMBER_ROLE_UPDATED"] { color: var(--status-done); border-color: rgba(78, 124, 89, 0.3); }
+    .action-chip[data-action="SHARING_UPDATED"] { color: #79a8d4; border-color: rgba(90, 140, 180, 0.3); }
+    .action-chip[data-action="PERMISSION_POLICY_UPDATED"] { color: var(--accent-primary); border-color: rgba(92, 115, 98, 0.3); }
+
+    .audit-scope-banner {
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      background: var(--accent-primary-tint);
+      border: 1px solid rgba(92, 115, 98, 0.25);
+      color: var(--text-primary);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .audit-scope-banner.is-personal {
+      background: var(--bg-subtle);
+      border-color: var(--border-hairline);
+      color: var(--text-secondary);
+    }
+
+    .scope-banner-content {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .scope-banner-content .banner-icon {
+      font-size: 16px;
+      color: var(--accent-primary);
+      flex-shrink: 0;
+    }
+
+    .audit-scope-banner.is-personal .banner-icon {
+      color: var(--accent-warn);
+    }
 
     .target-cell-wrap { display: flex; flex-direction: column; gap: 1px; }
     .target-title { font-size: 12.5px; color: var(--text-primary); font-weight: 500; }
@@ -1163,7 +1216,7 @@ export class GovernanceComponent {
   }
 
   readonly filteredLogs = computed(() => {
-    const logs = this.store.activityLogs();
+    const logs = this.store.visibleActivityLogs();
     const actor = this.actorFilter();
     const action = this.actionFilter();
     const q = this.searchQuery().trim().toLowerCase();
