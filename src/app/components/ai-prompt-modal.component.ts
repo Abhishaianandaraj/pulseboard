@@ -1013,7 +1013,7 @@ export class AiPromptModalComponent {
   }
 
   loadSampleStandupPrompt(): void {
-    this.promptText = `Create an urgent 5-point task in PULSE-V1 for Abhishai to implement RBAC route guards and role middleware blocked by PB-101, and a 3-point high priority task in EVAL-GW for Karthik to configure latency telemetry`;
+    this.promptText = `Assign Abhishai and Priya to connect the RAG search API with SSO login for RAG-CORE, high priority, 5 points. Also assign Karthik to test 20 sample Q&A prompts for EVAL-GW, 2 points.`;
   }
 
   async runExtraction(): Promise<void> {

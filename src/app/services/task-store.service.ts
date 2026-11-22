@@ -32,10 +32,10 @@ import {
   DEFAULT_ROLE_PERMISSION_POLICIES
 } from '../data/seed-data';
 
-const STORAGE_KEY_PROJECTS = 'pulseboard_v1_projects';
-const STORAGE_KEY_MEMBERS = 'pulseboard_v1_members';
-const STORAGE_KEY_TASKS = 'pulseboard_v1_tasks';
-const STORAGE_KEY_LOGS = 'pulseboard_v1_logs';
+const STORAGE_KEY_PROJECTS = 'pulseboard_v2_projects';
+const STORAGE_KEY_MEMBERS = 'pulseboard_v2_members';
+const STORAGE_KEY_TASKS = 'pulseboard_v2_tasks';
+const STORAGE_KEY_LOGS = 'pulseboard_v2_logs';
 const STORAGE_KEY_THEME = 'pulseboard_v1_theme';
 const STORAGE_KEY_ACTIVE_PROJECT = 'pulseboard_v1_active_project';
 const STORAGE_KEY_CURRENT_USER = 'pulseboard_v1_current_user';

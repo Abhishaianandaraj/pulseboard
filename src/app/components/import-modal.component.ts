@@ -65,7 +65,7 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
             class="json-textarea custom-scroll"
             rows="9"
             [(ngModel)]="jsonInput"
-            placeholder='{\n  "tasks": [\n    {\n      "title": "Optimize Triton FP8 Dynamic Batching",\n      "projectCode": "RAG-CORE",\n      "assigneeName": "Priya Nair",\n      "assigneeRole": "AI Engineer",\n      "priority": "HIGH",\n      "subtasks": ["Tune scheduler", "Test p99 latency"]\n    }\n  ]\n}'
+            placeholder='{\n  "tasks": [\n    {\n      "title": "Add PDF upload and text chunking for RAG pipeline",\n      "projectCode": "RAG-CORE",\n      "assigneeName": "Priya Nair",\n      "assigneeRole": "AI Engineer",\n      "priority": "HIGH",\n      "subtasks": ["Split uploaded PDFs into 500-token chunks", "Save chunk metadata to vector store"]\n    }\n  ]\n}'
           ></textarea>
 
           <!-- Error Alert Banner -->

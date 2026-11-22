@@ -359,15 +359,17 @@ export class AiCopilotService {
     clean = clean.replace(/(?:,\s*)?(?:\b(?:urgent|critical|high|medium|low)\s*(?:priority)?\b)/gi, '');
     clean = clean.replace(/(?:,\s*)?(?:\b\d+\s*-?\s*(?:points?|pts?)\b)/gi, '');
     clean = clean.replace(/(?:,\s*)?(?:\b(?:subtasks?|checklist|steps?)\s*(?:include|are|:)?\s*[^.]+)/gi, '');
+    clean = clean.replace(/(?:,\s*)?(?:\b(?:in|for)\s+[A-Z0-9_-]+\b)(?=\s*$)/gi, '');
 
     // 3. Strip leading conversational request boilerplate:
     // Handles:
     // "Create an urgent 5-point task in PULSE-V1 for Abhishai to "
     // "a 3-point high priority task in EVAL-GW for Karthik to "
     // "Assign Abhishai and Priya to "
+    // "Also assign Karthik to "
     // "Add a 2-point deliverable for Priya: "
     clean = clean.replace(
-      /^(?:(?:please\s+)?(?:create|add|open|make|build|assign|set\s+up)\s+)?(?:a|an|another)?\s*(?:(?:urgent|critical|high|medium|low)\s*(?:priority)?\s*)?(?:\d+\s*-?\s*(?:points?|pts?)\s*)?(?:(?:urgent|critical|high|medium|low)\s*(?:priority)?\s*)?(?:task|ticket|story|deliverable|bug|item)?\s*(?:in|for)?\s*(?:[A-Z0-9_-]+)?\s*(?:for|to|assigned\s+to)?\s*(?:[A-Za-z\s,]+?)?\s*(?:to|for|that|which|:)\s*/i,
+      /^(?:(?:please\s+)?(?:also\s+)?(?:create|add|open|make|build|assign|set\s+up)\s+)?(?:a|an|another)?\s*(?:(?:urgent|critical|high|medium|low)\s*(?:priority)?\s*)?(?:\d+\s*-?\s*(?:points?|pts?)\s*)?(?:(?:urgent|critical|high|medium|low)\s*(?:priority)?\s*)?(?:task|ticket|story|deliverable|bug|item)?\s*(?:in|for)?\s*(?:[A-Z0-9_-]+)?\s*(?:for|to|assigned\s+to)?\s*(?:[A-Za-z\s,]+?)?\s*(?:to|for|that|which|:)\s*/i,
       ''
     );
 

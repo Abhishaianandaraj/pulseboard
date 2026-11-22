@@ -115,7 +115,33 @@ Every release candidate, pull request, and staging deployment must execute and s
 
 ---
 
+### 1.13 Relatable AI Engineering Seed Data & Demo Prompts Gate (v3.2.2)
+- [x] **Everyday AI & UI Tasks:** Verified 6-7 clear, relatable engineering tasks (e.g., chat UI green button theming, PDF upload & chunking, feedback thumbs-up/down widget, HR policy QA evaluation, and responsive layout polish) with crystal-clear subtasks.
+- [x] **Complex Flagship Governance Tasks:** Retained 2-3 multi-assignee tasks with upstream dependencies, 5-8 effort points, schedule drift, and tech lead verification reviews (e.g., Qdrant vector database setup, SSO authentication bridge, and SQL function calling gateway).
+- [x] **Integrity & Referential Consistency:** All task IDs (`PB-101` to `PB-109`), squad assignments, assignee arrays, upstream dependencies, and audit log entries remain strictly valid and synchronized.
+- [x] **Live Demo Sample Prompts:** "Try Sample Standup Prompt" in `AiPromptModalComponent` and "Load Sample Delivery JSON" in `ImportModalComponent` parse cleanly into approachable AI deliverables during live walkthroughs.
+
+---
+
 ## 2. Release Changelog
+
+### `v3.2.2` (Relatable AI Engineering Demo Tasks & Live Prompts)
+- **Clear Everyday AI & UI Seed Deliverables:**
+  - Updated `INITIAL_TASKS` in `src/app/data/seed-data.ts` with relatable real-world AI engineering tasks:
+    * `PB-101`: "Set up vector database index and embedding endpoint" (8 pts, DEPLOYED, Priya Nair)
+    * `PB-102`: "Connect RAG retrieval API to internal SSO authentication" (5 pts, IN_PROGRESS, Co-assigned: Abhishai + Priya Nair, BLOCKED, rework=1)
+    * `PB-103`: "Build AI function calling gateway for SQL and search tools" (5 pts, DEPLOYED, Co-assigned: Rahul Verma + Karthik R)
+    * `PB-104`: "Test RAG answers on 20 sample HR policy questions" (5 pts, IN_PROGRESS, Karthik R)
+    * `PB-105`: "Update chat UI button theme from blue to green" (5 pts, DONE, Abhishai)
+    * `PB-106`: "Add PDF upload and text chunking for RAG pipeline" (3 pts, TODO, Priya Nair, depends on PB-102)
+    * `PB-107`: "Build prompt response feedback thumbs-up/down widget" (5 pts, TODO, Rahul Verma, depends on PB-104)
+    * `PB-108`: "Build interactive Gantt timeline with dependency arrows" (5 pts, IN_PROGRESS, Co-assigned: Abhishai + Priya Nair, depends on PB-105)
+    * `PB-109`: "Fix sidebar alignment and mobile spacing on My Day" (3 pts, TODO, Vikram Rao, depends on PB-108)
+- **Synchronized Activity Audit Trail:** Updated `INITIAL_LOGS` entries with matching deliverable titles and descriptions.
+- **Relatable Standup Prompts & Sample Import JSON:**
+  - Updated `loadSampleStandupPrompt()` in `AiPromptModalComponent` to natural multi-task clause: *"Assign Abhishai and Priya to connect the RAG search API with SSO login for RAG-CORE, high priority, 5 points. Also assign Karthik to test 20 sample Q&A prompts for EVAL-GW, 2 points."*
+  - Updated `SAMPLE_IMPORT_JSON` in `seed-data.ts` and textarea placeholder in `ImportModalComponent` with clear streaming response, prompt injection testing, and Markdown export tasks.
+- **Automated Client Schema Hydration:** Bumped local storage keys to `pulseboard_v2_*` to automatically load fresh seed data without requiring a manual workspace reset.
 
 ### `v3.2.1` (App Shell Scroll Layout & Unclipped Activity Feeds)
 - **Global Shell Vertical Scrolling Architecture:**
