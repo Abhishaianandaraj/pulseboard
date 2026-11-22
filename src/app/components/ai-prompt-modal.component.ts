@@ -415,7 +415,7 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
     .btn-close:hover { color: var(--text-primary); }
 
     .modal-body {
-      padding: 20px 24px;
+      padding: 20px 24px 36px;
       display: flex;
       flex-direction: column;
       gap: 16px;

@@ -182,7 +182,7 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
     .btn-close:hover { color: var(--text-primary); }
 
     .modal-body {
-      padding: 24px;
+      padding: 24px 24px 36px;
       display: flex;
       flex-direction: column;
       gap: 16px;

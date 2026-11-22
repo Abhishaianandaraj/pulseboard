@@ -170,12 +170,11 @@ import { SharePermissionsModalComponent } from '../../components/share-permissio
   `,
   styles: [`
     .projects-page-wrapper {
-      padding: 24px 28px;
+      padding: 24px 28px 48px;
       display: flex;
       flex-direction: column;
       gap: 22px;
-      height: 100%;
-      overflow-y: auto;
+      min-height: 100%;
       background: var(--bg-canvas);
     }
 

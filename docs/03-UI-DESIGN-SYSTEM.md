@@ -240,3 +240,15 @@ Integrated `@phosphor-icons/web` (`ph-light` 1.5px-equivalent hairline icons) ac
 - **Top Header Bar & Project Card Triggers:**
   - Header bar: `<button class="btn-top-share"><i class="ph-light ph-users-three"></i> <span>Share</span></button>`.
   - Project directory cards: `<button class="btn-proj-share"><i class="ph-light ph-users-three"></i> <span>Share</span></button>`.
+
+
+### 7.8 Global App Shell & Log Container Scroll Architecture
+- **Sticky Sidebar & Unclipped Main Viewport:**
+  - Sidebar rail (`.nav-rail`) uses `position: sticky; top: 0; height: 100vh; flex-shrink: 0;` to remain anchored across all vertical scrolling.
+  - The right-hand shell content pane (`.shell-content`) uses `height: 100vh; min-height: 0; overflow-y: auto; overflow-x: hidden;` with smooth custom thin scrollbars (`custom-scroll`), eliminating clipped pages caused by nested `overflow: hidden` containers.
+  - Top header bar (`.shell-top-bar`) pins firmly at `top: 0; position: sticky; z-index: 20; flex-shrink: 0;`.
+- **Card-Bounded Activity Feeds & Audit Tables (`max-height: 62vh`):**
+  - My Day Recent Project Pulse feed (`.activity-feed-list`) and Governance Audit Ledger (`.gov-table-container`) are bounded by `max-height: 62vh; overflow-y: auto; padding-right: 4px;` with Kanso thin scrollbars (`scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent`).
+  - Audit table headers (`thead th`) use `position: sticky; top: 0; z-index: 5; background: var(--bg-subtle)` to keep column headers pinned while records scroll beneath.
+- **Bottom Breathing Room (`padding-bottom: 48px`):**
+  - Page wrappers (`.my-day-wrapper`, `.gov-page-wrapper`, `.projects-page-wrapper`, `.workspace-viewport`) enforce `padding-bottom: 48px` ensuring the final activity events, table rows, and project cards are never cropped against the bottom edge of the display.

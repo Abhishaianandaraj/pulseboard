@@ -218,9 +218,14 @@ h1, h2, h3, .font-serif {
 }
 
 /* Smooth Scrollbars */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
 .custom-scroll::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 .custom-scroll::-webkit-scrollbar-thumb {

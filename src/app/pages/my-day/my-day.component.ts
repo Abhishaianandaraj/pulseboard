@@ -290,12 +290,11 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
   `,
   styles: [`
     .my-day-wrapper {
-      padding: 24px 28px;
+      padding: 24px 28px 48px;
       display: flex;
       flex-direction: column;
       gap: 22px;
-      height: 100%;
-      overflow-y: auto;
+      min-height: 100%;
     }
 
     .personal-hero-card {
@@ -889,8 +888,9 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     }
 
     .activity-feed-list {
-      max-height: 320px;
+      max-height: 62vh;
       overflow-y: auto;
+      padding-right: 4px;
     }
 
     .activity-feed-item {
@@ -902,6 +902,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
 
     .activity-feed-item:last-child {
       border-bottom: none;
+      padding-bottom: 24px;
     }
 
     .feed-avatar {
@@ -1064,7 +1065,7 @@ export class MyDayComponent {
   });
 
   readonly recentLogs = computed(() => {
-    return this.store.visibleActivityLogs().slice(0, 8);
+    return this.store.visibleActivityLogs();
   });
 
   getProject(projectId: string) {

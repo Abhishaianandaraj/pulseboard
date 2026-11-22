@@ -106,7 +106,28 @@ Every release candidate, pull request, and staging deployment must execute and s
 
 ---
 
+### 1.12 Vertical Scrolling & Unclipped Log Lists Gate (v3.2.1)
+- [x] **Global Shell Scroll Parity:** The sidebar rail (`.nav-rail`) stays pinned with `position: sticky; top: 0; height: 100vh;` while the main workspace pane (`.shell-content`) scrolls smoothly without trapping child views inside `overflow: hidden`.
+- [x] **Sticky Shell Top Bar:** The top bar (`.shell-top-bar`) remains anchored at `top: 0` with proper z-index and border divider as content scrolls beneath.
+- [x] **Governance Audit Ledger Scroller:** The audit table container (`.gov-table-container`) scrolls vertically up to `62vh` with thin custom scrollbars (`custom-scroll`) and sticky `thead th` column headers.
+- [x] **My Day Recent Project Pulse Feed:** The feed renders all visible activity logs without artificial 8-item cutoffs, bounded at `max-height: 62vh; overflow-y: auto;` with 24px inner item breathing room.
+- [x] **Bottom Breathing Room (48px):** All page wrappers (`.my-day-wrapper`, `.gov-page-wrapper`, `.projects-page-wrapper`, `.workspace-viewport`) enforce `padding-bottom: 48px`, guaranteeing that all rows and cards are comfortably visible.
+
+---
+
 ## 2. Release Changelog
+
+### `v3.2.1` (App Shell Scroll Layout & Unclipped Activity Feeds)
+- **Global Shell Vertical Scrolling Architecture:**
+  - Updated `.pulse-shell` to `min-height: 100vh; width: 100vw;`.
+  - Pinned `.nav-rail` at `position: sticky; top: 0; height: 100vh; flex-shrink: 0;`.
+  - Set `.shell-content` to `height: 100vh; min-height: 0; overflow-y: auto; overflow-x: hidden;` with `custom-scroll` class.
+  - Pinned `.shell-top-bar` at `position: sticky; top: 0; z-index: 20; flex-shrink: 0;`.
+- **Unclipped Governance Audit Ledger & My Day Pulse Feed:**
+  - Bounded Governance Audit Ledger table container (`.gov-table-container`) to `max-height: 62vh; overflow-y: auto; overflow-x: auto;` with sticky table headers (`thead th`).
+  - Upgraded Recent Project Pulse in `MyDayComponent` (`.activity-feed-list`) to `max-height: 62vh; overflow-y: auto; padding-right: 4px;` and updated `recentLogs` to render all `visibleActivityLogs()` without a premature 8-item cutoff.
+  - Enforced `padding-bottom: 48px` across `.my-day-wrapper`, `.gov-page-wrapper`, `.projects-page-wrapper`, and `.workspace-viewport` for bottom breathing room.
+- **Scrollbar Styling:** Enhanced `.custom-scroll` in `src/styles.css` with Firefox `scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;` alongside WebKit rules.
 
 ### `v3.2.0` (Sharing & Permissions Window, Granular Role Capabilities & Scoped Activity Logs)
 - **Standalone "Share & Permissions" Window (`SharePermissionsModalComponent`):**

@@ -784,7 +784,7 @@ import { Task, TaskStatus, TaskPriority, ReviewVerdict, SlipReason } from '../mo
 
     .drawer-body {
       flex: 1;
-      padding: 24px;
+      padding: 24px 24px 48px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;

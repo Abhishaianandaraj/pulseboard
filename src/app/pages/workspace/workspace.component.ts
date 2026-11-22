@@ -620,6 +620,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       display: flex;
       flex-direction: column;
       height: 100%;
+      min-height: calc(100vh - 50px);
       overflow: hidden;
       background: var(--bg-canvas);
     }
@@ -820,7 +821,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
 
     .workspace-viewport {
       flex: 1;
-      padding: 20px 24px;
+      padding: 20px 24px 48px;
       overflow: auto;
     }
 

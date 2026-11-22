@@ -369,7 +369,7 @@ import { SystemRole, RolePermissionPolicy, TeamMember, Project } from '../models
 
     /* Modal Body */
     .modal-body {
-      padding: 1.25rem 1.5rem;
+      padding: 1.25rem 1.5rem 2.5rem;
       overflow-y: auto;
       display: flex;
       flex-direction: column;

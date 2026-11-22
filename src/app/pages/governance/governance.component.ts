@@ -469,12 +469,11 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
   `,
   styles: [`
     .gov-page-wrapper {
-      padding: 24px 28px;
+      padding: 24px 28px 48px;
       display: flex;
       flex-direction: column;
       gap: 22px;
-      height: 100%;
-      overflow-y: auto;
+      min-height: 100%;
       background: var(--bg-canvas);
     }
 
@@ -590,6 +589,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
       display: flex;
       flex-direction: column;
       gap: 20px;
+      padding-bottom: 48px;
     }
 
     .rbac-authority-banner {
@@ -631,8 +631,23 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
       background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
       border-radius: var(--radius-card);
+      max-height: 62vh;
+      overflow-y: auto;
       overflow-x: auto;
+      padding-right: 2px;
       box-shadow: var(--shadow-soft);
+    }
+
+    .gov-matrix-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: var(--bg-subtle);
+    }
+
+    .gov-matrix-table tbody tr:last-child td {
+      border-bottom: none;
+      padding-bottom: 20px;
     }
 
     .gov-matrix-table {
