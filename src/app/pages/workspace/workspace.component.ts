@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
@@ -50,8 +50,8 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
               [class.active]="store.currentView() === 'TIMELINE'"
               (click)="switchView('TIMELINE')"
             >
-              <i class="ph-light ph-chart-horizontal"></i>
-              <span>Gantt</span>
+              <i class="ph-light ph-chart-line-up"></i>
+              <span>Timeline</span>
             </button>
           </div>
 
@@ -340,167 +340,223 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
           </div>
         }
 
-        <!-- C. INTERACTIVE DEPENDENCY GANTT VIEW -->
+        <!-- C. DELIVERY ROADMAP (TIMELINE) VIEW -->
         @if (store.currentView() === 'TIMELINE') {
-          <div class="gantt-wrapper">
-            <!-- Gantt Controls Toolbar -->
-            <div class="gantt-sub-toolbar">
-              <div class="gantt-stats-row">
-                <span class="gantt-stat-pill">{{ store.filteredTasks().length }} Deliverables</span>
-                <span class="gantt-stat-pill key-path-pill">
-                  <i class="ph-light ph-flame"></i> {{ store.ganttScheduleMetrics().criticalPathTaskIds.size }} on Key Path
-                </span>
+          <div class="timeline-container">
+            <!-- 1. Top Scannable Control & Legend Strip -->
+            <div class="timeline-sub-toolbar">
+              <div class="timeline-legend-group">
+                <div class="timeline-legend-item">
+                  <span class="legend-color-dot dot-completed"></span>
+                  <span class="legend-label">Completed / Deployed</span>
+                </div>
+                <div class="timeline-legend-item">
+                  <span class="legend-color-dot dot-inprogress"></span>
+                  <span class="legend-label">In Progress</span>
+                </div>
+                <div class="timeline-legend-item">
+                  <span class="legend-color-dot dot-blocked"></span>
+                  <span class="legend-label">Blocked / Delayed</span>
+                </div>
               </div>
 
-              <div class="gantt-toggle-group">
+              <div class="timeline-toolbar-actions">
+                <!-- Deliverables Count Pill -->
+                <span class="timeline-stat-pill font-mono">
+                  {{ store.filteredTasks().length }} Deliverables
+                </span>
+
+                <!-- Interactive "Blocked Only" Toggle -->
                 <button
                   type="button"
-                  class="btn-gantt-opt"
-                  [class.active]="showKeyPath()"
-                  (click)="toggleKeyPath()"
+                  class="btn-timeline-opt btn-blocked-toggle"
+                  [class.active]="store.filterBlockedOnly()"
+                  (click)="toggleBlockedFilter()"
+                  title="Filter to show only blocked or delayed deliverables"
                 >
-                  <i class="ph-light ph-flame"></i>
-                  <span>Key Path: {{ showKeyPath() ? 'ON' : 'OFF' }}</span>
+                  <i class="ph-light ph-warning"></i>
+                  <span>Blocked Only</span>
+                  @if (store.filterBlockedOnly()) {
+                    <span class="filter-active-indicator">Active</span>
+                  }
                 </button>
-                <button
-                  type="button"
-                  class="btn-gantt-opt"
-                  [class.active]="showScheduleShift()"
-                  (click)="toggleScheduleShift()"
-                >
-                  <i class="ph-light ph-arrows-left-right"></i>
-                  <span>Schedule Shift: {{ showScheduleShift() ? 'ON' : 'OFF' }}</span>
-                </button>
+
+                <!-- Domino Conflict / Auto-Shift Dates (if conflicts exist) -->
+                @if (store.ganttScheduleMetrics().hasConflicts) {
+                  <button
+                    type="button"
+                    class="btn-timeline-opt btn-conflict-autoshift"
+                    [disabled]="!store.canEditTasks()"
+                    (click)="store.cascadeShiftDates()"
+                    title="Auto-shift downstream dates to eliminate dependency conflicts"
+                  >
+                    <i class="ph-light ph-lightning"></i>
+                    <span>Auto-Shift Dates</span>
+                  </button>
+                }
               </div>
             </div>
 
-            <!-- Schedule Domino Conflict Banner -->
-            @if (store.ganttScheduleMetrics().hasConflicts) {
-              <div class="gantt-conflict-bar">
-                <span class="conflict-glyph">
-                  <i class="ph-light ph-warning-circle"></i>
-                </span>
-                <div class="conflict-text">
-                  <strong>Prerequisite Overlap Risk Detected</strong>
-                  <p>Upstream deliverables finish after downstream successor dates. Automatic cascade alignment is available.</p>
+            <!-- 2. Split Delivery Roadmap Canvas -->
+            <div class="timeline-split-card">
+              <!-- Left Column: Task & Upstream Dependency Summary (340px) -->
+              <div class="timeline-left-column">
+                <div class="timeline-col-header">
+                  <span>Deliverable &amp; Dependencies</span>
+                  <span class="font-mono text-muted text-xs">Points</span>
                 </div>
-                <button
-                  type="button"
-                  class="btn-auto-align"
-                  [disabled]="!store.canEditTasks()"
-                  (click)="store.cascadeShiftDates()"
-                >
-                  <i class="ph-light ph-lightning"></i>
-                  <span>Auto-Shift Dependent Dates</span>
-                </button>
-              </div>
-            }
-
-            <!-- Split Gantt Chart -->
-            <div class="gantt-split-board">
-              <!-- Left Tree Column -->
-              <div class="gantt-left-tree">
-                <div class="gantt-tree-header">
-                  <span>Deliverable &amp; Key Path</span>
-                  <span class="font-mono">Pts</span>
-                </div>
-                <div class="gantt-tree-rows">
+                <div class="timeline-left-list">
                   @for (task of store.filteredTasks(); track task.id) {
-                    <div class="gantt-tree-item" (click)="openTask(task.id)" [class.is-key-row]="isCriticalPath(task.id) && showKeyPath()">
-                      <div class="tree-item-title-wrap">
-                        <span class="font-mono text-muted text-xs">{{ task.id }}</span>
-                        @if (getProject(task.projectId); as proj) {
-                          <span class="card-proj-badge" [style.color]="proj.color">{{ proj.code }}</span>
-                        }
-                        <span class="tree-title text-truncate" [title]="task.title">{{ task.title }}</span>
-                        @if (isCriticalPath(task.id) && showKeyPath()) {
-                          <span class="key-path-tag">Key</span>
-                        }
-                        @if (task.dependencies.length > 0) {
-                          <span class="dep-pill font-mono">
-                            <i class="ph-light ph-link"></i> {{ task.dependencies.length }}
+                    <div
+                      class="timeline-deliverable-item"
+                      [class.is-hovered]="task.id === hoveredTaskId()"
+                      [class.is-connected]="isTaskConnectedToHovered(task.id)"
+                      [class.is-blocked]="task.blocked"
+                      (mouseenter)="onTaskHover(task.id)"
+                      (mouseleave)="onTaskHover(null)"
+                      (click)="openTask(task.id)"
+                    >
+                      <div class="deliverable-meta-wrap">
+                        <div class="deliverable-badges-row">
+                          <span class="deliverable-key font-mono">{{ task.id }}</span>
+                          @if (getProject(task.projectId); as proj) {
+                            <span class="card-proj-badge" [style.color]="proj.color">{{ proj.code }}</span>
+                          }
+                          <span
+                            class="timeline-status-badge"
+                            [attr.data-status]="getTimelineStatusKey(task)"
+                          >
+                            {{ getTimelineStatusLabel(task) }}
                           </span>
+                        </div>
+                        <span class="deliverable-title text-truncate" [title]="task.title">
+                          {{ task.title }}
+                        </span>
+                        @if (task.dependencies.length > 0) {
+                          <div class="deliverable-dep-row">
+                            <span class="dep-pill font-mono">
+                              <i class="ph-light ph-arrow-bend-down-right"></i> After {{ task.dependencies.join(', ') }}
+                            </span>
+                          </div>
                         }
                       </div>
-                      <span class="font-mono text-muted text-xs">{{ task.effortPoints }}p</span>
+                      <span class="font-mono text-muted text-xs deliverable-effort">{{ task.effortPoints }}p</span>
                     </div>
                   }
                 </div>
               </div>
 
-              <!-- Right 30-Day Grid -->
-              <div class="gantt-right-grid custom-scroll">
-                <!-- Day Header -->
-                <div class="gantt-calendar-header">
-                  @for (day of timelineDays; track day) {
-                    <div class="gantt-day-tick">
-                      <span>{{ day }}</span>
+              <!-- Right Column: Breathable 4-Week Columns & Duration Track Canvas -->
+              <div class="timeline-right-column custom-scroll">
+                <!-- Weekly Sprint Column Headers -->
+                <div class="timeline-weeks-header">
+                  @for (week of timelineWeeks; track week.id) {
+                    <div class="timeline-week-head-col">
+                      <span>{{ week.label }}</span>
                     </div>
                   }
+
+                  <!-- Today Tag Marker in Header -->
+                  <div class="timeline-today-head-badge" [style.left.%]="todayPercent">
+                    <span class="today-tag-text font-mono">Today</span>
+                  </div>
                 </div>
 
-                <!-- Timeline Tracks & SVG Overlay -->
-                <div class="gantt-track-area" [style.height.px]="store.filteredTasks().length * 52">
-                  <!-- Background day columns -->
-                  <div class="gantt-grid-columns">
-                    @for (day of timelineDays; track day) {
-                      <div class="day-v-line"></div>
+                <!-- Timeline Tracks & Hover SVG Overlay -->
+                <div class="timeline-track-canvas" [style.height.px]="store.filteredTasks().length * 64">
+                  <!-- Vertical Weekly Column Grid Dividers -->
+                  <div class="timeline-weeks-grid-bg">
+                    @for (week of timelineWeeks; track week.id) {
+                      <div class="week-v-divider"></div>
                     }
                   </div>
 
-                  <!-- SVG Bezier Connector Layer -->
-                  <svg class="gantt-svg-overlay" width="900" [attr.height]="store.filteredTasks().length * 52">
+                  <!-- Vertical "Today" Marker Line -->
+                  <div class="timeline-today-v-line" [style.left.%]="todayPercent"></div>
+
+                  <!-- Hover-Only Curved SVG Connector Overlay (Zero Lines When Idle) -->
+                  <svg
+                    class="timeline-hover-svg"
+                    width="100%"
+                    [attr.height]="store.filteredTasks().length * 64"
+                    [attr.viewBox]="'0 0 1000 ' + (store.filteredTasks().length * 64)"
+                    preserveAspectRatio="none"
+                  >
                     <defs>
-                      <marker id="arrow-normal" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <marker
+                        id="timeline-arrow-normal"
+                        viewBox="0 0 10 10"
+                        refX="6"
+                        refY="5"
+                        markerWidth="6"
+                        markerHeight="6"
+                        orient="auto-start-reverse"
+                      >
                         <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent-primary)" />
                       </marker>
-                      <marker id="arrow-key" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent-warn)" />
-                      </marker>
-                      <marker id="arrow-conflict" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <marker
+                        id="timeline-arrow-danger"
+                        viewBox="0 0 10 10"
+                        refX="6"
+                        refY="5"
+                        markerWidth="6"
+                        markerHeight="6"
+                        orient="auto-start-reverse"
+                      >
                         <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent-danger)" />
                       </marker>
                     </defs>
-                    @for (conn of getGanttConnectors(); track conn.upstreamId + '-' + conn.downstreamId) {
+                    @for (conn of activeConnectors(); track conn.id) {
                       <path
-                        [attr.d]="conn.path"
-                        class="gantt-path"
-                        [class.path-conflict]="conn.isConflict"
-                        [class.path-key]="(isCriticalPath(conn.upstreamId) && isCriticalPath(conn.downstreamId)) && showKeyPath()"
-                        [attr.marker-end]="conn.isConflict ? 'url(#arrow-conflict)' : ((isCriticalPath(conn.upstreamId) && isCriticalPath(conn.downstreamId)) && showKeyPath() ? 'url(#arrow-key)' : 'url(#arrow-normal)')"
+                        [attr.d]="conn.d"
+                        class="timeline-svg-connector"
+                        [class.connector-is-conflict]="conn.isConflict"
+                        [attr.marker-end]="conn.isConflict ? 'url(#timeline-arrow-danger)' : 'url(#timeline-arrow-normal)'"
                       />
                     }
                   </svg>
 
-                  <!-- Task Bars -->
+                  <!-- Task Duration Pill Bars -->
                   @for (task of store.filteredTasks(); track task.id; let idx = $index) {
-                    <div class="gantt-bar-lane" [style.top.px]="idx * 52" (click)="openTask(task.id)">
-                      <!-- Schedule Shift Baseline Shadow -->
-                      @if (showScheduleShift() && task.baselineDueDate && task.dueDate > task.baselineDueDate) {
-                        <div
-                          class="gantt-shadow-bar"
-                          [style.left.px]="getGanttLeftPx(task)"
-                          [style.width.px]="getBaselineWidthPx(task)"
-                          title="Original committed baseline: {{ task.baselineDueDate }}"
-                        >
-                          <span class="shadow-label font-mono">Shift: {{ task.baselineDueDate | slice:5:10 }}</span>
-                        </div>
-                      }
-
-                      <!-- Live Forecast Delivery Bar -->
+                    <div
+                      class="timeline-lane-row"
+                      [style.top.px]="idx * 64"
+                      [class.is-hovered]="task.id === hoveredTaskId()"
+                      [class.is-connected]="isTaskConnectedToHovered(task.id)"
+                      (mouseenter)="onTaskHover(task.id)"
+                      (mouseleave)="onTaskHover(null)"
+                      (click)="openTask(task.id)"
+                    >
+                      <!-- Horizontal Rounded Pill Bar -->
                       <div
-                        class="gantt-live-bar"
-                        [style.left.px]="getGanttLeftPx(task)"
-                        [style.width.px]="getGanttWidthPx(task)"
-                        [attr.data-status]="task.status"
-                        [class.is-key-bar]="isCriticalPath(task.id) && showKeyPath()"
-                        [class.is-blocked]="task.blocked"
+                        class="timeline-duration-pill"
+                        [style.left.%]="getTimelineBarLeftPercent(task)"
+                        [style.width.%]="getTimelineBarWidthPercent(task)"
+                        [attr.data-status]="getTimelineStatusKey(task)"
+                        [class.is-critical]="isCriticalPath(task.id)"
+                        [title]="task.title + ' (' + task.startDate + ' → ' + task.dueDate + ')'"
                       >
-                        <div class="bar-content-row">
-                          @if (task.blocked) { <i class="ph-light ph-warning"></i> }
-                          @if (task.slipReason) { <i class="ph-light ph-arrows-clockwise"></i> }
-                          <span class="bar-title text-truncate">{{ task.title }}</span>
-                          <span class="bar-date font-mono">{{ task.dueDate | slice:5:10 }}</span>
+                        <!-- Stacked Co-Assignee Overlapping Avatars -->
+                        <div class="timeline-bar-avatar-stack">
+                          @for (m of store.getTaskMembers(task); track m.id) {
+                            <span
+                              class="bar-avatar-dot"
+                              [style.background-color]="m.color"
+                              [title]="m.name + ' (' + m.role + ')'"
+                            >
+                              {{ m.avatar }}
+                            </span>
+                          }
+                        </div>
+
+                        <!-- Pill Status + Points Label -->
+                        <div class="timeline-bar-label-group">
+                          @if (task.blocked) {
+                            <i class="ph-light ph-warning"></i>
+                          }
+                          <span class="timeline-bar-label-text">
+                            {{ getTimelineStatusLabel(task) }} · {{ task.effortPoints }} pts
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1132,14 +1188,14 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       border-color: var(--accent-primary);
     }
 
-    /* GANTT */
-    .gantt-wrapper {
+    /* DELIVERY ROADMAP (TIMELINE) VIEW */
+    .timeline-container {
       display: flex;
       flex-direction: column;
       gap: 16px;
     }
 
-    .gantt-sub-toolbar {
+    .timeline-sub-toolbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -1147,40 +1203,56 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
       border-radius: var(--radius-card);
-      padding: 12px 18px;
+      padding: 10px 18px;
       box-shadow: var(--shadow-soft);
       flex-wrap: wrap;
     }
 
-    .gantt-stats-row {
+    .timeline-legend-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .timeline-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .legend-color-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 9999px;
+      flex-shrink: 0;
+    }
+
+    .dot-completed { background: var(--accent-primary); }
+    .dot-inprogress { background: var(--accent-warn); }
+    .dot-blocked { background: var(--accent-danger); }
+
+    .timeline-toolbar-actions {
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .gantt-stat-pill {
+    .timeline-stat-pill {
       font-size: 11px;
       font-weight: 600;
-      padding: 3px 10px;
+      padding: 4px 10px;
       border-radius: var(--radius-pill);
       background: var(--bg-subtle);
       border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
+      white-space: nowrap;
     }
 
-    .key-path-pill {
-      background: var(--accent-warn-tint);
-      border-color: rgba(197, 155, 78, 0.3);
-      color: var(--accent-warn);
-    }
-
-    .gantt-toggle-group {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .btn-gantt-opt {
+    .btn-timeline-opt {
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -1193,66 +1265,44 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       color: var(--text-secondary);
       cursor: pointer;
       transition: var(--transition-tactile);
+      white-space: nowrap;
     }
 
-    .btn-gantt-opt:hover {
+    .btn-timeline-opt:hover:not(:disabled) {
       color: var(--text-primary);
       border-color: var(--border-strong);
     }
 
-    .btn-gantt-opt.active {
-      background: var(--accent-primary-tint);
-      color: var(--accent-primary);
-      border-color: rgba(92, 115, 98, 0.35);
+    .btn-blocked-toggle.active {
+      background: var(--accent-danger-tint);
+      color: var(--accent-danger);
+      border-color: rgba(200, 109, 81, 0.4);
       font-weight: 600;
     }
 
-    .gantt-conflict-bar {
-      background: var(--accent-danger-tint);
-      border: 1px solid rgba(200, 109, 81, 0.3);
-      border-radius: var(--radius-inner);
-      padding: 12px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .conflict-glyph {
-      font-size: 18px;
-      color: var(--accent-danger);
-      display: flex;
-      align-items: center;
-    }
-
-    .conflict-text p {
-      font-size: 11.5px;
-      color: var(--text-secondary);
-      margin: 2px 0 0 0;
-    }
-
-    .btn-auto-align {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
+    .filter-active-indicator {
+      font-size: 9px;
+      padding: 1px 6px;
       border-radius: var(--radius-pill);
       background: var(--accent-danger);
       color: #ffffff;
-      border: none;
-      font-size: 11.5px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .btn-conflict-autoshift {
+      background: var(--accent-warn-tint);
+      color: var(--accent-warn);
+      border-color: rgba(197, 155, 78, 0.4);
       font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition-tactile);
     }
 
-    .btn-auto-align:hover {
-      background: var(--accent-danger-hover);
-      transform: translateY(-1px);
+    .btn-conflict-autoshift:hover:not(:disabled) {
+      background: var(--accent-warn);
+      color: #ffffff;
     }
 
-    .gantt-split-board {
+    .timeline-split-card {
       display: flex;
       background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
@@ -1261,16 +1311,17 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       box-shadow: var(--shadow-soft);
     }
 
-    .gantt-left-tree {
+    .timeline-left-column {
       width: 340px;
       min-width: 340px;
       border-right: 1px solid var(--border-hairline);
       display: flex;
       flex-direction: column;
+      background: var(--bg-surface);
     }
 
-    .gantt-tree-header {
-      height: 42px;
+    .timeline-col-header {
+      height: 44px;
       padding: 0 16px;
       display: flex;
       align-items: center;
@@ -1280,187 +1331,328 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
+      letter-spacing: 0.04em;
       color: var(--text-muted);
     }
 
-    .gantt-tree-rows {
+    .timeline-left-list {
       display: flex;
       flex-direction: column;
     }
 
-    .gantt-tree-item {
-      height: 52px;
+    .timeline-deliverable-item {
+      height: 64px;
       box-sizing: border-box;
-      padding: 0 16px;
+      padding: 8px 16px;
       border-bottom: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
       cursor: pointer;
       transition: var(--transition-tactile);
+      background: var(--bg-surface);
     }
 
-    .gantt-tree-item:hover {
+    .timeline-deliverable-item:hover {
       background: var(--bg-subtle);
     }
 
-    .gantt-tree-item.is-key-row {
-      border-left: 3px solid var(--accent-warn);
+    .timeline-deliverable-item.is-hovered {
+      background: var(--bg-subtle);
+      box-shadow: inset 3px 0 0 var(--accent-primary);
     }
 
-    .tree-item-title-wrap {
+    .timeline-deliverable-item.is-connected {
+      background: var(--accent-primary-tint);
+      box-shadow: inset 3px 0 0 var(--accent-primary);
+    }
+
+    .timeline-deliverable-item.is-blocked {
+      box-shadow: inset 3px 0 0 var(--accent-danger);
+    }
+
+    .deliverable-meta-wrap {
       display: flex;
-      align-items: center;
-      gap: 7px;
+      flex-direction: column;
+      gap: 3px;
       overflow: hidden;
       flex: 1;
     }
 
-    .tree-title {
+    .deliverable-badges-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .deliverable-key {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .timeline-status-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 9.5px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      white-space: nowrap;
+    }
+
+    .timeline-status-badge[data-status="completed"] {
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
+    }
+
+    .timeline-status-badge[data-status="inprogress"] {
+      background: var(--accent-warn-tint);
+      color: var(--accent-warn);
+    }
+
+    .timeline-status-badge[data-status="blocked"] {
+      background: var(--accent-danger-tint);
+      color: var(--accent-danger);
+    }
+
+    .timeline-status-badge[data-status="todo"] {
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-hairline);
+    }
+
+    .deliverable-title {
       font-size: 12.5px;
       font-weight: 500;
       color: var(--text-primary);
     }
 
-    .dep-pill {
-      display: inline-flex;
+    .deliverable-dep-row {
+      display: flex;
       align-items: center;
-      gap: 3px;
-      font-size: 9.5px;
-      background: var(--accent-primary-tint);
-      color: var(--accent-primary);
-      padding: 1px 6px;
-      border-radius: var(--radius-pill);
     }
 
-    .gantt-right-grid {
+    .deliverable-effort {
+      flex-shrink: 0;
+      padding-left: 4px;
+    }
+
+    .timeline-right-column {
       flex: 1;
+      min-width: 600px;
       overflow-x: auto;
       display: flex;
       flex-direction: column;
       position: relative;
+      background: var(--bg-surface);
     }
 
-    .gantt-calendar-header {
-      width: 900px;
-      height: 42px;
+    .timeline-weeks-header {
+      height: 44px;
       display: flex;
       background: var(--bg-subtle);
       border-bottom: 1px solid var(--border-hairline);
-    }
-
-    .gantt-day-tick {
-      width: 30px;
-      min-width: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-right: 1px dashed var(--border-hairline);
-      font-size: 11px;
-      color: var(--text-muted);
-      font-weight: 500;
-    }
-
-    .gantt-track-area {
-      width: 900px;
       position: relative;
     }
 
-    .gantt-grid-columns {
+    .timeline-week-head-col {
+      flex: 1;
+      min-width: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid var(--border-hairline);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    .timeline-today-head-badge {
+      position: absolute;
+      top: 10px;
+      transform: translateX(-50%);
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .today-tag-text {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-primary);
+      color: #ffffff;
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .timeline-track-canvas {
+      position: relative;
+      width: 100%;
+      min-width: 600px;
+    }
+
+    .timeline-weeks-grid-bg {
       position: absolute;
       inset: 0;
       display: flex;
       pointer-events: none;
+      z-index: 1;
     }
 
-    .day-v-line {
-      width: 30px;
-      min-width: 30px;
-      border-right: 1px dashed var(--border-hairline);
+    .week-v-divider {
+      flex: 1;
+      min-width: 150px;
+      border-right: 1px solid var(--border-hairline);
       height: 100%;
     }
 
-    .gantt-svg-overlay {
+    .timeline-today-v-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 0;
+      border-left: 2px dashed var(--accent-primary);
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0.8;
+    }
+
+    .timeline-hover-svg {
       position: absolute;
       top: 0;
       left: 0;
       pointer-events: none;
-      z-index: 5;
+      z-index: 6;
     }
 
-    .gantt-path {
+    .timeline-svg-connector {
       fill: none;
       stroke: var(--accent-primary);
-      stroke-width: 2;
-      opacity: 0.85;
+      stroke-width: 2.2;
+      opacity: 0.92;
     }
 
-    .gantt-path.path-key { stroke: var(--accent-warn); stroke-width: 2.5; }
-    .gantt-path.path-conflict { stroke: var(--accent-danger); stroke-width: 2.5; stroke-dasharray: 4 2; }
+    .timeline-svg-connector.connector-is-conflict {
+      stroke: var(--accent-danger);
+      stroke-width: 2.5;
+      stroke-dasharray: 4 2;
+    }
 
-    .gantt-bar-lane {
+    .timeline-lane-row {
       position: absolute;
       left: 0;
       right: 0;
-      height: 52px;
+      height: 64px;
       cursor: pointer;
+      transition: background 0.15s ease;
+      z-index: 4;
     }
 
-    .gantt-shadow-bar {
-      position: absolute;
-      top: 6px;
-      height: 12px;
-      border-radius: var(--radius-pill);
-      background: rgba(148, 163, 184, 0.2);
-      border: 1px dashed var(--text-muted);
-      z-index: 2;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      padding: 0 4px;
+    .timeline-lane-row:hover {
+      background: rgba(140, 133, 123, 0.04);
     }
 
-    .shadow-label { font-size: 8px; color: var(--text-muted); }
+    .timeline-lane-row.is-hovered {
+      background: rgba(140, 133, 123, 0.06);
+    }
 
-    .gantt-live-bar {
+    .timeline-lane-row.is-connected {
+      background: var(--accent-primary-tint);
+    }
+
+    .timeline-duration-pill {
       position: absolute;
-      top: 14px;
-      height: 28px;
+      top: 16px;
+      height: 32px;
       border-radius: var(--radius-pill);
-      color: #ffffff;
-      font-size: 11px;
-      font-weight: 600;
       display: flex;
       align-items: center;
       padding: 0 10px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-      z-index: 3;
+      gap: 8px;
+      box-shadow: var(--shadow-sm);
       transition: var(--transition-tactile);
+      z-index: 5;
     }
 
-    .gantt-live-bar:hover {
+    .timeline-duration-pill:hover {
       transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
     }
 
-    .gantt-live-bar[data-status="TODO"] { background: var(--status-todo); }
-    .gantt-live-bar[data-status="IN_PROGRESS"] { background: var(--status-inprogress); }
-    .gantt-live-bar[data-status="DEPLOYED"] { background: var(--status-deployed); }
-    .gantt-live-bar[data-status="DONE"] { background: var(--status-done); }
+    .timeline-duration-pill[data-status="completed"] {
+      background: rgba(92, 115, 98, 0.16);
+      border: 1px solid rgba(92, 115, 98, 0.45);
+      color: var(--accent-primary);
+    }
 
-    .gantt-live-bar.is-key-bar {
+    .timeline-duration-pill[data-status="inprogress"] {
+      background: rgba(197, 155, 78, 0.16);
+      border: 1px solid rgba(197, 155, 78, 0.45);
+      color: var(--accent-warn);
+    }
+
+    .timeline-duration-pill[data-status="blocked"] {
+      background: rgba(200, 109, 81, 0.18);
+      border: 1px solid rgba(200, 109, 81, 0.55);
+      color: var(--accent-danger);
+    }
+
+    .timeline-duration-pill[data-status="todo"] {
+      background: rgba(140, 133, 123, 0.14);
+      border: 1px solid rgba(140, 133, 123, 0.35);
+      color: var(--text-secondary);
+    }
+
+    .timeline-duration-pill.is-critical {
       box-shadow: 0 0 0 2px var(--accent-warn), 0 2px 8px rgba(197, 155, 78, 0.35);
     }
 
-    .bar-content-row {
+    .timeline-bar-avatar-stack {
       display: flex;
       align-items: center;
-      gap: 6px;
-      width: 100%;
+      margin-right: 2px;
+    }
+
+    .bar-avatar-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 700;
+      color: #ffffff;
+      border: 1.5px solid var(--bg-surface);
+      margin-left: -5px;
+      flex-shrink: 0;
+    }
+
+    .bar-avatar-dot:first-child {
+      margin-left: 0;
+    }
+
+    .timeline-bar-label-group {
+      display: flex;
+      align-items: center;
+      gap: 5px;
       overflow: hidden;
     }
 
-    .bar-title { flex: 1; }
-    .bar-date { font-size: 9px; opacity: 0.85; }
+    .timeline-bar-label-text {
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
     /* SHARED MODALS */
     .modal-backdrop {
@@ -1657,10 +1849,16 @@ export class WorkspaceComponent {
 
   readonly dropListIds: string[] = ['list-TODO', 'list-IN_PROGRESS', 'list-DEPLOYED', 'list-DONE'];
 
-  // Gantt Signals & Timeline Helpers
-  readonly showKeyPath = signal<boolean>(true);
-  readonly showScheduleShift = signal<boolean>(true);
-  readonly timelineDays = Array.from({ length: 30 }, (_, i) => i + 1);
+  // Delivery Roadmap (Timeline) Signals & Helpers
+  readonly hoveredTaskId = signal<string | null>(null);
+  readonly timelineWeeks = [
+    { id: 'w1', label: 'Week 1 · Nov 10 - Nov 16' },
+    { id: 'w2', label: 'Week 2 · Nov 17 - Nov 23' },
+    { id: 'w3', label: 'Week 3 · Nov 24 - Nov 30' },
+    { id: 'w4', label: 'Week 4 · Dec 01 - Dec 07' }
+  ];
+  readonly timelineStartTs = new Date('2026-11-10T00:00:00Z').getTime();
+  readonly todayPercent = 42.86; // Nov 22, 2026 (Day 12 of 28 days)
 
   // Modals
   readonly isNewTaskModalOpen = signal<boolean>(false);
@@ -1704,14 +1902,6 @@ export class WorkspaceComponent {
 
   switchView(view: MethodologyView): void {
     this.store.currentView.set(view);
-  }
-
-  toggleKeyPath(): void {
-    this.showKeyPath.update(v => !v);
-  }
-
-  toggleScheduleShift(): void {
-    this.showScheduleShift.update(v => !v);
   }
 
   isCriticalPath(taskId: string): boolean {
@@ -1835,28 +2025,61 @@ export class WorkspaceComponent {
     this.isAiPromptModalOpen.set(false);
   }
 
-  getGanttLeftPx(task: Task): number {
-    const baseTimestamp = new Date('2026-11-01').getTime();
-    const startTs = new Date(task.startDate || '2026-11-01').getTime();
-    const startOffsetDays = Math.max(0, Math.min(30, (startTs - baseTimestamp) / 86400000));
-    return Math.round(startOffsetDays * 30);
+  toggleBlockedFilter(): void {
+    this.store.filterBlockedOnly.update(v => !v);
   }
 
-  getGanttWidthPx(task: Task): number {
-    const startTs = new Date(task.startDate || '2026-11-01').getTime();
-    const dueTs = new Date(task.dueDate || '2026-11-15').getTime();
-    const durationDays = Math.max(1, Math.min(30, (dueTs - startTs) / 86400000));
-    return Math.max(28, Math.round(durationDays * 30));
+  onTaskHover(taskId: string | null): void {
+    this.hoveredTaskId.set(taskId);
   }
 
-  getBaselineWidthPx(task: Task): number {
-    const startTs = new Date(task.startDate || '2026-11-01').getTime();
-    const dueTs = new Date(task.baselineDueDate || task.dueDate || '2026-11-15').getTime();
-    const durationDays = Math.max(1, Math.min(30, (dueTs - startTs) / 86400000));
-    return Math.max(28, Math.round(durationDays * 30));
+  isTaskConnectedToHovered(taskId: string): boolean {
+    const hId = this.hoveredTaskId();
+    if (!hId) return false;
+    if (taskId === hId) return true;
+    const tasks = this.store.tasks();
+    const hoveredTask = tasks.find(t => t.id === hId);
+    if (hoveredTask && (hoveredTask.dependencies || []).includes(taskId)) return true;
+    const currentTask = tasks.find(t => t.id === taskId);
+    if (currentTask && (currentTask.dependencies || []).includes(hId)) return true;
+    return false;
   }
 
-  getGanttConnectors(): Array<{ path: string; isConflict: boolean; upstreamId: string; downstreamId: string }> {
+  getTimelineStatusKey(task: Task): 'completed' | 'inprogress' | 'blocked' | 'todo' {
+    if (task.blocked) return 'blocked';
+    if (task.status === 'DONE' || task.status === 'DEPLOYED') return 'completed';
+    if (task.status === 'IN_PROGRESS') return 'inprogress';
+    return 'todo';
+  }
+
+  getTimelineStatusLabel(task: Task): string {
+    if (task.blocked) return 'Blocked';
+    if (task.status === 'DONE') return 'Completed';
+    if (task.status === 'DEPLOYED') return 'Deployed';
+    if (task.status === 'IN_PROGRESS') return 'In Progress';
+    return 'To Do';
+  }
+
+  getTimelineBarLeftPercent(task: Task): number {
+    const startTs = new Date(task.startDate || '2026-11-10').getTime();
+    const diffDays = Math.max(0, (startTs - this.timelineStartTs) / 86400000);
+    const leftPct = (diffDays / 28) * 100;
+    return Math.max(1, Math.min(86, Number(leftPct.toFixed(2))));
+  }
+
+  getTimelineBarWidthPercent(task: Task): number {
+    const startTs = new Date(task.startDate || '2026-11-10').getTime();
+    const dueTs = new Date(task.dueDate || '2026-11-20').getTime();
+    const durDays = Math.max(2, (dueTs - startTs) / 86400000);
+    const widthPct = (durDays / 28) * 100;
+    const leftPct = this.getTimelineBarLeftPercent(task);
+    return Math.max(10, Math.min(98 - leftPct, Number(widthPct.toFixed(2))));
+  }
+
+  readonly activeConnectors = computed(() => {
+    const hId = this.hoveredTaskId();
+    if (!hId) return [];
+
     const tasks = this.store.filteredTasks();
     const taskIndexMap = new Map<string, number>();
     const taskMap = new Map<string, Task>();
@@ -1865,33 +2088,33 @@ export class WorkspaceComponent {
       taskMap.set(t.id, t);
     });
 
-    const connectors: Array<{ path: string; isConflict: boolean; upstreamId: string; downstreamId: string }> = [];
+    const connectors: Array<{ id: string; d: string; isConflict: boolean }> = [];
 
     tasks.forEach((downstream, downIdx) => {
       (downstream.dependencies || []).forEach(upstreamId => {
+        if (upstreamId !== hId && downstream.id !== hId) return;
+
         const upstream = taskMap.get(upstreamId);
         const upIdx = taskIndexMap.get(upstreamId);
         if (upstream && upIdx !== undefined) {
-          const x1 = this.getGanttLeftPx(upstream) + this.getGanttWidthPx(upstream);
-          const y1 = upIdx * 52 + 26;
-          const x2 = this.getGanttLeftPx(downstream);
-          const y2 = downIdx * 52 + 26;
+          const x1 = (this.getTimelineBarLeftPercent(upstream) + this.getTimelineBarWidthPercent(upstream)) * 10;
+          const y1 = upIdx * 64 + 32;
+          const x2 = this.getTimelineBarLeftPercent(downstream) * 10;
+          const y2 = downIdx * 64 + 32;
 
-          const dx = Math.abs(x2 - x1);
-          const curveOffset = Math.min(30, Math.max(15, dx / 2));
-          const path = `M ${x1} ${y1} C ${x1 + curveOffset} ${y1}, ${x2 - curveOffset} ${y2}, ${x2} ${y2}`;
-          const isConflict = upstream.dueDate > downstream.startDate;
+          const dx = Math.max(25, Math.abs(x2 - x1) * 0.4);
+          const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+          const isConflict = upstream.dueDate > downstream.startDate || downstream.blocked;
 
           connectors.push({
-            path,
-            isConflict,
-            upstreamId: upstream.id,
-            downstreamId: downstream.id
+            id: `${upstream.id}->${downstream.id}`,
+            d,
+            isConflict
           });
         }
       });
     });
 
     return connectors;
-  }
+  });
 }

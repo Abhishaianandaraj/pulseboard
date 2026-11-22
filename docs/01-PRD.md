@@ -94,15 +94,16 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
 
 ---
 
-### FR-03: Interactive Dependency Gantt Chart
-- **Status:** ✅ Implemented (V2 Milestone 2)
-- **Description:** Elevate the Waterfall view into a full interactive dependency Gantt chart with task-to-task relationship connectors, Critical Path highlighting, circular dependency cycle prevention, and schedule drift indicators.
+### FR-03: Simplified Delivery Roadmap (Timeline) & Dependency Engine
+- **Status:** ✅ Upgraded to Timeline Roadmap (v3.3)
+- **Description:** Elevate delivery scheduling into a simplified, modern Delivery Roadmap (`Timeline`) designed in our Kanso + Spartan UI + Phosphor Light aesthetic, replacing the legacy dense 30-day day-by-day Gantt grid with breathable 4-week sprint columns, rounded status pill bars, and hover-only curved SVG dependency connectors.
 - **Acceptance Criteria & Implemented Features:**
-  1. Tasks support a `dependencies: string[]` array (pointing to predecessor task IDs), with live linking/unlinking in the Task Drawer and auto-linking in JSON Smart Import.
-  2. Visual SVG connector lines and directional bezier arrows connect predecessor task finish dates to dependent successor start dates.
-  3. **Critical Path Method (CPM):** Topological sorting identifies the zero-slack longest delivery sequence determining project completion; highlighted with glowing orange borders and CPM badges.
-  4. **Schedule Drift Bars:** Dual-layer visualization renders a dashed baseline shadow underneath the forecast bar whenever `dueDate > baselineDueDate`.
-  5. **Domino Delay Detection & 1-Click Cascade Alignment:** Live banner detects whenever an upstream deliverable completes after a downstream task's start date, offering a 1-click `⚡ Auto-Shift Dependent Dates` cascade shift tool.
+  1. **Tri-Methodology View Navigation:** Workspace tab view switcher features `Board`, `Sprint`, and `Timeline` (internal methodology state `TIMELINE`) with thin Phosphor icon `<i class="ph-light ph-chart-line-up"></i>`.
+  2. **Top Scannable Control Strip:** Plain-English status legend pills (`Completed / Deployed` in Sage `#5C7362`, `In Progress` in Ochre `#C59B4E`, `Blocked / Delayed` in Terracotta `#C86D51`), deliverable count pill, interactive 1-click **`Blocked Only`** filter toggle, and compact 1-click Auto-Shift Dates button when prerequisite overlaps occur.
+  3. **Breathable Weekly Sprint Columns:** 4 wide weekly columns (Week 1 through Week 4) separated by subtle `1px solid var(--border-hairline)` dividers, with a vertical dashed "Today" line in Sage green (`var(--accent-primary)`) topped with a crisp `Today` tag.
+  4. **Self-Explanatory Deliverables & Dependencies:** Left pane (340px) displays issue key (`PB-101`), project badge, status pill, deliverable title, and upstream dependency chip (`After PB-101`).
+  5. **Rounded Pill Duration Bars:** Smooth horizontal pill-shaped bars (`border-radius: 9999px`) styled by status (Sage, Ochre, Terracotta, Neutral Stone), featuring co-assignee avatar stacks and concise status + effort text (`In Progress · 5 pts`).
+  6. **Hover-Only Curved SVG Dependency Connectors:** Eliminates all resting spiderweb clutter. On row/bar hover, draws a smooth cubic bezier curve (`M x1 y1 C ... x2 y2`) with directional arrowhead connecting upstream and downstream deliverables, while highlighting connected rows.
 
 ---
 
@@ -255,3 +256,26 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
      - Scope notification pill banners displayed in Recent Project Pulse (`MyDayComponent`) and the Governance Audit Ledger (`GovernanceComponent`).
   4. **Immutable Audit Provenance:**
      - Project membership toggles and role policy adjustments automatically emit `SHARING_UPDATED` and `PERMISSION_POLICY_UPDATED` events with actor ID attribution.
+
+
+---
+
+### FR-13: Simplified Delivery Roadmap (Timeline) & Hover-Only Dependency Connectors
+- **Status:** ✅ Implemented (v3.3)
+- **Description:** A streamlined, presentation-ready Delivery Roadmap view inside `WorkspaceComponent` that translates complex project schedules and dependencies into clean, readable visual narratives.
+- **Key Capabilities:**
+  1. **Scannable Control Toolbar:**
+     - Status legend with 3 distinct color indicators: Sage green (`Completed / Deployed`), Ochre amber (`In Progress`), and Terracotta red (`Blocked / Delayed`).
+     - Real-time `Blocked Only` pill toggle for instant executive issue identification during live sprint reviews.
+     - Prerequisite cascade shift trigger (`⚡ Auto-Shift Dates`) when upstream delivery shifts impact downstream deliverables.
+  2. **Clean 4-Week Sprint Granularity:**
+     - Replaces crowded day-by-day grids with 4 wide weekly columns (`Week 1 · Nov 10 - Nov 16` through `Week 4 · Dec 01 - Dec 07`).
+     - Vertical dashed Today marker line at Day 12 (Nov 22, 42.86%) with anchored pill badge.
+  3. **High-Contrast Pill Deliverable Bars:**
+     - Pill geometry (`border-radius: 9999px`) styled dynamically by delivery status.
+     - Co-assignee avatar stacks with overlapping layout.
+     - Clear status text and story points (`In Progress · 5 pts`).
+  4. **Zero-Clutter Hover-Only Dependency Bezier Curves:**
+     - Rest state displays zero crossing connector lines, preventing visual cognitive fatigue.
+     - Hovering on any row or bar isolates connected upstream/downstream paths, drawing smooth cubic bezier arrows with directional heads directly into the downstream deliverable bar.
+     - Connected rows receive interactive background highlight accents.

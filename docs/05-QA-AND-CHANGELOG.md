@@ -123,9 +123,38 @@ Every release candidate, pull request, and staging deployment must execute and s
 
 ---
 
+### 1.14 Simplified Delivery Roadmap (Timeline) View Gate (v3.3.0)
+- [x] **Timeline Tab Label & Icon:** The workspace view switcher tab has been renamed from `Gantt` to `Timeline` with the crisp Phosphor Light icon `<i class="ph-light ph-chart-line-up"></i>`, keeping internal `store.currentView() === 'TIMELINE'` state intact.
+- [x] **Scannable Control & Legend Strip:** The top toolbar features 3 plain-English status legend pills (`Completed / Deployed` in Sage `#5C7362`, `In Progress` in Ochre `#C59B4E`, and `Blocked / Delayed` in Terracotta `#C86D51`), deliverable count pill, and an interactive 1-click **`Blocked Only`** filter toggle pill.
+- [x] **Breathable 4-Week Columns:** Dense day-by-day grids are replaced by 4 wide weekly columns (`Week 1 · Nov 10 - Nov 16` through `Week 4 · Dec 01 - Dec 07`) with subtle `1px solid var(--border-hairline)` dividers.
+- [x] **Vertical "Today" Line & Tag:** A vertical dashed 2px line in Sage green (`var(--accent-primary)`) is rendered at Day 12 (Nov 22, 42.86%) with a crisp `Today` tag pill in the header.
+- [x] **Self-Explanatory Deliverables Left Column (340px):** Rows display issue key (`PB-101`), project badge, status pill, deliverable title, and upstream dependency chip (`After PB-101`) with right-aligned effort points (`5p`).
+- [x] **Rounded Pill Duration Bars:** Smooth horizontal pill bars (`border-radius: 9999px`) styled dynamically by status (Sage, Ochre, Terracotta, Neutral Stone) with co-assignee avatar stacks and concise status + effort text (`In Progress · 5 pts`).
+- [x] **Zero-Clutter Hover-Only Dependency Connectors:** Resting view displays zero spiderweb lines. On row or bar hover, draws a smooth cubic bezier curve (`M x1 y1 C ... x2 y2`) with directional arrowhead connecting upstream and downstream deliverables, while highlighting connected rows.
+- [x] **Theme Parity & Production Build:** Verified across both Light ("Alabaster & Sage") and Dark ("Sumi Ink & Moss") themes; `npx ng build --configuration production --base-href=/pulseboard/` exits with code `0`.
+
+---
+
 ## 2. Release Changelog
 
-### `v3.2.2` (Relatable AI Engineering Demo Tasks & Live Prompts)
+### `v3.3.0` (Simplified Delivery Roadmap & Hover-Only Dependency Connectors)
+- **Delivery Roadmap (`Timeline`) Navigation & Aesthetic Overhaul:**
+  - Renamed third workspace view tab from `Gantt` to `Timeline` (`<i class="ph-light ph-chart-line-up"></i>`).
+  - Added scannable top control strip with 3 status indicators (`Completed / Deployed` in Sage, `In Progress` in Ochre, and `Blocked / Delayed` in Terracotta).
+  - Added interactive **`Blocked Only`** pill toggle with active tag indicator, enabling 1-click executive isolation of delayed or blocked deliverables.
+  - Added compact auto-shift trigger (`Auto-Shift Dates`) when prerequisite domino conflicts exist.
+- **Breathable 4-Week Columns & Vertical Today Marker:**
+  - Replaced dense 30-day day-by-day grid with 4 breathable weekly sprint columns (`Week 1 · Nov 10 - Nov 16` through `Week 4 · Dec 01 - Dec 07`).
+  - Added vertical dashed "Today" line at Day 12 (42.86%) with anchored `Today` pill tag in the track header.
+- **Self-Explanatory Deliverables & Dependencies Column (340px):**
+  - Displays deliverable issue key (`PB-101`), project badge, status badge (`Completed`, `In Progress`, `Blocked`, `To Do`), truncated deliverable title, and upstream dependency chip (`After PB-101`).
+- **Rounded Pill Duration Bars:**
+  - Smooth horizontal pill bars (`border-radius: 9999px`) colored by delivery status (Sage green, Ochre amber, Terracotta red, Neutral stone).
+  - Stacked circular co-assignee avatars on the left followed by status and story points (`In Progress · 5 pts`).
+  - Clicking any row or bar opens the deliverable inspection drawer (`TaskDrawerComponent`).
+- **Hover-Only Curved SVG Dependency Connectors:**
+  - Zero crossing lines at rest for a clean, editorial look.
+  - Reactive `hoveredTaskId` signal: hovering over any deliverable isolates connected upstream and downstream tasks, drawing smooth cubic bezier curves (`M x1 y1 C ... x2 y2`) with directional SVG arrowheads, while softly highlighting connected rows.
 - **Clear Everyday AI & UI Seed Deliverables:**
   - Updated `INITIAL_TASKS` in `src/app/data/seed-data.ts` with relatable real-world AI engineering tasks:
     * `PB-101`: "Set up vector database index and embedding endpoint" (8 pts, DEPLOYED, Priya Nair)

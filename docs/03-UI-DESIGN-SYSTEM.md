@@ -252,3 +252,26 @@ Integrated `@phosphor-icons/web` (`ph-light` 1.5px-equivalent hairline icons) ac
   - Audit table headers (`thead th`) use `position: sticky; top: 0; z-index: 5; background: var(--bg-subtle)` to keep column headers pinned while records scroll beneath.
 - **Bottom Breathing Room (`padding-bottom: 48px`):**
   - Page wrappers (`.my-day-wrapper`, `.gov-page-wrapper`, `.projects-page-wrapper`, `.workspace-viewport`) enforce `padding-bottom: 48px` ensuring the final activity events, table rows, and project cards are never cropped against the bottom edge of the display.
+
+
+### 7.9 Simplified Delivery Roadmap (Timeline) & Hover-Only Dependency Connectors
+- **Unified Split Layout:**
+  - Container (`.timeline-split-card`): `border: 1px solid var(--border-hairline); border-radius: var(--radius-card); background: var(--bg-surface); box-shadow: var(--shadow-soft); overflow: hidden; display: flex;`.
+  - Left pane (`.timeline-left-column`): Fixed 340px column with `border-right: 1px solid var(--border-hairline)`.
+  - Right pane (`.timeline-right-column`): Horizontally scrollable track canvas (`min-width: 600px`).
+- **Scannable Legend & Control Strip (`.timeline-sub-toolbar`):**
+  - Status color indicators: Sage green (`#5C7362`) for `Completed / Deployed`, Ochre (`#C59B4E`) for `In Progress`, and Terracotta (`#C86D51`) for `Blocked / Delayed`.
+  - `Blocked Only` toggle pill (`.btn-blocked-toggle`): Pill geometry with interactive active indicator pill (`.filter-active-indicator`).
+  - Auto-shift trigger (`.btn-conflict-autoshift`): Amber-tinted action pill for resolving prerequisite overlaps.
+- **Breathable 4-Week Columns & Vertical Today Marker:**
+  - Header (`.timeline-weeks-header`): 4 equal weekly sprint columns (`Week 1 · Nov 10 - Nov 16` to `Week 4 · Dec 01 - Dec 07`) with `border-right: 1px solid var(--border-hairline)`.
+  - Vertical Today Line (`.timeline-today-v-line`): Absolute 2px dashed line in Sage green (`var(--accent-primary)`) at Day 12 (42.86%) with anchored `Today` pill tag.
+- **Pill Deliverable Bars (`.timeline-duration-pill`):**
+  - Smooth rounded pill (`border-radius: var(--radius-pill); height: 32px; top: 16px;`) with soft tactile hover lift (`transform: translateY(-1px)`).
+  - Stacked overlapping circular co-assignee avatars (`.bar-avatar-dot`, 18px diameter).
+  - Status + effort text (`.timeline-bar-label-text`, `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`).
+- **Zero-Clutter Hover-Only SVG Connector Layer (`.timeline-hover-svg`):**
+  - Absolute SVG overlay with `viewBox="0 0 1000 H"` and `preserveAspectRatio="none"`.
+  - Computes active connectors only when `hoveredTaskId` is set, completely eliminating idle line clutter.
+  - Draws cubic bezier curves (`M x1 y1 C ... x2 y2`) with directional SVG marker arrowheads (`#timeline-arrow-normal` in Sage or `#timeline-arrow-danger` in Terracotta when blocked/conflict).
+  - Upstream and downstream connected rows highlight with subtle sage background tint (`var(--accent-primary-tint)`).
