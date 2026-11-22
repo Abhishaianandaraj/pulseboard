@@ -145,7 +145,10 @@ Every release candidate, pull request, and staging deployment must execute and s
   - Added compact auto-shift trigger (`Auto-Shift Dates`) when prerequisite domino conflicts exist.
 - **Breathable 4-Week Columns & Vertical Today Marker:**
   - Replaced dense 30-day day-by-day grid with 4 breathable weekly sprint columns (`Week 1 · Nov 10 - Nov 16` through `Week 4 · Dec 01 - Dec 07`).
-  - Added vertical dashed "Today" line at Day 12 (42.86%) with anchored `Today` pill tag in the track header.
+  - Added vertical dashed "Today" line at Day 12 (42.86%) with anchored `Today` tag pill (`top: 2px; font-size: 9px; padding: 1px 6px;`) sitting cleanly above the column headers without overlapping week date ranges.
+- **Synchronized 88px Row Height & Generous Vertical Spacing:**
+  - Synchronized left deliverable info rows and right track lane rows to `88px` (`min-height: 88px; padding: 12px 16px;`), completely eliminating visual collision between 2-line task titles, the `After PB-101` dependency pill, and the row hairline border.
+  - Aligned duration pill bars (`top: 26px; height: 36px;`) and hover SVG connector curves (`y = idx * 88 + 44`) to the exact 44px vertical center.
 - **Self-Explanatory Deliverables & Dependencies Column (340px):**
   - Displays deliverable issue key (`PB-101`), project badge, status badge (`Completed`, `In Progress`, `Blocked`, `To Do`), truncated deliverable title, and upstream dependency chip (`After PB-101`).
 - **Rounded Pill Duration Bars:**

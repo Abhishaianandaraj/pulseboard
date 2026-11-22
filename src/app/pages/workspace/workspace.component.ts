@@ -463,7 +463,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
                 </div>
 
                 <!-- Timeline Tracks & Hover SVG Overlay -->
-                <div class="timeline-track-canvas" [style.height.px]="store.filteredTasks().length * 64">
+                <div class="timeline-track-canvas" [style.height.px]="store.filteredTasks().length * 88">
                   <!-- Vertical Weekly Column Grid Dividers -->
                   <div class="timeline-weeks-grid-bg">
                     @for (week of timelineWeeks; track week.id) {
@@ -478,8 +478,8 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
                   <svg
                     class="timeline-hover-svg"
                     width="100%"
-                    [attr.height]="store.filteredTasks().length * 64"
-                    [attr.viewBox]="'0 0 1000 ' + (store.filteredTasks().length * 64)"
+                    [attr.height]="store.filteredTasks().length * 88"
+                    [attr.viewBox]="'0 0 1000 ' + (store.filteredTasks().length * 88)"
                     preserveAspectRatio="none"
                   >
                     <defs>
@@ -520,7 +520,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
                   @for (task of store.filteredTasks(); track task.id; let idx = $index) {
                     <div
                       class="timeline-lane-row"
-                      [style.top.px]="idx * 64"
+                      [style.top.px]="idx * 88"
                       [class.is-hovered]="task.id === hoveredTaskId()"
                       [class.is-connected]="isTaskConnectedToHovered(task.id)"
                       (mouseenter)="onTaskHover(task.id)"
@@ -1341,9 +1341,10 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     }
 
     .timeline-deliverable-item {
-      height: 64px;
+      height: 88px;
+      min-height: 88px;
       box-sizing: border-box;
-      padding: 8px 16px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
@@ -1463,6 +1464,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       display: flex;
       align-items: center;
       justify-content: center;
+      padding-top: 10px;
       border-right: 1px solid var(--border-hairline);
       font-size: 11px;
       font-weight: 600;
@@ -1472,7 +1474,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
 
     .timeline-today-head-badge {
       position: absolute;
-      top: 10px;
+      top: 2px;
       transform: translateX(-50%);
       z-index: 10;
       pointer-events: none;
@@ -1481,12 +1483,13 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     .today-tag-text {
       display: inline-flex;
       align-items: center;
-      padding: 2px 8px;
+      padding: 1px 6px;
       border-radius: var(--radius-pill);
       background: var(--accent-primary);
       color: #ffffff;
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 700;
+      line-height: 1.2;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       box-shadow: var(--shadow-sm);
@@ -1549,7 +1552,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       position: absolute;
       left: 0;
       right: 0;
-      height: 64px;
+      height: 88px;
       cursor: pointer;
       transition: background 0.15s ease;
       z-index: 4;
@@ -1569,12 +1572,12 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
 
     .timeline-duration-pill {
       position: absolute;
-      top: 16px;
-      height: 32px;
+      top: 26px;
+      height: 36px;
       border-radius: var(--radius-pill);
       display: flex;
       align-items: center;
-      padding: 0 10px;
+      padding: 0 12px;
       gap: 8px;
       box-shadow: var(--shadow-sm);
       transition: var(--transition-tactile);
@@ -2098,9 +2101,9 @@ export class WorkspaceComponent {
         const upIdx = taskIndexMap.get(upstreamId);
         if (upstream && upIdx !== undefined) {
           const x1 = (this.getTimelineBarLeftPercent(upstream) + this.getTimelineBarWidthPercent(upstream)) * 10;
-          const y1 = upIdx * 64 + 32;
+          const y1 = upIdx * 88 + 44;
           const x2 = this.getTimelineBarLeftPercent(downstream) * 10;
-          const y2 = downIdx * 64 + 32;
+          const y2 = downIdx * 88 + 44;
 
           const dx = Math.max(25, Math.abs(x2 - x1) * 0.4);
           const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
