@@ -383,15 +383,33 @@ function canEditTask(task: Task, user: TeamMember): boolean {
 
 ## 6. AI Prompt Composer & Extracted Draft Contract
 
-### 6.1 ExtractedTaskDraft Interface
+### 6.1 ExtractedTaskDraft & AssigneeWarning Interfaces
 ```typescript
+export type AssigneeWarning =
+  | {
+      type: 'AMBIGUOUS';
+      queryName: string;           // Spoken/typed query that matched 2+ members
+      candidateIds: string[];      // Candidate TeamMember IDs for 1-click disambiguation
+    }
+  | {
+      type: 'NOT_IN_PROJECT';
+      memberId: string;            // Single matched TeamMember ID outside target project
+      memberName: string;          // Display name of matched member
+      projectCode: string;         // Target Project Code (e.g. "EVAL-GW")
+    }
+  | {
+      type: 'UNKNOWN';
+      queryName: string;           // Spoken/typed name with 0 workspace matches
+    };
+
 export interface ExtractedTaskDraft {
   id: string;                      // Temporary draft ID (e.g. "draft-1700000000-0")
   title: string;                   // Clean deliverable title
   description?: string;            // Contextual extraction notes
   projectId: string;               // Matched Project ID
   projectCode: string;             // Matched Project Code (e.g. "RAG-CORE")
-  assigneeIds: string[];           // Matched TeamMember IDs
+  assigneeIds: string[];           // Matched in-project TeamMember IDs (may be [] until resolved or if left unassigned)
+  assigneeWarning?: AssigneeWarning | null; // Unresolved disambiguation/membership/unknown warning
   priority: TaskPriority;          // "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
   effortPoints: number;            // Story points (1 - 21)
   dueDate: string;                 // ISO date YYYY-MM-DD
@@ -450,13 +468,28 @@ export type ActivityActionType =
 ```
 
 
-### 6.4 Compound Multi-Task NLP Parsing Contract (v3.1.1)
-- **Mid-sentence boundary regex**:
-  `,\s*(?:and\s+)?(?:also\s+)?(?=(?:create\s+|add\s+)?(?:a|an|another)\s+(?:[\w-]+\s+){0,4}(?:task|ticket|story|bug|item|deliverable)\b)`
+### 6.4 Compound Multi-Task NLP Parsing Contract (v3.1.1 / Hardened v3.3.1)
+- **Line-first splitting with subtask protection**:
+  Splits on `\r?\n+`, skips pure meeting headers (`Meeting Notes`, `Attendees:`, `Action Items:`), protects checklist spans from mid-sentence splitting, supports comma-less Web Speech API dictations, and merges continuation clauses (`This task depends on PB-101`).
 - **Hyphenated and spaced story points regex**:
   `\b(\d+)\s*-?\s*(?:points?|pts?)\b`
-- **Actionable title sanitizer**:
-  Strips conversational boilerplate prefixes (`Create/Add [a/an] [priority] [points] task in [PROJECT] for [ASSIGNEES] to ...`) and trailing dependency/points clauses, yielding actionable deliverable titles capitalized cleanly.
+- **Context-aware layered title sanitizer**:
+  Iteratively peels conjunctions, project scopes, task-creation phrases, speaker labels, assignment verbs (including fuzzy/unknown spoken name tokens), parenthetical metadata, due dates, and trailing scopes while preserving technical phrases (e.g., `"low latency"`).
+
+### 6.5 Smart Name Matching & Assignee Disambiguation Contract (v3.4.0)
+- **Tiered Workspace Matching (`AiCopilotService.findMatchingMembers`)**:
+  - Tier 0: Exact full-name match (`"Abhishek J"` -> single exact match).
+  - Tier 1: Multi-word first+last/initial fuzzy match (`"Karthick R"` -> `"Karthik R"`).
+  - Tier 2: Exact first-name match (`"Abhishek"` -> `["Abhishek J", "Abhishek K"]` -> `AMBIGUOUS`).
+  - Tier 3: 4+ char prefix match (`"Abhi"` -> matches all members starting with `"abhi"`).
+  - Tier 4: Fuzzy Levenshtein edit distance $\le 2$ (`"Abisha"` -> `"Abhishai"`, `"Karthick"` -> `"Karthik R"`).
+- **Project Membership Validation (`AiCopilotService.resolveAssigneesForProject`)**:
+  - Single matched member outside `targetProj.memberIds` triggers `NOT_IN_PROJECT` without silent assignment.
+  - 2+ matched members triggers `AMBIGUOUS` with `candidateIds` and empty `assigneeIds`.
+  - 0 matched members for an explicitly spoken assignee slot triggers `UNKNOWN` with `queryName`.
+- **Store Guard (`TaskStoreService.createTasksFromAiDrafts`)**:
+  - Rejects batches containing any unresolved `assigneeWarning`.
+  - Preserves intentionally empty `assigneeIds: []` (`assigneeId: ''`) when the user chooses **`Leave Unassigned`**.
 
 
 ---

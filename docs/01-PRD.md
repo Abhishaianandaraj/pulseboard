@@ -229,10 +229,16 @@ The following requirements (`FR-01` through `FR-06`) constitute the V2 architect
      - Review & edit staged deliverables prior to committing to workspace.
      - Co-assignee toggles with real-time capacity budget comfort dots (`OPTIMAL`, `NEAR_CAPACITY`, `OVER_BUDGET`).
      - Ingested tasks automatically record an `[AI_EXTRACTED]` entry under `ActivityActionType = 'AI_PROMPT_EXTRACTION'` in the immutable compliance audit ledger.
-  4. **Compound Multi-Task NLP Parsing & Title Cleaning (v3.1.1):**
-     - Splits compound spoken/typed prompts on mid-sentence task boundaries (`,\s*(?:and\s+)?(?:also\s+)?(?:create\s+|add\s+)?(?:a|an|another)\s+...`) as well as sequential conjunctions.
-     - Supports hyphenated and spaced story point formats (`/\b(\d+)\s*-?\s*(?:points?|pts?)\b/i`, e.g. "5-point" and "3 points").
-     - Strips conversational boilerplate prefixes and trailing metadata/dependency clauses, outputting concise, actionable deliverable titles with proper capitalization (e.g., "Implement RBAC route guards and role middleware").
+  4. **Compound Multi-Task NLP Parsing & Title Cleaning (v3.1.1 / Hardened v3.3.1):**
+     - Line-first splitting (`text.split(/\r?\n+/)`) with automatic filtering of non-task meeting headers (`Meeting Notes`, `Attendees:`, `Action Items:`, `Sprint Planning ...:`), subtask-span protection during mid-sentence splitting, forward-merging of standalone project prefixes, and backward-merging of follow-up continuation sentences (`This task depends on PB-101`, `Depends on ...`, `Subtasks: ...`).
+     - Supports both punctuated meeting notes and comma-less Web Speech API voice dictations, plus hyphenated and spaced story point formats (`/\b(\d+)\s*-?\s*(?:points?|pts?)\b/i`, e.g. "5-point" and "3 points").
+     - Context-aware layered title sanitizer (`cleanDeliverableTitle(seg, visibleProjects, squadMembers)`) iteratively peels conjunctions (`And`, `Also`), project scopes, task-creation boilerplate, speaker labels, assignee assignment verbs (`assign X to`, `X will/should/needs to`), parenthetical metadata blocks, due-date phrases, and trailing project/assignee/dependency tails while preserving technical adjectives (e.g., `"low latency"`).
+  5. **Smart Fuzzy Name Matching, Disambiguation & Out-of-Project Safeguards (v3.4.0):**
+     - **Voice Spelling & Prefix Resilience:** Tiered matcher combining exact full/first name, 4+ char prefix matching, and Levenshtein edit distance $\le 2$ (resolving speech-to-text variations like `"Abisha"` → `"Abhishai"` and `"Karthick"` → `"Karthik R"`).
+     - **Duplicate First-Name Disambiguation (`AMBIGUOUS`):** When 2+ workspace members match a spoken name (e.g., `"Abhishek"` matching `"Abhishek J"` and `"Abhishek K"`), leaves `assigneeIds` empty and renders an ochre warning chip with 1-click candidate pills directly in the staging row.
+     - **Out-of-Project Assignee Detection (`NOT_IN_PROJECT`):** Checks matched workspace members against `project.memberIds`. If the matched engineer is outside the target project (e.g., `"Abhishai"` in `EVAL-GW`), prevents silent assignment and displays a terracotta warning chip with **`+ Add to Project & Assign`** (gated by `canCurrentUserManageSharing()`, invoking `toggleProjectMember`) and **`Leave Unassigned`** controls.
+     - **Unknown Name Detection (`UNKNOWN`):** Flags unrecognized spoken names (`"Name not found — select assignee"`) alongside an inline project-member selector dropdown.
+     - **Import Safety Gate:** Disables the **`Import Tasks`** CTA with the helper note `"Resolve assignee warnings above before importing"` until all staged `assigneeWarning` states are explicitly resolved.
 
 
 ---

@@ -1734,6 +1734,10 @@ export class TaskStoreService {
       return { success: false, count: 0, error: 'No task drafts provided.' };
     }
 
+    if (drafts.some(d => !!d.assigneeWarning)) {
+      return { success: false, count: 0, error: 'Resolve all assignee warnings before importing.' };
+    }
+
     let maxNum = Math.max(
       100,
       ...this.tasks().map((t: Task) => {
@@ -1747,7 +1751,6 @@ export class TaskStoreService {
       ? this.selectedProjectId()
       : (currentProjects[0]?.id || 'proj-1');
 
-    const defaultMember = this.teamMembers()[0];
     const newTasks: Task[] = [];
 
     for (const draft of drafts) {
@@ -1755,10 +1758,8 @@ export class TaskStoreService {
 
       maxNum++;
       const taskId = `PB-${maxNum}`;
-      const assigneeIds = (draft.assigneeIds && draft.assigneeIds.length > 0)
-        ? draft.assigneeIds
-        : [defaultMember?.id || 'tm-1'];
-      const assigneeId = assigneeIds[0];
+      const assigneeIds = Array.isArray(draft.assigneeIds) ? [...draft.assigneeIds] : [];
+      const assigneeId = assigneeIds[0] || '';
 
       const projectId = draft.projectId && draft.projectId !== 'ALL'
         ? draft.projectId

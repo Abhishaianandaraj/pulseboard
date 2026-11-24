@@ -1,4 +1,4 @@
-import { Component, inject, signal, output } from '@angular/core';
+import { Component, inject, signal, computed, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TaskStoreService } from '../services/task-store.service';
@@ -172,7 +172,13 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
               <div class="staging-head">
                 <div class="staging-title-group">
                   <span class="staging-pill">{{ drafts().length }} Staged</span>
-                  <strong class="staging-label">Review &amp; Edit Deliverables Before Creating</strong>
+                  @if (unresolvedWarningCount() > 0) {
+                    <span class="staging-warn-pill">
+                      <i class="ph-light ph-warning"></i>
+                      <span>{{ unresolvedWarningCount() }} Assignee {{ unresolvedWarningCount() === 1 ? 'Warning' : 'Warnings' }}</span>
+                    </span>
+                  }
+                  <strong class="staging-label">Review &amp; Edit Deliverables Before Importing</strong>
                 </div>
                 <button type="button" class="btn-clear-staging" (click)="clearDrafts()">
                   <i class="ph-light ph-x"></i>
@@ -182,7 +188,11 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
 
               <div class="staging-list custom-scroll">
                 @for (draft of drafts(); track draft.id; let idx = $index) {
-                  <div class="draft-row-card">
+                  <div
+                    class="draft-row-card"
+                    [class.draft-has-warn]="!!draft.assigneeWarning"
+                    [class.draft-warn-danger]="draft.assigneeWarning?.type === 'NOT_IN_PROJECT'"
+                  >
                     <!-- Row Top: Title and Remove -->
                     <div class="draft-top-bar">
                       <div class="draft-index font-mono">#{{ idx + 1 }}</div>
@@ -252,34 +262,130 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
                       </div>
                     </div>
 
-                    <!-- Co-Assignee Chips & Capacity Context -->
-                    <div class="draft-assignees-row">
-                      <span class="assignees-label">Co-Assignees:</span>
-                      <div class="assignee-chips-wrap">
-                        @for (mem of store.teamMembers(); track mem.id) {
-                          <button
-                            type="button"
-                            class="mem-pill-toggle"
-                            [class.selected]="draft.assigneeIds.includes(mem.id)"
-                            (click)="toggleDraftAssignee(draft, mem.id)"
-                            title="{{ mem.name }} • {{ mem.role }}"
-                          >
-                            <span class="mem-mini-avatar" [style.background-color]="mem.color">
-                              {{ mem.avatar }}
+                    <!-- Co-Assignee Chips, Capacity Context & Inline Disambiguation Controls -->
+                    <div class="draft-assignees-section">
+                      <div class="draft-assignees-row">
+                        <span class="assignees-label">Co-Assignees ({{ draft.projectCode }}):</span>
+                        <div class="assignee-chips-wrap">
+                          @for (mem of getProjectMembers(draft.projectId); track mem.id) {
+                            <button
+                              type="button"
+                              class="mem-pill-toggle"
+                              [class.selected]="draft.assigneeIds.includes(mem.id)"
+                              (click)="toggleDraftAssignee(draft, mem.id)"
+                              title="{{ mem.name }} • {{ mem.role }}"
+                            >
+                              <span class="mem-mini-avatar" [style.background-color]="mem.color">
+                                {{ mem.avatar }}
+                              </span>
+                              <span class="mem-pill-name">{{ mem.name.split(' ')[0] }}</span>
+                              <!-- Capacity Comfort Indicator Dot -->
+                              @if (getMemberCapacityStatus(mem.id); as status) {
+                                <span
+                                  class="cap-indicator-dot"
+                                  [class.cap-opt]="status === 'OPTIMAL'"
+                                  [class.cap-near]="status === 'NEAR_CAPACITY'"
+                                  [class.cap-over]="status === 'OVER_BUDGET'"
+                                ></span>
+                              }
+                            </button>
+                          }
+                          @if (draft.assigneeIds.length === 0 && !draft.assigneeWarning) {
+                            <span class="unassigned-chip">
+                              <i class="ph-light ph-user-circle-dashed"></i>
+                              <span>Unassigned</span>
                             </span>
-                            <span class="mem-pill-name">{{ mem.name.split(' ')[0] }}</span>
-                            <!-- Capacity Comfort Indicator Dot -->
-                            @if (getMemberCapacityStatus(mem.id); as status) {
-                              <span
-                                class="cap-indicator-dot"
-                                [class.cap-opt]="status === 'OPTIMAL'"
-                                [class.cap-near]="status === 'NEAR_CAPACITY'"
-                                [class.cap-over]="status === 'OVER_BUDGET'"
-                              ></span>
-                            }
-                          </button>
-                        }
+                          }
+                        </div>
                       </div>
+
+                      <!-- Inline Assignee Warning Resolution Controls -->
+                      @if (draft.assigneeWarning; as warn) {
+                        @switch (warn.type) {
+                          @case ('AMBIGUOUS') {
+                            <div class="assignee-resolution-bar resolution-ochre">
+                              <span class="assignee-warn-chip warn-ochre">
+                                <i class="ph-light ph-users-three"></i>
+                                <span>Multiple matches for '{{ warn.queryName }}'</span>
+                              </span>
+                              <div class="resolution-actions">
+                                @for (cand of getMembersByIds(warn.candidateIds); track cand.id) {
+                                  <button
+                                    type="button"
+                                    class="btn-candidate-pill"
+                                    (click)="resolveAmbiguousAssignee(draft, cand.id)"
+                                    [title]="'Select ' + cand.name + ' (' + cand.role + ')'"
+                                  >
+                                    <span class="mem-mini-avatar" [style.background-color]="cand.color">
+                                      {{ cand.avatar }}
+                                    </span>
+                                    <span>{{ cand.name }}</span>
+                                    @if (!isMemberInProject(draft.projectId, cand.id)) {
+                                      <span class="cand-outside-tag">Outside {{ draft.projectCode }}</span>
+                                    }
+                                  </button>
+                                }
+                              </div>
+                            </div>
+                          }
+                          @case ('NOT_IN_PROJECT') {
+                            <div class="assignee-resolution-bar resolution-terracotta">
+                              <span class="assignee-warn-chip warn-terracotta">
+                                <i class="ph-light ph-user-minus"></i>
+                                <span>{{ warn.memberName }} is not in {{ warn.projectCode }}</span>
+                              </span>
+                              <div class="resolution-actions">
+                                @if (store.canCurrentUserManageSharing()) {
+                                  <button
+                                    type="button"
+                                    class="btn-resolve-add-proj"
+                                    (click)="addMemberToProjectAndAssign(draft, warn.memberId)"
+                                  >
+                                    <i class="ph-light ph-user-plus"></i>
+                                    <span>+ Add to Project &amp; Assign</span>
+                                  </button>
+                                }
+                                <button
+                                  type="button"
+                                  class="btn-resolve-dismiss"
+                                  (click)="dismissAssigneeWarningLeaveUnassigned(draft)"
+                                >
+                                  <i class="ph-light ph-x-circle"></i>
+                                  <span>Leave Unassigned</span>
+                                </button>
+                              </div>
+                            </div>
+                          }
+                          @case ('UNKNOWN') {
+                            <div class="assignee-resolution-bar resolution-ochre">
+                              <span class="assignee-warn-chip warn-ochre">
+                                <i class="ph-light ph-question"></i>
+                                <span>Name not found ('{{ warn.queryName }}') — select assignee</span>
+                              </span>
+                              <div class="resolution-actions">
+                                <select
+                                  class="resolve-member-select"
+                                  [ngModel]="''"
+                                  (ngModelChange)="resolveUnknownAssignee(draft, $event)"
+                                >
+                                  <option value="" disabled>Select {{ draft.projectCode }} member...</option>
+                                  @for (pm of getProjectMembers(draft.projectId); track pm.id) {
+                                    <option [value]="pm.id">{{ pm.name }} · {{ pm.role }}</option>
+                                  }
+                                  <option value="__UNASSIGNED__">Leave Unassigned</option>
+                                </select>
+                                <button
+                                  type="button"
+                                  class="btn-resolve-dismiss"
+                                  (click)="dismissAssigneeWarningLeaveUnassigned(draft)"
+                                >
+                                  <span>Leave Unassigned</span>
+                                </button>
+                              </div>
+                            </div>
+                          }
+                        }
+                      }
                     </div>
 
                     <!-- Dependencies & Subtasks (if detected) -->
@@ -317,11 +423,18 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
         <!-- Modal Footer -->
         <div class="modal-footer">
           <div class="footer-note">
-            <span class="engine-badge font-mono">
-              <i class="ph-light ph-cpu"></i>
-              {{ copilot.extractionMode() === 'CORPORATE_LLM' ? 'LLM PROXY' : 'LOCAL NLP' }}
-            </span>
-            <span>All tasks automatically tagged with [AI_EXTRACTED] in immutable provenance log</span>
+            @if (hasUnresolvedWarnings()) {
+              <span class="footer-warn-helper">
+                <i class="ph-light ph-warning-circle"></i>
+                <span>Resolve assignee warnings above before importing</span>
+              </span>
+            } @else {
+              <span class="engine-badge font-mono">
+                <i class="ph-light ph-cpu"></i>
+                {{ copilot.extractionMode() === 'CORPORATE_LLM' ? 'LLM PROXY' : 'LOCAL NLP' }}
+              </span>
+              <span>All tasks automatically tagged with [AI_EXTRACTED] in immutable provenance log</span>
+            }
           </div>
 
           <div class="footer-actions">
@@ -329,11 +442,12 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
             <button
               type="button"
               class="btn-create-all"
-              [disabled]="drafts().length === 0"
+              [disabled]="drafts().length === 0 || hasUnresolvedWarnings()"
               (click)="commitDeliverables()"
+              [title]="hasUnresolvedWarnings() ? 'Resolve assignee warnings above before importing' : 'Import staged tasks into workspace'"
             >
-              <i class="ph-light ph-plus-circle"></i>
-              <span>Create {{ drafts().length }} Deliverables</span>
+              <i class="ph-light ph-tray-arrow-down"></i>
+              <span>Import {{ drafts().length > 0 ? drafts().length + ' ' : '' }}{{ drafts().length === 1 ? 'Task' : 'Tasks' }}</span>
             </button>
           </div>
         </div>
@@ -725,11 +839,25 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
       color: var(--accent-danger);
     }
 
+    .staging-warn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 9px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-warn-tint);
+      border: 1px solid var(--accent-warn);
+      color: var(--accent-warn);
+      font-size: 10.5px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
     .staging-list {
       display: flex;
       flex-direction: column;
       gap: 12px;
-      max-height: 280px;
+      max-height: 340px;
       overflow-y: auto;
     }
     .draft-row-card {
@@ -740,6 +868,13 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
       display: flex;
       flex-direction: column;
       gap: 10px;
+      transition: var(--transition-tactile);
+    }
+    .draft-row-card.draft-has-warn {
+      border-color: var(--accent-warn);
+    }
+    .draft-row-card.draft-warn-danger {
+      border-color: var(--accent-danger);
     }
     .draft-top-bar {
       display: flex;
@@ -805,6 +940,11 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
       border-color: var(--accent-primary);
     }
 
+    .draft-assignees-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
     .draft-assignees-row {
       display: flex;
       align-items: center;
@@ -821,6 +961,19 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
       align-items: center;
       gap: 6px;
       flex-wrap: wrap;
+    }
+    .unassigned-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: var(--radius-pill);
+      border: 1px dashed var(--border-strong);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 10.5px;
+      font-style: italic;
+      white-space: nowrap;
     }
     .mem-pill-toggle {
       display: inline-flex;
@@ -850,12 +1003,13 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      color: #ffffff;
+      color: var(--text-inverse);
       font-size: 8.5px;
       font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
     .mem-pill-name {
       font-size: 11px;
@@ -865,9 +1019,148 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
       height: 6px;
       border-radius: 50%;
     }
-    .cap-opt { background: #4e7c59; }
-    .cap-near { background: #c59b4e; }
-    .cap-over { background: #c86d51; }
+    .cap-opt { background: var(--accent-primary); }
+    .cap-near { background: var(--accent-warn); }
+    .cap-over { background: var(--accent-danger); }
+
+    /* Inline Assignee Warning & Resolution Bar */
+    .assignee-resolution-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 11px;
+      border-radius: var(--radius-inner);
+      border: 1px solid var(--border-hairline);
+    }
+    .resolution-ochre {
+      background: var(--accent-warn-tint);
+      border-color: var(--accent-warn);
+    }
+    .resolution-terracotta {
+      background: var(--accent-danger-tint);
+      border-color: var(--accent-danger);
+    }
+    .assignee-warn-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .warn-ochre { color: var(--accent-warn); }
+    .warn-terracotta { color: var(--accent-danger); }
+
+    .resolution-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .btn-candidate-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--accent-warn);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition-tactile);
+    }
+    .btn-candidate-pill:hover {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: var(--text-inverse);
+      transform: translateY(-1px);
+    }
+    .cand-outside-tag {
+      font-size: 9.5px;
+      font-weight: 500;
+      padding: 1px 5px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-danger-tint);
+      color: var(--accent-danger);
+    }
+    .btn-candidate-pill:hover .cand-outside-tag {
+      background: rgba(255, 255, 255, 0.22);
+      color: var(--text-inverse);
+    }
+
+    .btn-resolve-add-proj {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 11px;
+      border-radius: var(--radius-pill);
+      border: 1px solid transparent;
+      background: var(--accent-primary);
+      color: var(--text-inverse);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition-tactile);
+    }
+    .btn-resolve-add-proj:hover {
+      background: var(--accent-primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-resolve-dismiss {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition-tactile);
+    }
+    .btn-resolve-dismiss:hover {
+      color: var(--text-primary);
+      border-color: var(--text-secondary);
+    }
+
+    .resolve-member-select {
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--accent-warn);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-size: 11px;
+      font-weight: 500;
+      outline: none;
+      cursor: pointer;
+    }
+    .resolve-member-select:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .footer-warn-helper {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 11px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-danger-tint);
+      border: 1px solid var(--accent-danger);
+      color: var(--accent-danger);
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
 
     .draft-extra-details {
       display: flex;
@@ -998,6 +1291,11 @@ export class AiPromptModalComponent {
   isExtracting = signal<boolean>(false);
   drafts = signal<ExtractedTaskDraft[]>([]);
 
+  readonly unresolvedWarningCount = computed(() =>
+    this.drafts().filter(d => !!d.assigneeWarning).length
+  );
+  readonly hasUnresolvedWarnings = computed(() => this.unresolvedWarningCount() > 0);
+
   toggleListening(): void {
     if (this.copilot.isListening()) {
       this.copilot.stopListening();
@@ -1033,22 +1331,154 @@ export class AiPromptModalComponent {
     }
   }
 
+  getProjectMembers(projectId: string): TeamMember[] {
+    const proj = this.store.projects().find(p => p.id === projectId);
+    const allMembers = this.store.teamMembers();
+    if (!proj || !Array.isArray(proj.memberIds) || proj.memberIds.length === 0) {
+      return allMembers;
+    }
+    const allowed = new Set(proj.memberIds);
+    return allMembers.filter(m => allowed.has(m.id));
+  }
+
+  isMemberInProject(projectId: string, memberId: string): boolean {
+    const proj = this.store.projects().find(p => p.id === projectId);
+    if (!proj || !Array.isArray(proj.memberIds) || proj.memberIds.length === 0) {
+      return true;
+    }
+    return proj.memberIds.includes(memberId);
+  }
+
+  getMembersByIds(ids: string[]): TeamMember[] {
+    const map = this.store.assigneeMap();
+    return ids.map(id => map.get(id)).filter((m): m is TeamMember => !!m);
+  }
+
   onDraftProjectChange(draft: ExtractedTaskDraft, projectId: string): void {
     draft.projectId = projectId;
     const proj = this.store.visibleProjects().find(p => p.id === projectId);
     if (proj) {
       draft.projectCode = proj.code;
     }
+
+    // Re-validate existing NOT_IN_PROJECT warning against the newly selected project
+    if (draft.assigneeWarning?.type === 'NOT_IN_PROJECT') {
+      const targetMemberId = draft.assigneeWarning.memberId;
+      if (this.isMemberInProject(projectId, targetMemberId)) {
+        if (!draft.assigneeIds.includes(targetMemberId)) {
+          draft.assigneeIds = [...draft.assigneeIds, targetMemberId];
+        }
+        draft.assigneeWarning = null;
+      } else {
+        draft.assigneeWarning = {
+          ...draft.assigneeWarning,
+          projectCode: draft.projectCode
+        };
+      }
+    }
+
+    // Ensure any previously assigned members belong to the newly chosen project
+    const outOfProjectId = draft.assigneeIds.find(id => !this.isMemberInProject(projectId, id));
+    if (outOfProjectId) {
+      const mem = this.store.assigneeMap().get(outOfProjectId);
+      draft.assigneeIds = draft.assigneeIds.filter(id => this.isMemberInProject(projectId, id));
+      if (!draft.assigneeWarning && mem) {
+        draft.assigneeWarning = {
+          type: 'NOT_IN_PROJECT',
+          memberId: mem.id,
+          memberName: mem.name,
+          projectCode: draft.projectCode
+        };
+      }
+    }
+
+    this.drafts.update(list => [...list]);
   }
 
   toggleDraftAssignee(draft: ExtractedTaskDraft, memberId: string): void {
     if (draft.assigneeIds.includes(memberId)) {
-      if (draft.assigneeIds.length > 1) {
-        draft.assigneeIds = draft.assigneeIds.filter(id => id !== memberId);
-      }
+      draft.assigneeIds = draft.assigneeIds.filter(id => id !== memberId);
     } else {
-      draft.assigneeIds.push(memberId);
+      draft.assigneeIds = [...draft.assigneeIds, memberId];
+      // Selecting a valid project member manually resolves UNKNOWN or AMBIGUOUS warnings
+      if (
+        draft.assigneeWarning &&
+        (draft.assigneeWarning.type === 'UNKNOWN' || draft.assigneeWarning.type === 'AMBIGUOUS')
+      ) {
+        draft.assigneeWarning = null;
+      }
     }
+    this.drafts.update(list => [...list]);
+  }
+
+  resolveAmbiguousAssignee(draft: ExtractedTaskDraft, memberId: string): void {
+    const member = this.store.assigneeMap().get(memberId);
+    if (!member) return;
+
+    if (this.isMemberInProject(draft.projectId, memberId)) {
+      if (!draft.assigneeIds.includes(memberId)) {
+        draft.assigneeIds = [...draft.assigneeIds, memberId];
+      }
+      draft.assigneeWarning = null;
+    } else {
+      // Selected candidate exists in workspace but is outside the target project
+      draft.assigneeWarning = {
+        type: 'NOT_IN_PROJECT',
+        memberId: member.id,
+        memberName: member.name,
+        projectCode: draft.projectCode
+      };
+    }
+    this.drafts.update(list => [...list]);
+  }
+
+  addMemberToProjectAndAssign(draft: ExtractedTaskDraft, memberId: string): void {
+    if (!this.store.canCurrentUserManageSharing()) return;
+
+    if (!this.isMemberInProject(draft.projectId, memberId)) {
+      const ok = this.store.toggleProjectMember(draft.projectId, memberId);
+      if (!ok) return;
+    }
+
+    if (!draft.assigneeIds.includes(memberId)) {
+      draft.assigneeIds = [...draft.assigneeIds, memberId];
+    }
+    draft.assigneeWarning = null;
+
+    // Also auto-resolve any other staged drafts waiting on this exact (projectId, memberId)
+    this.drafts.update(list =>
+      list.map(item => {
+        if (
+          item.projectId === draft.projectId &&
+          item.assigneeWarning?.type === 'NOT_IN_PROJECT' &&
+          item.assigneeWarning.memberId === memberId
+        ) {
+          const nextIds = item.assigneeIds.includes(memberId)
+            ? item.assigneeIds
+            : [...item.assigneeIds, memberId];
+          return { ...item, assigneeIds: nextIds, assigneeWarning: null };
+        }
+        return item;
+      })
+    );
+  }
+
+  dismissAssigneeWarningLeaveUnassigned(draft: ExtractedTaskDraft): void {
+    draft.assigneeWarning = null;
+    this.drafts.update(list => [...list]);
+  }
+
+  resolveUnknownAssignee(draft: ExtractedTaskDraft, selectedValue: string): void {
+    if (!selectedValue) return;
+    if (selectedValue === '__UNASSIGNED__') {
+      draft.assigneeWarning = null;
+    } else {
+      if (!draft.assigneeIds.includes(selectedValue)) {
+        draft.assigneeIds = [...draft.assigneeIds, selectedValue];
+      }
+      draft.assigneeWarning = null;
+    }
+    this.drafts.update(list => [...list]);
   }
 
   getMemberCapacityStatus(memberId: string): 'OPTIMAL' | 'NEAR_CAPACITY' | 'OVER_BUDGET' | null {
@@ -1071,7 +1501,7 @@ export class AiPromptModalComponent {
 
   commitDeliverables(): void {
     const currentDrafts = this.drafts();
-    if (currentDrafts.length === 0) return;
+    if (currentDrafts.length === 0 || this.hasUnresolvedWarnings()) return;
 
     const res = this.store.createTasksFromAiDrafts(currentDrafts);
     if (res.success) {

@@ -276,3 +276,18 @@ Integrated `@phosphor-icons/web` (`ph-light` 1.5px-equivalent hairline icons) ac
   - Computes active connectors only when `hoveredTaskId` is set, completely eliminating idle line clutter.
   - Draws cubic bezier curves (`M x1 y1 C ... x2 y2`) centered at `idx * 88 + 44` with directional SVG marker arrowheads (`#timeline-arrow-normal` in Sage or `#timeline-arrow-danger` in Terracotta when blocked/conflict).
   - Upstream and downstream connected rows highlight with subtle sage background tint (`var(--accent-primary-tint)`).
+
+
+### 7.10 AI Staging Inline Assignee Disambiguation & Resolution Controls (v3.4.0)
+- **Dual-Theme Semantic Tokens (Zero Hardcoded Hexes):**
+  - Every staging warning badge, resolution strip, candidate pill, and capacity dot exclusively uses semantic CSS tokens (`--accent-warn`, `--accent-warn-tint`, `--accent-danger`, `--accent-danger-tint`, `--accent-primary`, `--bg-surface`, `--text-inverse`) for full Light ("Alabaster & Sage") and Dark ("Sumi Ink & Moss") theme parity.
+- **Staging Card Border Accents & Header Counter:**
+  - Cards with `AMBIGUOUS` / `UNKNOWN` warnings receive `border-color: var(--accent-warn)`.
+  - Cards with `NOT_IN_PROJECT` warnings receive `border-color: var(--accent-danger)`.
+  - Staging header renders a pill counter (`.staging-warn-pill`) showing active unresolved warnings.
+- **Inline Resolution Strip (`.assignee-resolution-bar`):**
+  - **`AMBIGUOUS` (Ochre Tint `.resolution-ochre`):** Displays `<i class="ph-light ph-users-three"></i> Multiple matches for '<name>'` alongside 1-click candidate pills (`.btn-candidate-pill`) containing circular mini-avatars and optional `Outside <CODE>` badges when a candidate is outside the target project.
+  - **`NOT_IN_PROJECT` (Terracotta Tint `.resolution-terracotta`):** Displays `<i class="ph-light ph-user-minus"></i> <Name> is not in <CODE>` paired with a primary Sage **`+ Add to Project & Assign`** button (`.btn-resolve-add-proj`, visible when `canCurrentUserManageSharing()`) and a hairline-bordered **`Leave Unassigned`** pill (`.btn-resolve-dismiss`).
+  - **`UNKNOWN` (Ochre Tint `.resolution-ochre`):** Displays `<i class="ph-light ph-question"></i> Name not found ('<name>') — select assignee` paired with an inline pill-shaped project member `<select>` dropdown (`.resolve-member-select`) and `Leave Unassigned` action.
+- **Import Gate Footer Helper (`.footer-warn-helper`):**
+  - Replaces the passive provenance note with a crisp Terracotta helper badge (`"Resolve assignee warnings above before importing"`) while disabling the **`Import Tasks`** CTA until all warnings are resolved.

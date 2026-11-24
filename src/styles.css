@@ -4,6 +4,10 @@
    Pill-First Geometry, Open-Air Surfaces & Tactile Micro-Interactions
    ========================================================================== */
 
+/* Local Self-Contained Phosphor Icon Fonts (Zero External CDN Dependency) */
+@import '@phosphor-icons/web/light/style.css';
+@import '@phosphor-icons/web/regular/style.css';
+
 :root {
   /* Editorial & Modern Typography */
   --font-serif: 'Newsreader', Georgia, Cambria, 'Times New Roman', serif;

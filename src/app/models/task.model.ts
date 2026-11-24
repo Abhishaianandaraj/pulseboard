@@ -224,6 +224,23 @@ export interface SmartImportPayload {
   tasks: SmartImportTaskItem[];
 }
 
+export type AssigneeWarning =
+  | {
+      type: 'AMBIGUOUS';
+      queryName: string;
+      candidateIds: string[];
+    }
+  | {
+      type: 'NOT_IN_PROJECT';
+      memberId: string;
+      memberName: string;
+      projectCode: string;
+    }
+  | {
+      type: 'UNKNOWN';
+      queryName: string;
+    };
+
 export interface ExtractedTaskDraft {
   id: string;
   title: string;
@@ -231,6 +248,7 @@ export interface ExtractedTaskDraft {
   projectId: string;
   projectCode: string;
   assigneeIds: string[];
+  assigneeWarning?: AssigneeWarning | null;
   priority: TaskPriority;
   effortPoints: number;
   dueDate: string;

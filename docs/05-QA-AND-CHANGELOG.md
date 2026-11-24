@@ -135,9 +135,59 @@ Every release candidate, pull request, and staging deployment must execute and s
 
 ---
 
+### 1.15 Local NLP Meeting-Note Parser & Actionable Title Extraction Gate (v3.3.1)
+- [x] **Multi-Line Meeting Notes Splitting:** Fixed unescaped `-` character range (`*-•`) in `splitIntoTaskClauses` that previously truncated everything after the first newline; line-first splitting preserves all numbered and bulleted items cleanly.
+- [x] **Header & Continuation Handling:** Pure meeting headers (`Sprint Planning Action Items ...:`, `Meeting Notes - ...`, `Attendees: ...`) are automatically skipped, and follow-up modifier sentences (`This task depends on PB-101.`, `Depends on PB-101.`) merge back into their parent task.
+- [x] **Context-Aware Layered Title Sanitization:** Verified across 9 test suites (structured meeting notes, conversational standups, speaker-prefixed transcripts, comma-less voice dictations, parenthetical metadata, and trailing scopes) that `cleanDeliverableTitle` strips boilerplate (`And also create a 3-point high priority task in EVAL-GW for Karthik to`, `In RAG-CORE, assign Abhishai and Priya to`, `due in 4 days`, `checklist includes: ...`) without eating technical terms (`low latency`) or falling back to raw prompt strings.
+- [x] **Word-Boundary Project Matching & Subtask Protection:** Prevented substring false positives (`"eval"` inside `"retrieval"`) and protected comma-separated checklists from splitting into bogus standalone tasks.
+
+---
+
+### 1.16 Smart Assignee Fuzzy Matching, Disambiguation & Out-of-Project Safeguards Gate (v3.4.0)
+- [x] **Voice Spelling & Prefix Fuzzy Matching:** Verified Levenshtein edit distance $\le 2$ and 4+ char prefix matching accurately resolve speech-to-text variations (`"Abisha"` -> `"Abhishai"`, `"Karthick"` -> `"Karthik R"`, `"Abhi"` -> `"Abhishai"`).
+- [x] **Duplicate First-Name Disambiguation (`AMBIGUOUS`):** Verified that matching 2+ workspace members (e.g., `"Abhishek"` matching `"Abhishek J"` and `"Abhishek K"`) leaves `assigneeIds` empty, attaches `{ type: 'AMBIGUOUS', queryName, candidateIds }`, and renders an ochre warning chip with 1-click candidate pills. Verified exact full name (`"Abhishek J"`) resolves cleanly without false ambiguity.
+- [x] **Out-of-Project Assignee Safeguard (`NOT_IN_PROJECT`):** Verified that matching a workspace member outside `project.memberIds` (e.g., `"Abhishai"` in `EVAL-GW`, or `"Rahul"` in `PULSE-V1`) blocks silent assignment, displays a terracotta warning chip (`"Abhishai is not in EVAL-GW"`), and offers 1-click **`+ Add to Project & Assign`** (when `canCurrentUserManageSharing()` is true, invoking `store.toggleProjectMember`) or **`Leave Unassigned`**.
+- [x] **Unknown Name Detection (`UNKNOWN`):** Verified unrecognized spoken names (e.g., `"David"`, `"Sonia"`) attach `{ type: 'UNKNOWN', queryName }`, strip cleanly from deliverable titles, and present `"Name not found — select assignee"` next to a project member dropdown.
+- [x] **Import Safety Gate & Unassigned Support:** Verified the **`Import Tasks`** CTA is disabled with `"Resolve assignee warnings above before importing"` while any staged draft has an unresolved `assigneeWarning`, and `createTasksFromAiDrafts` preserves unassigned (`assigneeIds: []`) tasks cleanly when dismissed.
+- [x] **Production Build & Dual-Theme Parity:** Verified zero hardcoded hex colors in component warning styles and confirmed `npx ng build --configuration production --base-href=/pulseboard/` exits with code `0`.
+
+---
+
 ## 2. Release Changelog
 
+### `v3.4.0` (Smart Fuzzy Name Matching, Disambiguation & Out-of-Project Assignee Safeguards)
+- **Data Model Extension (`src/app/models/task.model.ts`):**
+  - Added discriminated union `AssigneeWarning` (`AMBIGUOUS` | `NOT_IN_PROJECT` | `UNKNOWN`) and optional `assigneeWarning?: AssigneeWarning | null` field on `ExtractedTaskDraft`.
+- **Smart Fuzzy/Prefix Matcher & Project-Scoped Disambiguation (`src/app/services/ai-copilot.service.ts`):**
+  - Implemented `levenshteinDistance` and tiered `findMatchingMembers(queryName, allMembers)` covering exact full name, multi-word first+last, exact first name, 4+ char prefix, and fuzzy Levenshtein distance $\le 2$ (`"Abisha"` -> `"Abhishai"`, `"Karthick"` -> `"Karthik R"`).
+  - Implemented `extractSpokenAssigneeQueries` across assignment verbs (`assign/allocate/ask`), `for <Name> to`, modal verbs (`<Name> will/should/needs to`), parenthetical lists, and speaker prefixes, while passing spoken queries to `cleanDeliverableTitle` so misspelled or unknown names never leak into task titles.
+  - Implemented `resolveAssigneesForProject` across both Local NLP and Corporate LLM modes to check matches against all workspace members and validate membership in `project.memberIds`, attaching structured `AMBIGUOUS`, `NOT_IN_PROJECT`, or `UNKNOWN` warnings without silent assignment.
+- **Inline Staging Resolution Controls (`src/app/components/ai-prompt-modal.component.ts`):**
+  - Scoped draft co-assignee chips to target project members (`getProjectMembers`), added live `unresolvedWarningCount` / `hasUnresolvedWarnings` signals, and re-validated project membership dynamically on `onDraftProjectChange`.
+  - Added Kanso dual-theme inline resolution bars:
+    * `AMBIGUOUS`: Ochre warning chip (`"Multiple matches for '<name>'"`) with 1-click candidate avatar pills (automatically transitioning to `NOT_IN_PROJECT` if a selected candidate is outside the target project).
+    * `NOT_IN_PROJECT`: Terracotta warning chip (`"<Name> is not in <CODE>"`) with 1-click **`+ Add to Project & Assign`** (gated by `store.canCurrentUserManageSharing()`, invoking `store.toggleProjectMember` and auto-resolving sibling drafts waiting on the same member) and **`Leave Unassigned`**.
+    * `UNKNOWN`: Ochre warning chip (`"Name not found ('<name>') — select assignee"`) paired with an inline project member `<select>` dropdown and `Leave Unassigned`.
+  - Disabled **`Import Tasks`** submit button with `"Resolve assignee warnings above before importing"` helper note until every staged warning is resolved.
+- **Store Guard & Unassigned Preservation (`src/app/services/task-store.service.ts`):**
+  - Hardened `createTasksFromAiDrafts` to reject unresolved warnings and preserve empty `assigneeIds: []` when the user chooses **`Leave Unassigned`**.
+
+### `v3.3.1` (Hardened Local NLP Meeting-Note Splitting & Surgical Title Extraction)
+- **Fixed Catastrophic Multi-Line Truncation Bug (`AiCopilotService`):**
+  - Replaced the broken `[\s*-•\d+.]*` character range (where `*-•` matched all Unicode characters from `U+002A` to `U+2022`) with clean line-first splitting (`text.split(/\r?\n+/)`) and strict bullet/number prefix stripping.
+- **Meeting Header Filtering & Continuation Merging:**
+  - Added `isHeaderOrMetadataLine` to skip non-task headings (`Meeting Notes`, `Sprint Planning ...:`, `Attendees:`, `Action Items:`).
+  - Added `isContinuationClause` so follow-up dependency or checklist sentences (`This task depends on PB-101.`, `Blocked by PB-102.`) merge cleanly onto their preceding task instead of spawning bogus extra tasks.
+  - Added checklist/subtask span protection (`§PROTECTED_n§`) during mid-sentence splitting and comma-less voice dictation split support (`and create a 3-point task...`, `and also assign Karthik...`).
+- **Context-Aware Layered `cleanDeliverableTitle(seg, visibleProjects, squadMembers)`:**
+  - Replaced the brittle single regex with an iterative multi-layer prefix/suffix stripper aware of actual visible project codes and squad member names.
+  - Properly peels leading conjunctions (`And`, `Also`), project scopes (`In RAG-CORE,`), speaker prefixes (`Vikram:`), task-creation verbs, assignment verbs (`assign X to`, `X will/should/needs to`), parenthetical metadata blocks, due dates, checklist clauses, and trailing project/assignee tails while keeping technical phrases (`low latency`) intact.
+  - Fixed project keyword matching to use strict word boundaries (`\b`) so `"retrieval"` no longer false-matches `"eval"` (`EVAL-GW`).
+
 ### `v3.3.0` (Simplified Delivery Roadmap & Hover-Only Dependency Connectors)
+- **Local Self-Contained Phosphor Icon Fonts (Air-Gapped Parity):**
+  - Replaced external `unpkg.com` CDN stylesheet references in `src/index.html` with direct `@import '@phosphor-icons/web/light/style.css'` and `@import '@phosphor-icons/web/regular/style.css'` in `src/styles.css`.
+  - Configured Angular bundler to extract and serve all font files (`.woff2`, `.ttf`, `.woff`, `.svg`) locally from `dist/pulse-board/browser/media/`, guaranteeing 100% offline icon rendering without network, CORS, or corporate firewall issues.
 - **Delivery Roadmap (`Timeline`) Navigation & Aesthetic Overhaul:**
   - Renamed third workspace view tab from `Gantt` to `Timeline` (`<i class="ph-light ph-chart-line-up"></i>`).
   - Added scannable top control strip with 3 status indicators (`Completed / Deployed` in Sage, `In Progress` in Ochre, and `Blocked / Delayed` in Terracotta).
