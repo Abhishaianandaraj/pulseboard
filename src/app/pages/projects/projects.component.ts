@@ -15,8 +15,8 @@ import { SharePermissionsModalComponent } from '../../components/share-permissio
       <!-- Header -->
       <div class="projects-header-card">
         <div>
-          <h1 class="projects-title font-serif">Project Workspaces &amp; Squad Directories<span class="brand-dot">.</span></h1>
-          <p class="projects-sub">Autonomous technical initiatives, deliverable completion health, and cross-functional squad ownership</p>
+          <h1 class="projects-title">Projects &amp; Team Workspaces</h1>
+          <p class="projects-sub">Active engineering initiatives, completion progress, and assigned project members</p>
         </div>
         <button type="button" class="btn-create-proj" (click)="openCreateModal()">
           <i class="ph-light ph-plus"></i>
@@ -61,7 +61,7 @@ import { SharePermissionsModalComponent } from '../../components/share-permissio
             <!-- Completion Progress -->
             <div class="proj-progress-section">
               <div class="progress-labels font-mono">
-                <span>Progress: {{ doneCount }}/{{ pTasks.length }} Closed</span>
+                <span>Progress: {{ doneCount }}/{{ pTasks.length }} Completed</span>
                 <strong>{{ progress }}%</strong>
               </div>
               <div class="progress-track-wrap">
@@ -73,11 +73,11 @@ import { SharePermissionsModalComponent } from '../../components/share-permissio
             <div class="proj-metrics-matrix font-mono">
               <div class="metric-cell">
                 <span class="metric-num">{{ pTasks.length }}</span>
-                <span class="metric-lbl">Deliverables</span>
+                <span class="metric-lbl">Tasks</span>
               </div>
               <div class="metric-cell">
                 <span class="metric-num" [class.text-deployed]="deployedCount > 0">{{ deployedCount }}</span>
-                <span class="metric-lbl">Staged</span>
+                <span class="metric-lbl">Under Review</span>
               </div>
               <div class="metric-cell">
                 <span class="metric-num" [class.text-blocked]="blockedCount > 0">{{ blockedCount }}</span>
@@ -85,7 +85,7 @@ import { SharePermissionsModalComponent } from '../../components/share-permissio
               </div>
               <div class="metric-cell">
                 <span class="metric-num">{{ totalPoints }}p</span>
-                <span class="metric-lbl">Points</span>
+                <span class="metric-lbl">Effort</span>
               </div>
             </div>
 
@@ -104,9 +104,9 @@ import { SharePermissionsModalComponent } from '../../components/share-permissio
               </div>
 
               <div class="card-bottom-actions">
-                <button type="button" class="btn-proj-share" (click)="openShare(proj.id)" title="Manage Project Sharing & Permissions">
+                <button type="button" class="btn-proj-share" (click)="openShare(proj.id)" title="Manage Team & Project Members">
                   <i class="ph-light ph-users-three"></i>
-                  <span>Share</span>
+                  <span>Team &amp; Members</span>
                 </button>
                 <button type="button" class="btn-open-workspace" (click)="openWorkspace(proj.id)">
                   <span>Open Workspace</span>
@@ -464,6 +464,7 @@ import { SharePermissionsModalComponent } from '../../components/share-permissio
     .modal-card {
       width: 100%;
       max-width: 520px;
+      max-height: 88vh;
       background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
       border-radius: var(--radius-card);
@@ -479,9 +480,10 @@ import { SharePermissionsModalComponent } from '../../components/share-permissio
       justify-content: space-between;
       padding: 18px 24px;
       border-bottom: 1px solid var(--border-hairline);
+      flex-shrink: 0;
     }
 
-    .modal-head h3 { font-size: 18px; font-weight: 500; margin: 0; }
+    .modal-head h3 { font-size: 16px; font-weight: 700; margin: 0; }
     .btn-close {
       background: transparent;
       border: none;
@@ -495,10 +497,13 @@ import { SharePermissionsModalComponent } from '../../components/share-permissio
     .btn-close:hover { color: var(--text-primary); }
 
     .modal-body {
-      padding: 22px 24px;
+      padding: 20px 24px;
       display: flex;
       flex-direction: column;
       gap: 16px;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
     }
 
     .form-group { display: flex; flex-direction: column; gap: 5px; }

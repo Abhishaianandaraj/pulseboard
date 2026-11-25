@@ -1,18 +1,16 @@
 @if (!isAuthenticated()) {
-  <!-- Clean Unauthenticated Entry Viewport -->
   <router-outlet></router-outlet>
 } @else {
-  <!-- Clean Minimalist Multi-Screen Shell -->
   <div class="pulse-shell">
-    <!-- Slim Left Navigation Rail -->
+    <!-- Left Navigation Sidebar -->
     <aside class="nav-rail">
       <div class="rail-brand">
         <div class="rail-logo">
-          <i class="ph-light ph-wave-sine"></i>
+          <i class="ph-light ph-squares-four"></i>
         </div>
         <div class="rail-brand-meta">
-          <span class="brand-title font-serif">PulseBoard<span class="brand-dot">.</span></span>
-          <span class="brand-tag">v3.0</span>
+          <span class="brand-title" [title]="store.brandName()">{{ store.brandName() }}</span>
+          <span class="brand-tag">v4.0</span>
         </div>
       </div>
 
@@ -22,19 +20,22 @@
           routerLink="/my-day"
           routerLinkActive="active"
           class="rail-item"
-          title="My Day · Personal Delivery Queue"
+          title="My Day · Personal Queue & Weekly Follow-Up Triage"
         >
           <span class="rail-icon">
-            <i class="ph-light ph-sun-horizon"></i>
+            <i class="ph-light ph-calendar-check"></i>
           </span>
           <span class="rail-label">My Day</span>
+          @if (store.dueSoonCount() > 0) {
+            <span class="rail-badge font-mono">{{ store.dueSoonCount() }}</span>
+          }
         </a>
 
         <a
           routerLink="/workspace"
           routerLinkActive="active"
           class="rail-item"
-          title="Workspace · Board, Sprint & Gantt"
+          title="Workspace · Board, Sprint List & Gantt Chart"
         >
           <span class="rail-icon">
             <i class="ph-light ph-kanban"></i>
@@ -46,7 +47,7 @@
           routerLink="/projects"
           routerLinkActive="active"
           class="rail-item"
-          title="Projects · Squad Directories & Health"
+          title="Projects · Initiatives & Team Allocation"
         >
           <span class="rail-icon">
             <i class="ph-light ph-folder-simple"></i>
@@ -58,7 +59,7 @@
           routerLink="/governance"
           routerLinkActive="active"
           class="rail-item"
-          title="Governance · RBAC, Telemetry & Audit"
+          title="Governance · Access Control, Metrics & Audit Log"
         >
           <span class="rail-icon">
             <i class="ph-light ph-shield-check"></i>
@@ -67,13 +68,25 @@
         </a>
       </nav>
 
-      <!-- Rail Footer -->
+      <!-- Sidebar Footer: Theme Switcher & Team Settings Shortcut -->
       <div class="rail-footer">
         <button
           type="button"
           class="rail-action-btn"
+          (click)="openShareModal()"
+          title="Open Team & Members Settings"
+        >
+          <span class="rail-icon">
+            <i class="ph-light ph-gear-six"></i>
+          </span>
+          <span class="rail-label">Team Settings</span>
+        </button>
+
+        <button
+          type="button"
+          class="rail-action-btn"
           (click)="store.toggleTheme()"
-          [title]="store.theme() === 'dark' ? 'Switch to Alabaster & Sage' : 'Switch to Sumi Ink & Moss'"
+          [title]="store.theme() === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
         >
           <span class="rail-icon">
             @if (store.theme() === 'dark') {
@@ -82,35 +95,23 @@
               <i class="ph-light ph-moon"></i>
             }
           </span>
-          <span class="rail-label">{{ store.theme() === 'dark' ? 'Alabaster Mode' : 'Sumi Mode' }}</span>
-        </button>
-
-        <button
-          type="button"
-          class="rail-action-btn btn-reset-rail"
-          (click)="store.resetWorkspace()"
-          title="Reset Workspace to Seed Demo State"
-        >
-          <span class="rail-icon">
-            <i class="ph-light ph-arrow-counter-clockwise"></i>
-          </span>
-          <span class="rail-label">Reset Demo</span>
+          <span class="rail-label">{{ store.theme() === 'dark' ? 'Light Mode' : 'Dark Mode' }}</span>
         </button>
       </div>
     </aside>
 
     <!-- Main Workspace Application Area -->
     <div class="shell-content custom-scroll">
-      <!-- Compact Top Header Bar -->
+      <!-- Top Header Bar -->
       <header class="shell-top-bar">
-        <!-- Left: Project Selector Pills (Strictly scoped to user visible projects) -->
-        <div class="project-pill-nav">
+        <!-- Left: Project Selector Pills -->
+        <div class="project-pill-nav custom-scroll">
           <button
             type="button"
             class="proj-pill-btn"
             [class.active]="store.selectedProjectId() === 'ALL'"
             (click)="selectProject('ALL')"
-            title="Scope workspace to all visible projects"
+            title="Show all visible projects"
           >
             <span>All Projects</span>
             <span class="proj-count-tag">{{ store.visibleProjects().length }}</span>
@@ -130,26 +131,69 @@
           }
         </div>
 
-        <!-- Right: Current User Profile Pill & Sign Out -->
+        <!-- Right: Primary + New Task Split Action, Team & Members, User Profile -->
         <div class="top-user-group">
-          <!-- Share & Permissions Pill Button -->
+          <!-- Primary + New Task Split Button with Secondary Dropdown -->
+          <div class="split-new-task-wrap">
+            <button
+              type="button"
+              class="btn-primary-new-task"
+              [disabled]="!store.canCurrentUserCreateTasks()"
+              (click)="openNewTask()"
+              [title]="store.canCurrentUserCreateTasks() ? 'Create a new task' : 'Task creation restricted for ' + store.currentUserRole()"
+            >
+              <i class="ph-light ph-plus"></i>
+              <span>New Task</span>
+            </button>
+            <button
+              type="button"
+              class="btn-new-task-caret"
+              [disabled]="!store.canCurrentUserCreateTasks()"
+              [class.open]="isNewTaskMenuOpen()"
+              (click)="toggleNewTaskMenu($event)"
+              title="More task capture options (AI Quick Capture & Import JSON)"
+            >
+              <i class="ph-light ph-caret-down"></i>
+            </button>
+
+            @if (isNewTaskMenuOpen()) {
+              <div class="new-task-dropdown-menu" (click)="$event.stopPropagation()">
+                <button type="button" class="dropdown-item" (click)="openAiQuickCapture($event)">
+                  <i class="ph-light ph-microphone"></i>
+                  <div class="dropdown-item-text">
+                    <strong>AI Quick Capture (Voice / Text)</strong>
+                    <span>Extract tasks from meeting notes or dictation</span>
+                  </div>
+                </button>
+                <button type="button" class="dropdown-item" (click)="openImportJson($event)">
+                  <i class="ph-light ph-file-code"></i>
+                  <div class="dropdown-item-text">
+                    <strong>Import JSON</strong>
+                    <span>Batch import structured JSON deliverables</span>
+                  </div>
+                </button>
+              </div>
+            }
+          </div>
+
+          <!-- Team & Members Manager Button -->
           <button
             type="button"
             class="btn-top-share"
             (click)="openShareModal()"
-            title="Manage project squad sharing & role capability policies"
+            title="Manage workspace name, team members, projects, and permissions"
           >
             <i class="ph-light ph-users-three"></i>
-            <span>Share</span>
+            <span>Team &amp; Members</span>
           </button>
 
-          <div class="user-profile-chip" [title]="'Logged in as ' + store.currentUser().name + ' (' + store.currentUser().role + ')'">
+          <div class="user-profile-chip" [title]="'Signed in as ' + store.currentUser().name + ' (' + store.currentUser().role + ')'">
             <span class="user-chip-avatar" [style.background-color]="store.currentUser().color">
               {{ store.currentUser().avatar }}
             </span>
             <div class="user-chip-details">
               <span class="user-chip-name">{{ store.currentUser().name }}</span>
-              <span class="user-chip-role font-mono">[{{ store.currentUserRole() }}]</span>
+              <span class="user-chip-role font-mono">[{{ store.getMemberAccessRole(store.currentUser()) }}]</span>
             </div>
           </div>
 
@@ -157,7 +201,7 @@
             type="button"
             class="btn-sign-out"
             (click)="logout()"
-            title="Sign out of current workspace session"
+            title="Sign out"
           >
             <i class="ph-light ph-sign-out"></i>
             <span>Sign Out</span>
@@ -172,10 +216,25 @@
     </div>
   </div>
 
-  <!-- Global Standalone Slide-Over Task Inspection Drawer -->
+  <!-- Global Slide-Over Task Detail Drawer -->
   <app-task-drawer></app-task-drawer>
 
-  <!-- Global Share & Permissions Modal -->
+  <!-- Global Create Task Modal -->
+  @if (store.isCreateTaskModalOpen()) {
+    <app-create-task-modal (close)="store.closeCreateTaskModal()"></app-create-task-modal>
+  }
+
+  <!-- Global AI Quick Capture Modal -->
+  @if (store.isAiQuickCaptureOpen()) {
+    <app-ai-prompt-modal (closeModal)="store.closeAiQuickCapture()"></app-ai-prompt-modal>
+  }
+
+  <!-- Global Import JSON Modal -->
+  @if (store.isImportJsonModalOpen()) {
+    <app-import-modal (closeModal)="store.closeImportJsonModal()"></app-import-modal>
+  }
+
+  <!-- Global Team & Members Modal -->
   @if (isShareModalOpen()) {
     <app-share-permissions-modal
       [initialProjectId]="shareModalProjectId()"

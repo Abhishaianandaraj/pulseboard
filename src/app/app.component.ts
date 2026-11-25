@@ -1,10 +1,13 @@
-import { Component, inject, computed, signal } from '@angular/core';
+import { Component, inject, computed, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { TaskStoreService } from './services/task-store.service';
 import { TaskDrawerComponent } from './components/task-drawer.component';
 import { SharePermissionsModalComponent } from './components/share-permissions-modal.component';
+import { CreateTaskModalComponent } from './components/create-task-modal.component';
+import { AiPromptModalComponent } from './components/ai-prompt-modal.component';
+import { ImportModalComponent } from './components/import-modal.component';
 
 @Component({
   selector: 'app-root',
@@ -16,7 +19,10 @@ import { SharePermissionsModalComponent } from './components/share-permissions-m
     RouterLink,
     RouterLinkActive,
     TaskDrawerComponent,
-    SharePermissionsModalComponent
+    SharePermissionsModalComponent,
+    CreateTaskModalComponent,
+    AiPromptModalComponent,
+    ImportModalComponent
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
@@ -28,9 +34,40 @@ export class AppComponent {
   readonly isAuthenticated = computed(() => this.store.isAuthenticated());
   readonly isShareModalOpen = signal<boolean>(false);
   readonly shareModalProjectId = signal<string | null>(null);
+  readonly isNewTaskMenuOpen = signal<boolean>(false);
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    if (this.isNewTaskMenuOpen()) {
+      this.isNewTaskMenuOpen.set(false);
+    }
+  }
 
   selectProject(projectId: string): void {
     this.store.selectProject(projectId);
+  }
+
+  openNewTask(): void {
+    this.isNewTaskMenuOpen.set(false);
+    this.store.openCreateTaskModal();
+  }
+
+  toggleNewTaskMenu(event: MouseEvent): void {
+    event.stopPropagation();
+    if (!this.store.canCurrentUserCreateTasks()) return;
+    this.isNewTaskMenuOpen.update(v => !v);
+  }
+
+  openAiQuickCapture(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isNewTaskMenuOpen.set(false);
+    this.store.openAiQuickCapture();
+  }
+
+  openImportJson(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isNewTaskMenuOpen.set(false);
+    this.store.openImportJsonModal();
   }
 
   openShareModal(projectId?: string): void {

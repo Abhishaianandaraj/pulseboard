@@ -206,3 +206,8 @@ Default capability policies persisted in `localStorage` under `pulseboard_permis
    - Any project membership modification emits `SHARING_UPDATED`.
    - Any capability policy modification emits `PERMISSION_POLICY_UPDATED`.
    - Both actions record actor ID and user name attribution.
+
+
+## v4.0 Update (TCS-AI Initiatives)
+
+See docs/05-QA-AND-CHANGELOG.md v4.0.0 for full details. Key points: status labels Yet to Start / In Progress / Under Review / Completed; `DeliverableTask.progress` (0-100), `startDate`, `dueDate`, `storyPoints`; dependency start = max(pred.dueDate)+1 day; Due Soon filter; Team & Members manager; `TaskRepository` (LocalStorage default, Postgres REST `/api/projects`, `/api/members`, `/api/tasks`, `/api/audit-logs` via `environment.useBackendApi`). Kanso visual tokens unchanged.

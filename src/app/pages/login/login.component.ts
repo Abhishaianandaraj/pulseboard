@@ -15,10 +15,10 @@ import { TeamMember } from '../../models/task.model';
           type="button"
           class="btn-theme-toggle"
           (click)="store.toggleTheme()"
-          [title]="'Switch to ' + (store.theme() === 'dark' ? 'Alabaster & Sage' : 'Sumi Ink & Moss')"
+          [title]="'Switch to ' + (store.theme() === 'dark' ? 'Light Mode' : 'Dark Mode')"
         >
           <i class="ph-light" [class.ph-sun]="store.theme() === 'dark'" [class.ph-moon]="store.theme() !== 'dark'"></i>
-          <span>{{ store.theme() === 'dark' ? 'Alabaster Mode' : 'Sumi Mode' }}</span>
+          <span>{{ store.theme() === 'dark' ? 'Light Mode' : 'Dark Mode' }}</span>
         </button>
       </div>
 
@@ -26,12 +26,12 @@ import { TeamMember } from '../../models/task.model';
         <div class="login-brand-header">
           <div class="brand-badge-row">
             <div class="brand-logo-icon">
-              <i class="ph-light ph-wave-sine"></i>
+              <i class="ph-light ph-squares-four"></i>
             </div>
-            <span class="brand-version-chip">v3.0 Kanso</span>
+            <span class="brand-version-chip">v4.0</span>
           </div>
-          <h1 class="login-title font-serif">PulseBoard<span class="brand-dot">.</span></h1>
-          <p class="login-sub">Calm, portfolio-grade delivery management for high-velocity AI engineering teams</p>
+          <h1 class="login-title">{{ store.brandName() }}</h1>
+          <p class="login-sub">Enterprise task planning, multi-predecessor Gantt scheduling, and weekly execution tracking</p>
         </div>
 
         <!-- Corporate SSO Action -->

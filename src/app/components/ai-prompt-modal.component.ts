@@ -19,9 +19,9 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
               <i class="ph-light ph-microphone"></i>
             </span>
             <div>
-              <h3 class="modal-title font-serif">Prompt with AI<span class="brand-dot">.</span></h3>
+              <h3 class="modal-title">AI Quick Capture (Voice / Text)</h3>
               <p class="modal-sub">
-                Voice dictation &amp; natural language task composer with deterministic project &amp; squad resolution
+                Dictate or paste meeting notes to stage structured tasks with automatic dependency &amp; owner resolution
               </p>
             </div>
           </div>
@@ -134,7 +134,7 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
               class="prompt-textarea custom-scroll"
               rows="4"
               [(ngModel)]="promptText"
-              placeholder="Speak or type naturally — e.g., 'Create an urgent 5-point task in PULSE-V1 for Abhishai to implement RBAC route guards and role middleware blocked by PB-101, and a 3-point high priority task in EVAL-GW for Karthik to configure latency telemetry'"
+              placeholder="Speak or type naturally — e.g., 'Create an urgent 5-point task in TCS-OPS for Abhishai to implement RBAC route guards blocked by TCS-101, and a 3-point high priority task in EVAL-GW for Karthik to configure latency benchmarks'"
             ></textarea>
 
             <div class="prompt-box-footer">
@@ -472,23 +472,25 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
       border: 1px solid var(--border-hairline);
       width: 780px;
       max-width: 95vw;
+      max-height: 88vh;
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-float);
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      animation: scaleIn 0.22s var(--ease-tactile);
+      animation: scaleIn 0.2s var(--ease-tactile);
     }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes scaleIn { from { transform: scale(0.97); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
     .modal-header {
-      padding: 18px 24px;
+      padding: 16px 24px;
       border-bottom: 1px solid var(--border-hairline);
       background: var(--bg-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-shrink: 0;
     }
     .modal-title-row {
       display: flex;
@@ -529,11 +531,12 @@ import { ExtractedTaskDraft, TaskPriority, TeamMember, Project } from '../models
     .btn-close:hover { color: var(--text-primary); }
 
     .modal-body {
-      padding: 20px 24px 36px;
+      padding: 20px 24px 28px;
       display: flex;
       flex-direction: column;
       gap: 16px;
-      max-height: 72vh;
+      flex: 1;
+      min-height: 0;
       overflow-y: auto;
     }
 
@@ -1311,7 +1314,7 @@ export class AiPromptModalComponent {
   }
 
   loadSampleStandupPrompt(): void {
-    this.promptText = `Assign Abhishai and Priya to connect the RAG search API with SSO login for RAG-CORE, high priority, 5 points. Also assign Karthik to test 20 sample Q&A prompts for EVAL-GW, 2 points.`;
+    this.promptText = `Assign Abhishai and Priya to connect the RAG search API with SSO login for RAG-CORE, high priority, 5 points, blocked by TCS-101. Also assign Karthik to run 20 regression evaluation prompts for EVAL-GW, 3 points.`;
   }
 
   async runExtraction(): Promise<void> {

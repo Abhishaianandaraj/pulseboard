@@ -1,5 +1,12 @@
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DEPLOYED' | 'DONE';
 
+export const STATUS_LABELS: Record<TaskStatus, string> = {
+  TODO: 'Yet to Start',
+  IN_PROGRESS: 'In Progress',
+  DEPLOYED: 'Under Review',
+  DONE: 'Completed'
+};
+
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export type MethodologyView = 'BOARD' | 'SPRINT' | 'TIMELINE' | 'GOVERNANCE';
@@ -7,6 +14,8 @@ export type MethodologyView = 'BOARD' | 'SPRINT' | 'TIMELINE' | 'GOVERNANCE';
 export type ThemeMode = 'light' | 'dark';
 
 export type SystemRole = 'VIEWER' | 'DEV' | 'QA' | 'LEAD' | 'ADMIN';
+
+export type MemberAccessRole = 'Member' | 'Lead' | 'Manager';
 
 export type SlipReason =
   | 'DEPENDENCY_BLOCKED'
@@ -96,7 +105,7 @@ export interface GanttScheduleMetrics {
   totalSlackDays: Map<string, number>;
 }
 
-export interface Task {
+export interface DeliverableTask {
   id: string;
   projectId: string; // foreign key to Project.id
   title: string;
@@ -105,11 +114,13 @@ export interface Task {
   priority: TaskPriority;
   phase: string;
   sprint: string;
-  effortPoints: number;
+  effortPoints: number; // Decoupled story/effort points (1, 2, 3, 5, 8...)
+  storyPoints?: number; // Alias synchronized with effortPoints
+  progress: number; // Completion percentage (0 to 100)
   assigneeIds: string[]; // Primary & co-assignee member IDs
   assigneeId?: string; // Optional alias for backward compatibility
-  startDate: string;
-  dueDate: string;
+  startDate: string; // YYYY-MM-DD (independent of effortPoints; driven by prerequisites if any)
+  dueDate: string; // YYYY-MM-DD
   baselineDueDate?: string; // Original committed due date for drift calculation
   reworkCount: number; // Frequency of 'NEEDS_CHANGES' rejections (+3 penalty each)
   slipReason?: SlipReason;
@@ -117,7 +128,7 @@ export interface Task {
   blocked: boolean;
   blockerReason?: string;
   deployedUrl?: string;
-  dependencies: string[]; // Upstream prerequisite task IDs
+  dependencies: string[]; // Upstream prerequisite task IDs (1 to 5+ supported)
   isCriticalPath?: boolean; // Evaluated dynamically by Gantt engine
   subtasks: Subtask[];
   reviewNotes: ReviewNote[];
@@ -125,10 +136,13 @@ export interface Task {
   updatedAt: string;
 }
 
+export type Task = DeliverableTask;
+
 export type ActivityActionType =
   | 'TASK_CREATED'
   | 'TASK_UPDATED'
   | 'TASK_DELETED'
+  | 'TASKS_CLEARED'
   | 'STATUS_CHANGED'
   | 'DEPLOYED_TO_SERVER'
   | 'REVIEW_NOTE_ADDED'
@@ -140,6 +154,9 @@ export type ActivityActionType =
   | 'PERMISSION_POLICY_UPDATED'
   | 'PROJECT_CREATED'
   | 'MEMBER_ADDED'
+  | 'MEMBER_UPDATED'
+  | 'MEMBER_REMOVED'
+  | 'WORKSPACE_RENAMED'
   | 'WORKSPACE_RESET'
   | 'REWORK_PENALTY'
   | 'SLIPPAGE_LOGGED'
@@ -212,6 +229,8 @@ export interface SmartImportTaskItem {
   phase?: string;
   sprint?: string;
   effortPoints?: number;
+  storyPoints?: number;
+  progress?: number;
   startDate?: string;
   dueDate?: string;
   deployedUrl?: string;
@@ -251,6 +270,7 @@ export interface ExtractedTaskDraft {
   assigneeWarning?: AssigneeWarning | null;
   priority: TaskPriority;
   effortPoints: number;
+  startDate?: string;
   dueDate: string;
   dependencies: string[];
   subtasks: string[];

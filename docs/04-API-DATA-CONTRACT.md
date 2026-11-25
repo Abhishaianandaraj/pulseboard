@@ -559,3 +559,8 @@ readonly visibleActivityLogs: Signal<ActivityLog[]>;
 toggleProjectMember(projectId: string, memberId: string): boolean;
 updateRolePermissionPolicy(role: SystemRole, patch: Partial<RolePermissionPolicy>): boolean;
 ```
+
+
+## v4.0 Update (TCS-AI Initiatives)
+
+See docs/05-QA-AND-CHANGELOG.md v4.0.0 for full details. Key points: status labels Yet to Start / In Progress / Under Review / Completed; `DeliverableTask.progress` (0-100), `startDate`, `dueDate`, `storyPoints`; dependency start = max(pred.dueDate)+1 day; Due Soon filter; Team & Members manager; `TaskRepository` (LocalStorage default, Postgres REST `/api/projects`, `/api/members`, `/api/tasks`, `/api/audit-logs` via `environment.useBackendApi`). Kanso visual tokens unchanged.

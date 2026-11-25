@@ -324,7 +324,7 @@ export class AiCopilotService {
     for (const piece of pieces) {
       if (piece.length < 2) continue;
       if (/^\d/.test(piece)) continue;
-      if (/^PB-\d+$/i.test(piece)) continue;
+      if (/^(?:TCS|PB)-\d+$/i.test(piece)) continue;
       if (projectCodesUpper.has(piece.toUpperCase())) continue;
 
       const words = piece.split(/\s+/);
@@ -364,7 +364,7 @@ export class AiCopilotService {
     // Strip subtasks, dependencies, and due dates before scanning for assignee slots
     let searchSeg = seg
       .replace(/\b(?:subtasks?|checklist|steps?)\s*(?:includes?|are|consists?\s+of)?\s*:?[^.;]+/gi, '')
-      .replace(/(?:(?:this(?:\s+(?:task|ticket|story|item|deliverable|work))?|it)\s+)?\b(?:blocked\s+by|depends\s+on|dependent\s+on|prerequisite(?:\s+is)?|after\s+PB-\d+)\b[^.;,]*/gi, '')
+      .replace(/(?:(?:this(?:\s+(?:task|ticket|story|item|deliverable|work))?|it)\s+)?\b(?:blocked\s+by|depends\s+on|dependent\s+on|prerequisite(?:\s+is)?|after\s+(?:TCS|PB)-\d+)\b[^.;,]*/gi, '')
       .replace(/\b(?:due|deadline|by)\s*(?:date\s*[:=]?\s*)?(?:in\s+\d+\s+days?|\d{4}-\d{2}-\d{2}|tomorrow|today|next\s+week)\b/gi, '')
       .trim();
 
@@ -472,7 +472,7 @@ export class AiCopilotService {
       for (let i = 0; i < tokens.length; i++) {
         const w = tokens[i];
         const wLower = w.toLowerCase();
-        if (this.NON_NAME_STOPWORDS.has(wLower) || projectCodesUpper.has(w.toUpperCase()) || /^PB-\d+$/i.test(w)) {
+        if (this.NON_NAME_STOPWORDS.has(wLower) || projectCodesUpper.has(w.toUpperCase()) || /^(?:TCS|PB)-\d+$/i.test(w)) {
           continue;
         }
         // Check 2-word full name pair first (e.g. "Abhishek J" or "Priya Nair")
@@ -659,13 +659,13 @@ export class AiCopilotService {
         }
       }
 
-      // 6. Upstream Dependency Detection (supports multiple PB-XXX refs or title keyword matching)
+      // 6. Upstream Dependency Detection (supports multiple TCS-XXX / PB-XXX refs or title keyword matching)
       const dependencies: string[] = [];
       const depRegex = /(?:depends\s+on|dependent\s+on|prerequisite(?:\s+is)?|after|blocked\s+by)\s+([^.;]+)/gi;
       let depMatch: RegExpExecArray | null;
       while ((depMatch = depRegex.exec(seg)) !== null) {
         const phrase = depMatch[1].trim();
-        const idMatches = phrase.match(/\bPB-\d+\b/gi);
+        const idMatches = phrase.match(/\b(?:TCS|PB)-\d+\b/gi);
         if (idMatches && idMatches.length > 0) {
           idMatches.forEach(rawId => {
             const matchedId = rawId.toUpperCase();
@@ -687,12 +687,32 @@ export class AiCopilotService {
         }
       }
 
+      // Compute dependency-driven startDate = max(prerequisite.dueDate) + 1 day if prerequisites exist
+      let startDate = new Date().toISOString().split('T')[0];
+      if (dependencies.length > 0) {
+        let latestPredDue = '';
+        for (const depId of dependencies) {
+          const pred = existingTasks.find(t => t.id.toUpperCase() === depId.toUpperCase());
+          if (pred && pred.dueDate && pred.dueDate > latestPredDue) {
+            latestPredDue = pred.dueDate;
+          }
+        }
+        if (latestPredDue) {
+          const [y, mo, da] = latestPredDue.split('-').map(Number);
+          startDate = new Date(Date.UTC(y, mo - 1, da + 1, 12, 0, 0)).toISOString().split('T')[0];
+          if (dueDate <= startDate) {
+            const [sy, sm, sd] = startDate.split('-').map(Number);
+            dueDate = new Date(Date.UTC(sy, sm - 1, sd + 4, 12, 0, 0)).toISOString().split('T')[0];
+          }
+        }
+      }
+
       // 7. Subtasks Detection
       const subtasks: string[] = [];
       const subMatch = seg.match(/\b(?:subtasks?|checklist|steps?)\s*(?:includes?|are|consists?\s+of)?\s*:?\s*([^.;]+)/i);
       if (subMatch) {
         const cleanedSubClause = subMatch[1].replace(
-          /,?\s*\b(?:blocked\s+by|depends\s+on|dependent\s+on|after\s+PB-\d+|due\s+(?:in|by|on)|(?:urgent|critical|high|medium|low)\s+priority|\d+\s*-?\s*(?:points?|pts?))\b.*$/i,
+          /,?\s*\b(?:blocked\s+by|depends\s+on|dependent\s+on|after\s+(?:TCS|PB)-\d+|due\s+(?:in|by|on)|(?:urgent|critical|high|medium|low)\s+priority|\d+\s*-?\s*(?:points?|pts?))\b.*$/i,
           ''
         );
         const items = cleanedSubClause.split(/,\s*(?:and\s+)?|\s+and\s+/i);
@@ -708,13 +728,14 @@ export class AiCopilotService {
       drafts.push({
         id: `draft-${Date.now()}-${index}`,
         title,
-        description: `Composed via Voice & NLP AI Copilot from: "${seg.trim()}"`,
+        description: `Captured via AI Quick Capture from: "${seg.trim()}"`,
         projectId: targetProj.id,
         projectCode: targetProj.code,
         assigneeIds,
         assigneeWarning,
         priority,
         effortPoints,
+        startDate,
         dueDate,
         dependencies,
         subtasks,
@@ -753,7 +774,7 @@ export class AiCopilotService {
   }
 
   private isContinuationClause(clause: string): boolean {
-    return /^(?:this(?:\s+(?:task|ticket|story|item|deliverable|work))?\s+(?:depends|is\s+blocked|blocks|requires|needs|has|should|will|includes)|it\s+(?:depends|is\s+blocked|requires|should|needs)|depends\s+on|dependent\s+on|blocked\s+by|after\s+PB-\d+|prerequisite|subtasks?|checklist|steps?|due\s+(?:date|in|by|on)|priority\s*[:=]|estimated\b|effort\s*[:=]|story\s+points?\s*[:=])/i.test(
+    return /^(?:this(?:\s+(?:task|ticket|story|item|deliverable|work))?\s+(?:depends|is\s+blocked|blocks|requires|needs|has|should|will|includes)|it\s+(?:depends|is\s+blocked|requires|should|needs)|depends\s+on|dependent\s+on|blocked\s+by|after\s+(?:TCS|PB)-\d+|prerequisite|subtasks?|checklist|steps?|due\s+(?:date|in|by|on)|priority\s*[:=]|estimated\b|effort\s*[:=]|story\s+points?\s*[:=])/i.test(
       clause.trim()
     );
   }
@@ -927,7 +948,7 @@ export class AiCopilotService {
       /(?:[,;.\s]*(?:(?:this(?:\s+(?:task|ticket|story|item|deliverable|work))?|it)\s+)?\b(?:blocked\s+by|depends\s+on|dependent\s+on|prerequisite(?:\s+is)?)\b[^.;,]*)/gi,
       ''
     );
-    clean = clean.replace(/(?:[,;.\s]*\bafter\s+PB-\d+\b[^.;,]*)/gi, '');
+    clean = clean.replace(/(?:[,;.\s]*\bafter\s+(?:TCS|PB)-\d+\b[^.;,]*)/gi, '');
 
     // 5. Strip due date phrases ("due in 4 days", "due 2026-12-01", "due tomorrow", "by next week")
     clean = clean.replace(

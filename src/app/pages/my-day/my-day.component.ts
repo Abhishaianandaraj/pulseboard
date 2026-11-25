@@ -2,17 +2,16 @@ import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { TaskStoreService } from '../../services/task-store.service';
-import { Task, TaskStatus, ActivityLog } from '../../models/task.model';
-import { AiPromptModalComponent } from '../../components/ai-prompt-modal.component';
+import { TaskStoreService, formatShortDate } from '../../services/task-store.service';
+import { Task, TaskStatus } from '../../models/task.model';
 
 @Component({
   selector: 'app-my-day',
   standalone: true,
-  imports: [CommonModule, FormsModule, AiPromptModalComponent],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="my-day-wrapper custom-scroll">
-      <!-- 1. Warm Editorial Hero Card & Personal Pace Health -->
+      <!-- 1. Executive Personal & Workload Summary Card -->
       <section class="personal-hero-card">
         <div class="hero-header-row">
           <div class="hero-avatar-col">
@@ -23,41 +22,56 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
 
           <div class="hero-text-col">
             <div class="hero-name-row">
-              <h1 class="hero-greeting font-serif">{{ greeting() }}, {{ store.currentUser().name.split(' ')[0] }}<span class="brand-dot">.</span></h1>
+              <h1 class="hero-greeting">{{ greeting() }}, {{ store.currentUser().name.split(' ')[0] }}</h1>
               <span class="hero-role-pill" [attr.data-role]="store.currentUserRole()">
-                {{ store.currentUser().role }} [{{ store.currentUserRole() }}]
+                {{ store.currentUser().role }} · {{ store.getMemberAccessRole(store.currentUser()) }}
               </span>
             </div>
 
-            <!-- Inline Italic Daily Intention -->
+            <!-- Inline Daily Objective -->
             <div class="daily-intention-row">
               <span class="intention-icon">
-                <i class="ph-light ph-feather"></i>
+                <i class="ph-light ph-target"></i>
               </span>
               <input
                 type="text"
-                class="intention-input font-serif"
+                class="intention-input"
                 [ngModel]="dailyIntention()"
                 (ngModelChange)="updateIntention($event)"
-                placeholder="What is your focus for today?..."
-                title="Click to edit your daily focus intention"
+                placeholder="Set daily priority or sprint focus..."
+                title="Click to edit your daily priority note"
               />
             </div>
           </div>
 
-          <!-- Circular SVG Completion Ring & Pace Health Box -->
+          <!-- Triage Action + Completion Ring & Workload Box -->
           <div class="hero-stats-group">
+            <!-- Prominent Due Soon Filter Button for Weekly Follow-Up -->
+            <button
+              type="button"
+              class="btn-due-soon-hero"
+              [class.active]="store.filterDueSoon()"
+              (click)="toggleDueSoon()"
+              title="Filter tasks due within the next 3 days or overdue (not Completed)"
+            >
+              <i class="ph-light ph-calendar-check"></i>
+              <span>Due Soon</span>
+              <span class="due-count-pill font-mono" [class.has-urgent]="store.dueSoonCount() > 0">
+                {{ store.dueSoonCount() }}
+              </span>
+            </button>
+
             <!-- Circular Completion Ring -->
-            <div class="completion-ring-box" title="{{ myCompletedToday() }} of {{ myTotalTasks() }} tasks closed">
+            <div class="completion-ring-box" title="{{ myCompletedToday() }} of {{ myTotalTasks() }} assigned tasks Completed">
               <svg class="ring-svg" width="46" height="46" viewBox="0 0 46 46">
-                <circle class="ring-track" cx="23" cy="23" r="18" fill="none" stroke-width="3"></circle>
+                <circle class="ring-track" cx="23" cy="23" r="18" fill="none" stroke-width="3.5"></circle>
                 <circle
                   class="ring-progress"
                   cx="23"
                   cy="23"
                   r="18"
                   fill="none"
-                  stroke-width="3"
+                  stroke-width="3.5"
                   stroke-dasharray="113.097"
                   [attr.stroke-dashoffset]="113.097 - (113.097 * completionPercent()) / 100"
                 ></circle>
@@ -65,12 +79,12 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
               <span class="ring-label font-mono">{{ completionPercent() }}%</span>
             </div>
 
-            <!-- Pace Health Box -->
+            <!-- Workload Health Box -->
             <div class="hero-pace-box">
               <div class="pace-status-row">
                 <span class="pace-dot" [class.dot-optimal]="myLoadMetric().status === 'OPTIMAL'" [class.dot-near]="myLoadMetric().status === 'NEAR_CAPACITY'" [class.dot-over]="myLoadMetric().status === 'OVER_BUDGET'"></span>
                 <strong class="pace-label">{{ myLoadMetric().label }}</strong>
-                <span class="pace-info-bubble" [title]="myLoadMetric().activePoints + ' active story points + ' + (myLoadMetric().reworkCount * 3) + 'pt recovery buffer = ' + myLoadMetric().effectiveLoad + ' pts / ' + myLoadMetric().capacityBudget + ' budget'">
+                <span class="pace-info-bubble" [title]="myLoadMetric().activePoints + ' active effort points + ' + (myLoadMetric().reworkCount * 3) + 'pt rework overhead = ' + myLoadMetric().effectiveLoad + ' / ' + myLoadMetric().capacityBudget + ' pts'">
                   <i class="ph-light ph-info"></i>
                 </span>
               </div>
@@ -93,28 +107,25 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
 
       <!-- 2. Main Two-Column Delivery Layout -->
       <div class="my-day-grid">
-        <!-- LEFT COLUMN: Open-Air Active Deliverables -->
+        <!-- LEFT COLUMN: Active Deliverables / Due Soon Weekly Follow-Up Triage -->
         <div class="my-day-col">
           <div class="clean-surface-box">
             <div class="section-card-header">
               <div class="card-title-group">
-                <span class="section-icon">
-                  <i class="ph-light ph-sun-horizon"></i>
+                <span class="section-icon" [class.warn-icon]="store.filterDueSoon()">
+                  <i class="ph-light" [ngClass]="store.filterDueSoon() ? 'ph-calendar-check' : 'ph-list-checks'"></i>
                 </span>
-                <h2 class="section-title font-serif">My Active Tasks</h2>
-                <span class="section-count-badge">{{ myActiveTasks().length }}</span>
+                <h2 class="section-title">
+                  {{ store.filterDueSoon() ? 'Due Soon · Weekly Follow-Up Triage' : 'My Active Tasks' }}
+                </h2>
+                <span class="section-count-badge">{{ displayedTasks().length }}</span>
               </div>
               <div class="card-actions-group">
-                <button
-                  type="button"
-                  class="btn-ai-prompt-mini"
-                  [disabled]="!store.canCurrentUserCreateTasks()"
-                  (click)="openAiPromptModal()"
-                  [title]="store.canCurrentUserCreateTasks() ? 'Prompt with AI Voice & NLP Task Composer' : 'Task creation is restricted for ' + store.currentUserRole()"
-                >
-                  <i class="ph-light ph-microphone"></i>
-                  <span>Prompt with AI</span>
-                </button>
+                @if (store.filterDueSoon()) {
+                  <button type="button" class="btn-clear-due-filter" (click)="store.filterDueSoon.set(false)">
+                    Show My Tasks
+                  </button>
+                }
                 <button type="button" class="btn-jump-workspace" (click)="goToWorkspace()">
                   <span>Open Workspace</span>
                   <i class="ph-light ph-arrow-right"></i>
@@ -122,66 +133,98 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
               </div>
             </div>
 
-            @if (myActiveTasks().length > 0) {
+            @if (displayedTasks().length > 0) {
               <div class="open-air-task-list">
-                @for (task of myActiveTasks(); track task.id) {
-                  <div class="open-air-row" (click)="openTask(task.id)">
+                @for (task of displayedTasks(); track task.id) {
+                  <div class="open-air-row" [class.row-blocked]="task.blocked" (click)="openTask(task.id)">
                     <div class="row-main">
                       <div class="row-top-meta">
                         <span class="task-id font-mono">{{ task.id }}</span>
                         @if (getProject(task.projectId); as proj) {
                           <span class="proj-badge-mini" [style.color]="proj.color">{{ proj.code }}</span>
                         }
+                        <span class="status-chip-mini" [attr.data-status]="task.status">
+                          {{ store.getStatusLabel(task.status) }}
+                        </span>
                         <span class="priority-mini" [attr.data-priority]="task.priority">{{ task.priority }}</span>
                         @if (task.blocked) {
                           <span class="blocked-badge-mini">
                             <i class="ph-light ph-warning"></i> Blocked
                           </span>
                         }
-                        <span class="effort-badge font-mono">{{ task.effortPoints }}p</span>
+                        <span class="effort-badge font-mono">{{ task.effortPoints }} pts</span>
                       </div>
 
                       <strong class="row-title">{{ task.title }}</strong>
 
+                      @if (task.blocked && task.blockerReason) {
+                        <div class="row-blocker-reason">
+                          <i class="ph-light ph-warning-circle"></i>
+                          <span><strong>Blocker:</strong> {{ task.blockerReason }}</span>
+                        </div>
+                      }
+
+                      <!-- Progress Bar + Due Date + Assigned Owners -->
+                      <div class="row-progress-strip">
+                        <div class="row-progress-bar">
+                          <div
+                            class="row-progress-fill"
+                            [style.width.%]="task.progress"
+                            [class.fill-blocked]="task.blocked"
+                          ></div>
+                        </div>
+                        <span class="row-progress-pct font-mono">{{ task.progress }}%</span>
+                      </div>
+
                       <div class="row-bottom-meta">
-                        <span class="task-due-date font-mono text-muted">
-                          <i class="ph-light ph-calendar"></i> Due {{ task.dueDate }}
+                        <span
+                          class="task-due-date font-mono"
+                          [class.due-soon]="store.isTaskDueSoon(task)"
+                          [class.overdue]="store.isTaskOverdue(task)"
+                        >
+                          <i class="ph-light ph-calendar-blank"></i>
+                          {{ getDueSummary(task) }} ({{ formatDateShort(task.dueDate) }})
                         </span>
                         @if (task.subtasks.length > 0) {
                           <span class="checklist-badge font-mono">
                             <i class="ph-light ph-check-square"></i> {{ getCompletedSubtasks(task) }}/{{ task.subtasks.length }}
                           </span>
                         }
-                        <div class="avatar-stack">
-                          @for (m of store.getTaskMembers(task); track m.id) {
-                            <span class="avatar-stack-item" [style.background-color]="m.color" [title]="m.name">{{ m.avatar }}</span>
-                          }
+                        <div class="owners-inline">
+                          <div class="avatar-stack">
+                            @for (m of store.getTaskMembers(task); track m.id) {
+                              <span class="avatar-stack-item" [style.background-color]="m.color" [title]="m.name">{{ m.avatar }}</span>
+                            }
+                          </div>
+                          <span class="owners-names">{{ getOwnersSummary(task) }}</span>
                         </div>
                       </div>
                     </div>
 
-                    <!-- 1-Click Status Progression Pill -->
+                    <!-- 1-Click Status Progression -->
                     <div class="row-action-wrap" (click)="$event.stopPropagation()">
-                      @if (task.status === 'TODO') {
-                        <button type="button" class="btn-progression btn-start" (click)="advanceStatus(task, 'IN_PROGRESS')">
-                          <i class="ph-light ph-play"></i>
-                          <span>Start Working</span>
-                        </button>
-                      } @else if (task.status === 'IN_PROGRESS') {
-                        <button type="button" class="btn-progression btn-deploy" (click)="advanceStatus(task, 'DEPLOYED')">
-                          <i class="ph-light ph-cloud-arrow-up"></i>
-                          <span>Deploy to Staging</span>
-                        </button>
-                      } @else if (task.status === 'DEPLOYED') {
-                        @if (store.canSignOffDone()) {
-                          <button type="button" class="btn-progression btn-done" (click)="advanceStatus(task, 'DONE')">
-                            <i class="ph-light ph-check"></i>
-                            <span>Verify &amp; Close</span>
+                      @if (store.canEditTask(task)) {
+                        @if (task.status === 'TODO') {
+                          <button type="button" class="btn-progression btn-start" (click)="advanceStatus(task, 'IN_PROGRESS')">
+                            <i class="ph-light ph-play"></i>
+                            <span>Start Task</span>
                           </button>
-                        } @else {
-                          <span class="waiting-lead-tag">
-                            <i class="ph-light ph-clock"></i> Awaiting Lead
-                          </span>
+                        } @else if (task.status === 'IN_PROGRESS') {
+                          <button type="button" class="btn-progression btn-deploy" (click)="advanceStatus(task, 'DEPLOYED')">
+                            <i class="ph-light ph-clipboard-text"></i>
+                            <span>Submit Review</span>
+                          </button>
+                        } @else if (task.status === 'DEPLOYED') {
+                          @if (store.canSignOffDone()) {
+                            <button type="button" class="btn-progression btn-done" (click)="advanceStatus(task, 'DONE')">
+                              <i class="ph-light ph-check"></i>
+                              <span>Approve</span>
+                            </button>
+                          } @else {
+                            <span class="waiting-lead-tag">
+                              <i class="ph-light ph-clock"></i> Under Review
+                            </span>
+                          }
                         }
                       }
                     </div>
@@ -191,24 +234,28 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
             } @else {
               <div class="empty-state-box">
                 <span class="empty-icon"><i class="ph-light ph-check-circle"></i></span>
-                <strong class="font-serif">All caught up!</strong>
-                <p>You have zero pending tasks on your active board. Head to the workspace to pick up new work.</p>
-                <button type="button" class="btn-empty-action" (click)="goToWorkspace()">Explore Workspace</button>
+                <strong>{{ store.filterDueSoon() ? 'No Urgent Deadlines' : 'All Assigned Tasks Completed' }}</strong>
+                <p>
+                  {{ store.filterDueSoon()
+                    ? 'Zero open tasks are due within the next 3 days or overdue.'
+                    : 'You have no open tasks assigned. Create a task or inspect the Workspace board.' }}
+                </p>
+                <button type="button" class="btn-empty-action" (click)="goToWorkspace()">Open Workspace</button>
               </div>
             }
           </div>
         </div>
 
-        <!-- RIGHT COLUMN: Needs Attention & Project Pulse -->
+        <!-- RIGHT COLUMN: Needs Attention & Activity Log -->
         <div class="my-day-col">
-          <!-- Attention / Review Queue -->
+          <!-- Review & Blocker Queue -->
           <div class="clean-surface-box">
             <div class="section-card-header">
               <div class="card-title-group">
                 <span class="section-icon attention-icon-wrap">
                   <i class="ph-light ph-warning-circle"></i>
                 </span>
-                <h2 class="section-title font-serif">Needs Attention</h2>
+                <h2 class="section-title">Needs Attention</h2>
                 <span class="section-count-badge attention-badge">{{ attentionItems().length }}</span>
               </div>
             </div>
@@ -221,13 +268,14 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
                       <div class="row-top-meta">
                         <span class="font-mono text-muted text-xs">{{ item.id }}</span>
                         <span class="attention-tag" [class.tag-deployed]="item.status === 'DEPLOYED'" [class.tag-blocked]="item.blocked">
-                          {{ item.status === 'DEPLOYED' ? 'Ready for Lead Check' : (item.blocked ? 'Blocked' : 'Needs Changes') }}
+                          {{ item.status === 'DEPLOYED' ? 'Under Review · Sign-Off' : (item.blocked ? 'Blocked' : 'Rework Active') }}
                         </span>
+                        <span class="font-mono text-xs text-muted">{{ item.progress }}%</span>
                       </div>
                       <strong class="row-title">{{ item.title }}</strong>
                       <div class="row-bottom-meta">
-                        <span class="text-secondary text-xs">{{ getMemberName(item.assigneeId) }}</span>
-                        <span class="font-mono text-muted text-xs">Due {{ item.dueDate }}</span>
+                        <span class="text-secondary text-xs">{{ getOwnersSummary(item) }}</span>
+                        <span class="font-mono text-muted text-xs">Due {{ formatDateShort(item.dueDate) }}</span>
                       </div>
                     </div>
                     <span class="row-nav-arrow">
@@ -238,28 +286,28 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
               </div>
             } @else {
               <div class="calm-box">
-                <i class="ph-light ph-sparkle"></i>
-                <span>No urgent blockers or pending reviews requiring your action.</span>
+                <i class="ph-light ph-check-circle"></i>
+                <span>No blocked tasks or pending reviews requiring action.</span>
               </div>
             }
           </div>
 
-          <!-- Recent Project Pulse / Activity Log -->
+          <!-- Activity Log -->
           <div class="clean-surface-box">
             <div class="section-card-header">
               <div class="card-title-group">
                 <span class="section-icon">
-                  <i class="ph-light ph-wave-sine"></i>
+                  <i class="ph-light ph-clock-counter-clockwise"></i>
                 </span>
-                <h2 class="section-title font-serif">Recent Project Pulse</h2>
+                <h2 class="section-title">Activity Log</h2>
               </div>
               @if (store.canCurrentUserViewAllLogs()) {
-                <span class="pulse-scope-badge scope-portfolio font-mono" title="Lead & Delivery Manager Access: Full portfolio events visible">
-                  <i class="ph-light ph-shield-check"></i> Full Portfolio
+                <span class="pulse-scope-badge scope-portfolio font-mono" title="Lead & Manager Access: Full workspace events visible">
+                  <i class="ph-light ph-shield-check"></i> All Team Logs
                 </span>
               } @else {
-                <span class="pulse-scope-badge scope-personal font-mono" title="Personal Scope: Showing events where you are actor or task assignee">
-                  <i class="ph-light ph-lock-simple"></i> Personal View
+                <span class="pulse-scope-badge scope-personal font-mono" title="Personal Scope: Showing events where you are actor or owner">
+                  <i class="ph-light ph-user"></i> Personal Logs
                 </span>
               }
             </div>
@@ -267,7 +315,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
             <div class="activity-feed-list custom-scroll">
               @for (log of recentLogs(); track log.id) {
                 <div class="activity-feed-item">
-                  <span class="feed-avatar" style="background: var(--accent-primary)">{{ log.actorAvatar }}</span>
+                  <span class="feed-avatar">{{ log.actorAvatar }}</span>
                   <div class="feed-content">
                     <div class="feed-top-row">
                       <strong class="feed-actor">{{ log.actor }}</strong>
@@ -276,24 +324,23 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
                     <p class="feed-detail">{{ log.details }}</p>
                   </div>
                 </div>
+              } @empty {
+                <div class="calm-box">
+                  <span>No recent activity logged yet.</span>
+                </div>
               }
             </div>
           </div>
         </div>
       </div>
-
-      <!-- STANDALONE PROMPT WITH AI MODAL -->
-      @if (isAiPromptModalOpen()) {
-        <app-ai-prompt-modal (closeModal)="closeAiPromptModal()"></app-ai-prompt-modal>
-      }
     </div>
   `,
   styles: [`
     .my-day-wrapper {
-      padding: 24px 28px 48px;
+      padding: 20px 24px 40px;
       display: flex;
       flex-direction: column;
-      gap: 22px;
+      gap: 20px;
       min-height: 100%;
     }
 
@@ -301,33 +348,32 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
       border-radius: var(--radius-card);
-      padding: 24px 28px;
-      box-shadow: var(--shadow-soft);
+      padding: 20px 24px;
+      box-shadow: var(--shadow-sm);
     }
 
     .hero-header-row {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 18px;
       flex-wrap: wrap;
     }
 
     .user-hero-avatar {
-      width: 52px;
-      height: 52px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       color: #ffffff;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     }
 
     .hero-text-col {
       flex: 1;
-      min-width: 260px;
+      min-width: 240px;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -335,60 +381,43 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
 
     .hero-name-row {
       display: flex;
-      align-items: baseline;
-      gap: 12px;
+      align-items: center;
+      gap: 10px;
       flex-wrap: wrap;
     }
 
     .hero-greeting {
-      font-size: 26px;
-      font-weight: 500;
+      font-size: 21px;
+      font-weight: 700;
       color: var(--text-primary);
       margin: 0;
       letter-spacing: -0.02em;
     }
 
-    .brand-dot {
-      color: var(--accent-primary);
-    }
-
     .hero-role-pill {
       font-size: 11px;
       font-weight: 600;
-      padding: 3px 10px;
+      padding: 2px 9px;
       border-radius: var(--radius-pill);
       background: var(--bg-subtle);
       border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
     }
 
-    .hero-role-pill[data-role="LEAD"], .hero-role-pill[data-role="ADMIN"] {
-      color: var(--status-done);
-      border-color: rgba(78, 124, 89, 0.3);
-      background: rgba(78, 124, 89, 0.1);
-    }
-
-    .hero-role-pill[data-role="QA"] {
-      color: var(--status-deployed);
-      border-color: rgba(123, 104, 174, 0.3);
-      background: rgba(123, 104, 174, 0.1);
-    }
-
     .daily-intention-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-top: 2px;
     }
 
     .intention-icon {
       color: var(--accent-primary);
       font-size: 14px;
+      display: flex;
     }
 
     .intention-input {
-      font-style: italic;
-      font-size: 13.5px;
+      font-size: 13px;
       color: var(--text-secondary);
       background: transparent;
       border: none;
@@ -396,7 +425,6 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       width: 100%;
       border-bottom: 1px dashed transparent;
       padding: 2px 0;
-      transition: var(--transition-tactile);
     }
 
     .intention-input:hover, .intention-input:focus {
@@ -407,7 +435,47 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     .hero-stats-group {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn-due-soon-hero {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+
+    .btn-due-soon-hero:hover {
+      border-color: var(--accent-warn);
+    }
+
+    .btn-due-soon-hero.active {
+      background: var(--accent-warn-tint);
+      border-color: var(--accent-warn);
+      color: var(--accent-warn);
+    }
+
+    .due-count-pill {
+      padding: 1px 7px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+    }
+
+    .due-count-pill.has-urgent {
+      background: var(--accent-warn);
+      color: #fff;
     }
 
     .completion-ring-box {
@@ -419,18 +487,12 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       justify-content: center;
     }
 
-    .ring-svg {
-      transform: rotate(-90deg);
-    }
-
-    .ring-track {
-      stroke: var(--border-hairline);
-    }
-
+    .ring-svg { transform: rotate(-90deg); }
+    .ring-track { stroke: var(--border-hairline); }
     .ring-progress {
       stroke: var(--accent-primary);
       stroke-linecap: round;
-      transition: stroke-dashoffset 0.5s var(--ease-tactile);
+      transition: stroke-dashoffset 0.35s ease;
     }
 
     .ring-label {
@@ -444,8 +506,8 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       display: flex;
       flex-direction: column;
       gap: 5px;
-      min-width: 190px;
-      padding: 10px 14px;
+      min-width: 185px;
+      padding: 9px 13px;
       background: var(--bg-subtle);
       border: 1px solid var(--border-hairline);
       border-radius: var(--radius-inner);
@@ -462,7 +524,6 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       height: 7px;
       border-radius: 50%;
     }
-
     .dot-optimal { background: var(--status-done); }
     .dot-near { background: var(--accent-warn); }
     .dot-over { background: var(--accent-danger); }
@@ -490,9 +551,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     .pace-fill-mini {
       height: 100%;
       border-radius: var(--radius-pill);
-      transition: width 0.3s var(--ease-tactile);
     }
-
     .fill-optimal { background: var(--status-done); }
     .fill-near { background: var(--accent-warn); }
     .fill-over { background: var(--accent-danger); }
@@ -506,11 +565,11 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     .my-day-grid {
       display: grid;
       grid-template-columns: 1.4fr 1fr;
-      gap: 22px;
+      gap: 20px;
       align-items: start;
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 960px) {
       .my-day-grid {
         grid-template-columns: 1fr;
       }
@@ -519,24 +578,26 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     .my-day-col {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
+      min-width: 0;
     }
 
     .clean-surface-box {
       background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
       border-radius: var(--radius-card);
-      box-shadow: var(--shadow-soft);
+      box-shadow: var(--shadow-sm);
       overflow: hidden;
     }
 
     .section-card-header {
-      padding: 16px 20px;
+      padding: 14px 18px;
       border-bottom: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+      flex-wrap: wrap;
     }
 
     .card-title-group {
@@ -551,22 +612,21 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       display: flex;
       align-items: center;
     }
-
-    .attention-icon-wrap {
+    .section-icon.warn-icon, .attention-icon-wrap {
       color: var(--accent-warn);
     }
 
     .section-title {
-      font-size: 16px;
-      font-weight: 500;
+      font-size: 14.5px;
+      font-weight: 700;
       color: var(--text-primary);
       margin: 0;
     }
 
     .section-count-badge {
-      font-size: 10px;
+      font-size: 10.5px;
       font-family: var(--font-mono);
-      font-weight: 600;
+      font-weight: 700;
       padding: 1px 7px;
       border-radius: var(--radius-pill);
       background: var(--bg-subtle);
@@ -577,22 +637,6 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     .attention-badge {
       background: var(--accent-warn-tint);
       color: var(--accent-warn);
-      border-color: rgba(197, 155, 78, 0.3);
-    }
-
-    .btn-jump-workspace {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 12px;
-      border-radius: var(--radius-pill);
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
-      color: var(--text-secondary);
-      font-size: 11.5px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: var(--transition-tactile);
     }
 
     .card-actions-group {
@@ -601,66 +645,43 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       gap: 8px;
     }
 
-    .btn-ai-prompt-mini {
+    .btn-clear-due-filter, .btn-jump-workspace {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      padding: 5px 12px;
+      padding: 5px 11px;
       border-radius: var(--radius-pill);
       background: var(--bg-subtle);
       border: 1px solid var(--border-hairline);
-      color: var(--text-primary);
+      color: var(--text-secondary);
       font-size: 11.5px;
       font-weight: 600;
       cursor: pointer;
-      white-space: nowrap;
-      transition: var(--transition-tactile);
     }
 
-    .btn-ai-prompt-mini:hover:not(:disabled) {
-      background: var(--accent-primary-tint);
-      border-color: var(--accent-primary);
+    .btn-jump-workspace:hover, .btn-clear-due-filter:hover {
       color: var(--accent-primary);
-      transform: translateY(-1px);
-    }
-
-    .btn-ai-prompt-mini:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-      transform: none !important;
+      border-color: var(--accent-primary);
     }
 
     .pulse-scope-badge {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      padding: 3px 10px;
+      padding: 3px 9px;
       border-radius: var(--radius-pill);
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 600;
-      white-space: nowrap;
-    }
-
-    .pulse-scope-badge.scope-portfolio {
-      background: var(--accent-primary-tint);
-      color: var(--accent-primary);
-      border: 1px solid rgba(92, 115, 98, 0.3);
-    }
-
-    .pulse-scope-badge.scope-personal {
       background: var(--bg-subtle);
       color: var(--text-secondary);
       border: 1px solid var(--border-hairline);
     }
 
-    .btn-jump-workspace:hover {
+    .pulse-scope-badge.scope-portfolio {
       background: var(--accent-primary-tint);
-      border-color: rgba(92, 115, 98, 0.3);
       color: var(--accent-primary);
-      transform: translateY(-1px);
     }
 
-    /* Open-Air Row List Architecture */
     .open-air-task-list {
       display: flex;
       flex-direction: column;
@@ -670,40 +691,35 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      padding: 14px 20px;
+      gap: 14px;
+      padding: 14px 18px;
       border-bottom: 1px solid var(--border-hairline);
       cursor: pointer;
-      transition: var(--transition-tactile);
+      transition: background 0.14s ease;
     }
-
-    .open-air-row:last-child {
-      border-bottom: none;
-    }
-
-    .open-air-row:hover {
-      background: var(--bg-subtle);
-      padding-left: 24px;
-    }
+    .open-air-row:last-child { border-bottom: none; }
+    .open-air-row:hover { background: var(--bg-subtle); }
+    .open-air-row.row-blocked { border-left: 3px solid var(--accent-danger); }
 
     .row-main {
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 6px;
       min-width: 0;
     }
 
     .row-top-meta {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
       font-size: 11px;
+      flex-wrap: wrap;
     }
 
     .task-id {
       color: var(--text-muted);
-      font-size: 11px;
+      font-weight: 700;
     }
 
     .proj-badge-mini {
@@ -712,34 +728,37 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       padding: 1px 6px;
       border-radius: var(--radius-pill);
       background: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
     }
 
-    .priority-mini {
-      font-size: 9.5px;
-      font-weight: 600;
+    .status-chip-mini {
+      font-size: 10px;
+      font-weight: 700;
       padding: 1px 6px;
       border-radius: var(--radius-pill);
       background: var(--bg-subtle);
       color: var(--text-secondary);
     }
+    .status-chip-mini[data-status="IN_PROGRESS"] { background: var(--accent-primary-tint); color: var(--accent-primary); }
+    .status-chip-mini[data-status="DEPLOYED"] { background: var(--status-deployed-bg); color: var(--status-deployed-text); }
 
-    .priority-mini[data-priority="CRITICAL"] {
-      background: var(--badge-critical-bg);
-      color: var(--badge-critical-text);
+    .priority-mini {
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
     }
-    .priority-mini[data-priority="HIGH"] {
-      background: var(--badge-high-bg);
-      color: var(--badge-high-text);
-    }
+    .priority-mini[data-priority="CRITICAL"] { background: var(--badge-critical-bg); color: var(--badge-critical-text); }
+    .priority-mini[data-priority="HIGH"] { background: var(--badge-high-bg); color: var(--badge-high-text); }
 
     .blocked-badge-mini {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      font-size: 9.5px;
-      font-weight: 600;
-      padding: 1px 7px;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
       border-radius: var(--radius-pill);
       background: var(--status-blocked-bg);
       color: var(--status-blocked-text);
@@ -747,7 +766,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
 
     .effort-badge {
       font-size: 10.5px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--text-muted);
       background: var(--bg-subtle);
       padding: 1px 6px;
@@ -759,16 +778,54 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       font-size: 13.5px;
       font-weight: 600;
       color: var(--text-primary);
-      white-space: nowrap;
+      line-height: 1.35;
+    }
+
+    .row-blocker-reason {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      color: var(--status-blocked-text);
+      background: var(--status-blocked-bg);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .row-progress-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 280px;
+    }
+
+    .row-progress-bar {
+      flex: 1;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--bg-subtle);
       overflow: hidden;
-      text-overflow: ellipsis;
+    }
+
+    .row-progress-fill {
+      height: 100%;
+      background: var(--accent-primary);
+      border-radius: 999px;
+    }
+    .row-progress-fill.fill-blocked { background: var(--accent-danger); }
+
+    .row-progress-pct {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
     }
 
     .row-bottom-meta {
       display: flex;
       align-items: center;
       gap: 12px;
-      font-size: 11.5px;
+      font-size: 11px;
+      flex-wrap: wrap;
     }
 
     .task-due-date, .checklist-badge {
@@ -778,137 +835,146 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       color: var(--text-muted);
     }
 
-    /* Status Progression Pill Buttons */
+    .task-due-date.due-soon {
+      color: var(--accent-warn);
+      font-weight: 700;
+    }
+
+    .task-due-date.overdue {
+      color: var(--accent-danger);
+      font-weight: 700;
+    }
+
+    .owners-inline {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .owners-names {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .avatar-stack {
+      display: flex;
+      align-items: center;
+    }
+
+    .avatar-stack-item {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 8.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid var(--bg-surface);
+      margin-left: -4px;
+    }
+    .avatar-stack-item:first-child { margin-left: 0; }
+
     .row-action-wrap {
       display: flex;
       align-items: center;
+      flex-shrink: 0;
     }
 
     .btn-progression {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 5px 14px;
+      gap: 5px;
+      padding: 6px 12px;
       border-radius: var(--radius-pill);
       font-size: 11.5px;
       font-weight: 600;
       border: 1px solid transparent;
       cursor: pointer;
-      transition: var(--transition-tactile);
       white-space: nowrap;
     }
 
     .btn-start {
       background: var(--accent-primary-tint);
       color: var(--accent-primary);
-      border-color: rgba(92, 115, 98, 0.3);
+      border-color: var(--border-subtle);
     }
-
-    .btn-start:hover {
-      background: var(--accent-primary);
-      color: #ffffff;
-      transform: translateY(-1px);
-    }
+    .btn-start:hover { background: var(--accent-primary); color: #fff; }
 
     .btn-deploy {
       background: var(--status-deployed-bg);
       color: var(--status-deployed-text);
-      border-color: rgba(123, 104, 174, 0.3);
     }
-
-    .btn-deploy:hover {
-      background: var(--status-deployed);
-      color: #ffffff;
-      transform: translateY(-1px);
-    }
+    .btn-deploy:hover { background: var(--status-deployed); color: #fff; }
 
     .btn-done {
       background: var(--status-done-bg);
       color: var(--status-done-text);
-      border-color: rgba(78, 124, 89, 0.3);
     }
-
-    .btn-done:hover {
-      background: var(--status-done);
-      color: #ffffff;
-      transform: translateY(-1px);
-    }
+    .btn-done:hover { background: var(--status-done); color: #fff; }
 
     .waiting-lead-tag {
       display: inline-flex;
       align-items: center;
       gap: 5px;
       font-size: 11px;
-      font-weight: 500;
-      color: var(--text-muted);
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
+      font-weight: 600;
+      color: var(--status-deployed-text);
+      background: var(--status-deployed-bg);
       padding: 4px 10px;
       border-radius: var(--radius-pill);
     }
 
-    .row-nav-arrow {
-      color: var(--text-muted);
-      font-size: 14px;
-      transition: var(--transition-tactile);
-    }
-
-    .attention-row:hover .row-nav-arrow {
-      color: var(--accent-primary);
-      transform: translateX(3px);
-    }
-
     .attention-tag {
       font-size: 10px;
-      font-weight: 600;
+      font-weight: 700;
       padding: 1px 7px;
       border-radius: var(--radius-pill);
       background: var(--bg-subtle);
       color: var(--text-secondary);
     }
+    .tag-deployed { background: var(--status-deployed-bg); color: var(--status-deployed-text); }
+    .tag-blocked { background: var(--status-blocked-bg); color: var(--status-blocked-text); }
 
-    .tag-deployed {
-      background: var(--status-deployed-bg);
-      color: var(--status-deployed-text);
-    }
-
-    .tag-blocked {
-      background: var(--status-blocked-bg);
-      color: var(--status-blocked-text);
+    .row-nav-arrow {
+      color: var(--text-muted);
+      font-size: 14px;
     }
 
     .calm-box {
-      padding: 24px;
+      padding: 22px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       color: var(--text-muted);
       font-size: 12.5px;
       justify-content: center;
     }
 
     .activity-feed-list {
-      max-height: 62vh;
+      max-height: 58vh;
       overflow-y: auto;
-      padding-right: 4px;
     }
 
     .activity-feed-item {
       display: flex;
-      gap: 12px;
-      padding: 12px 20px;
+      gap: 10px;
+      padding: 12px 18px;
       border-bottom: 1px solid var(--border-hairline);
     }
-
     .activity-feed-item:last-child {
       border-bottom: none;
-      padding-bottom: 24px;
+      padding-bottom: 20px;
     }
 
     .feed-avatar {
       width: 24px;
       height: 24px;
       border-radius: 50%;
+      background: var(--accent-primary);
       color: #ffffff;
       font-size: 9px;
       font-weight: 700;
@@ -923,12 +989,14 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       display: flex;
       flex-direction: column;
       gap: 2px;
+      min-width: 0;
     }
 
     .feed-top-row {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
+      gap: 8px;
     }
 
     .feed-actor {
@@ -939,6 +1007,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     .feed-time {
       font-size: 10px;
       color: var(--text-muted);
+      white-space: nowrap;
     }
 
     .feed-detail {
@@ -949,22 +1018,24 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     }
 
     .empty-state-box {
-      padding: 40px 24px;
+      padding: 36px 24px;
       text-align: center;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 8px;
+      color: var(--text-secondary);
+      font-size: 12.5px;
     }
 
     .empty-icon {
-      font-size: 32px;
+      font-size: 28px;
       color: var(--status-done);
     }
 
     .btn-empty-action {
-      margin-top: 8px;
-      padding: 6px 16px;
+      margin-top: 6px;
+      padding: 7px 16px;
       border-radius: var(--radius-pill);
       background: var(--accent-primary);
       color: #ffffff;
@@ -972,13 +1043,11 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: var(--transition-tactile);
     }
 
-    .btn-empty-action:hover {
-      background: var(--accent-primary-hover);
-      transform: translateY(-1px);
-    }
+    .text-xs { font-size: 11px; }
+    .text-muted { color: var(--text-muted); }
+    .text-secondary { color: var(--text-secondary); }
   `]
 })
 export class MyDayComponent {
@@ -987,12 +1056,16 @@ export class MyDayComponent {
   protected readonly Math = Math;
 
   readonly dailyIntention = signal<string>(
-    localStorage.getItem('pb_daily_intention') || 'Ship streaming token batching & review stage pull requests'
+    localStorage.getItem('tcs_ai_daily_focus') || 'Complete RAG chunking benchmark & review weekly follow-up items'
   );
 
   updateIntention(val: string): void {
     this.dailyIntention.set(val);
-    localStorage.setItem('pb_daily_intention', val);
+    localStorage.setItem('tcs_ai_daily_focus', val);
+  }
+
+  toggleDueSoon(): void {
+    this.store.filterDueSoon.update(v => !v);
   }
 
   readonly greeting = computed(() => {
@@ -1045,13 +1118,20 @@ export class MyDayComponent {
     });
   });
 
+  readonly displayedTasks = computed(() => {
+    if (this.store.filterDueSoon()) {
+      return this.store.dueSoonTasks();
+    }
+    return this.myActiveTasks();
+  });
+
   readonly attentionItems = computed(() => {
     const curUser = this.store.currentUser();
     const visibleProjIds = new Set(this.store.visibleProjects().map(p => p.id));
     const tasks = this.store.tasks().filter(t => visibleProjIds.has(t.projectId));
 
     if (curUser.systemRole === 'LEAD' || curUser.systemRole === 'ADMIN') {
-      return tasks.filter(t => t.status === 'DEPLOYED');
+      return tasks.filter(t => t.status === 'DEPLOYED' || (t.blocked && t.status !== 'DONE'));
     }
     if (curUser.systemRole === 'QA') {
       return tasks.filter(t => t.status === 'DEPLOYED' || (t.blocked && t.status !== 'DONE'));
@@ -1072,9 +1152,22 @@ export class MyDayComponent {
     return this.store.projectMap().get(projectId);
   }
 
-  getMemberName(memberId?: string): string {
-    if (!memberId) return 'Team';
-    return this.store.assigneeMap().get(memberId)?.name || 'Team';
+  getOwnersSummary(task: Task): string {
+    const members = this.store.getTaskMembers(task);
+    if (members.length === 0) return 'Unassigned';
+    return members.map(m => m.name).join(', ');
+  }
+
+  formatDateShort(iso: string): string {
+    return formatShortDate(iso);
+  }
+
+  getDueSummary(task: Task): string {
+    const days = this.store.getDaysUntilDue(task);
+    if (days < 0) return `Overdue ${Math.abs(days)}d`;
+    if (days === 0) return 'Due Today';
+    if (days === 1) return 'Due Tomorrow';
+    return `Due in ${days}d`;
   }
 
   getCompletedSubtasks(task: Task): number {
@@ -1087,17 +1180,6 @@ export class MyDayComponent {
 
   openTask(taskId: string): void {
     this.store.selectTask(taskId);
-  }
-
-  readonly isAiPromptModalOpen = signal<boolean>(false);
-
-  openAiPromptModal(): void {
-    if (!this.store.canCreateTasks()) return;
-    this.isAiPromptModalOpen.set(true);
-  }
-
-  closeAiPromptModal(): void {
-    this.isAiPromptModalOpen.set(false);
   }
 
   goToWorkspace(): void {

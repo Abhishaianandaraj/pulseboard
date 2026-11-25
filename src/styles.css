@@ -24,6 +24,8 @@
 
   /* LIGHT THEME (Alabaster & Sage) */
   --bg-canvas: #F9F8F6;
+  --surface-overlay: rgba(20, 19, 18, 0.45);
+  --surface-modal: var(--bg-surface, #FFFFFF);
   --bg-surface: #FFFFFF;
   --bg-subtle: #F2EFE9;
   --bg-elevated: #F2EFE9;

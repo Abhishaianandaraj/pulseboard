@@ -1,8 +1,15 @@
-import { Component, inject, signal, computed, input, output } from '@angular/core';
+import { Component, inject, signal, computed, input, output, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TaskStoreService } from '../services/task-store.service';
-import { SystemRole, RolePermissionPolicy, TeamMember, Project } from '../models/task.model';
+import {
+  SystemRole,
+  RolePermissionPolicy,
+  TeamMember,
+  MemberAccessRole
+} from '../models/task.model';
+
+type TeamSettingsTab = 'MEMBERS' | 'PROJECTS' | 'SETTINGS';
 
 @Component({
   selector: 'app-share-permissions-modal',
@@ -11,16 +18,16 @@ import { SystemRole, RolePermissionPolicy, TeamMember, Project } from '../models
   template: `
     <div class="modal-backdrop" (click)="close.emit()">
       <div class="modal-card" (click)="$event.stopPropagation()">
-        <!-- Modal Header -->
+        <!-- Sticky Header -->
         <div class="modal-header">
           <div class="modal-title-row">
             <span class="modal-icon-wrap">
               <i class="ph-light ph-users-three"></i>
             </span>
             <div>
-              <h3 class="modal-title font-serif">Share &amp; Permissions<span class="brand-dot">.</span></h3>
+              <h3 class="modal-title">Team &amp; Members — {{ store.brandName() }}</h3>
               <p class="modal-sub">
-                Granular project squad membership, role permissions, and personal vs. portfolio audit log visibility.
+                Manage team members, projects, project access, workspace branding, and role permissions
               </p>
             </div>
           </div>
@@ -29,54 +36,225 @@ import { SystemRole, RolePermissionPolicy, TeamMember, Project } from '../models
           </button>
         </div>
 
-        <!-- Modal Body -->
+        <!-- Tab Navigation Strip -->
+        <div class="tabs-bar">
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="activeTab() === 'MEMBERS'"
+            (click)="activeTab.set('MEMBERS')"
+          >
+            <i class="ph-light ph-users"></i>
+            <span>Team Members ({{ store.teamMembers().length }})</span>
+          </button>
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="activeTab() === 'PROJECTS'"
+            (click)="activeTab.set('PROJECTS')"
+          >
+            <i class="ph-light ph-folder-simple"></i>
+            <span>Projects &amp; Access ({{ store.projects().length }})</span>
+          </button>
+          <button
+            type="button"
+            class="tab-btn"
+            [class.active]="activeTab() === 'SETTINGS'"
+            (click)="activeTab.set('SETTINGS')"
+          >
+            <i class="ph-light ph-gear-six"></i>
+            <span>Team Settings &amp; Permissions</span>
+          </button>
+        </div>
+
+        <!-- Scrollable Modal Body -->
         <div class="modal-body custom-scroll">
-          <!-- Active Role Scope Indicator -->
-          <div class="scope-banner" [class.is-personal]="!store.canCurrentUserViewAllLogs()">
-            @if (store.canCurrentUserViewAllLogs()) {
-              <i class="ph-light ph-shield-check banner-icon"></i>
-              <div class="banner-text">
-                <strong>Full Portfolio Audit View Active</strong>
-                <span>Your role ({{ store.currentUserRole() }}) has permission to inspect all activity events across projects.</span>
-              </div>
-            } @else {
-              <i class="ph-light ph-lock-simple banner-icon"></i>
-              <div class="banner-text">
-                <strong>Personal Activity View Active</strong>
-                <span>Your audit log is scoped to actions you initiated or tasks assigned to you. Full logs are restricted to Tech Lead &amp; Delivery Manager.</span>
+          @if (!store.canCurrentUserManageSharing()) {
+            <div class="readonly-banner">
+              <i class="ph-light ph-lock-simple"></i>
+              <span>You are signed in with a Member role. Switch to a Lead or Manager profile to add/edit members, rename the workspace, or modify permissions.</span>
+            </div>
+          }
+
+          @if (feedbackMessage()) {
+            <div class="feedback-banner" [class.is-error]="feedbackIsError()">
+              <i class="ph-light" [class.ph-warning]="feedbackIsError()" [class.ph-check-circle]="!feedbackIsError()"></i>
+              <span>{{ feedbackMessage() }}</span>
+            </div>
+          }
+
+          <!-- TAB 1: TEAM MEMBERS ROSTER (ADD / EDIT / REMOVE) -->
+          @if (activeTab() === 'MEMBERS') {
+            @if (store.canCurrentUserManageSharing()) {
+              <div class="section-box">
+                <div class="section-head">
+                  <h4 class="section-title">Add Team Member</h4>
+                </div>
+                <div class="add-member-grid">
+                  <input
+                    type="text"
+                    class="form-input"
+                    [(ngModel)]="newMemberName"
+                    placeholder="Full Name (e.g., Ananya Sharma)"
+                  />
+                  <input
+                    type="email"
+                    class="form-input"
+                    [(ngModel)]="newMemberEmail"
+                    placeholder="Email (e.g., ananya.s@tcs-ai.internal)"
+                  />
+                  <select class="form-select" [(ngModel)]="newMemberRole">
+                    <option value="Member">Role: Member</option>
+                    <option value="Lead">Role: Lead</option>
+                    <option value="Manager">Role: Manager</option>
+                  </select>
+                  <button
+                    type="button"
+                    class="btn-primary"
+                    [disabled]="!newMemberName.trim()"
+                    (click)="submitAddMember()"
+                  >
+                    <i class="ph-light ph-user-plus"></i>
+                    <span>Add Member</span>
+                  </button>
+                </div>
               </div>
             }
-          </div>
 
-          <!-- Section 1: Project Squad Access -->
-          <div class="modal-section">
-            <div class="section-header-row">
-              <div class="section-title-wrap">
-                <span class="section-step-pill">SECTION 1</span>
-                <h4 class="section-title">Project Squad Access</h4>
+            <div class="section-box">
+              <div class="section-head">
+                <h4 class="section-title">Workspace Directory</h4>
+                <span class="section-hint">Switch, edit, or remove team members</span>
               </div>
 
-              <!-- Copy Link Action -->
-              <button
-                type="button"
-                class="btn-copy-link"
-                (click)="copyProjectLink()"
-                [title]="copiedLink() ? 'Copied to clipboard!' : 'Copy shareable link'"
-              >
-                @if (copiedLink()) {
-                  <i class="ph-light ph-check text-success"></i>
-                  <span class="text-success font-medium">Link Copied!</span>
-                } @else {
-                  <i class="ph-light ph-link-simple"></i>
-                  <span>Copy Workspace Link</span>
-                }
-              </button>
-            </div>
+              <div class="roster-list">
+                @for (member of store.teamMembers(); track member.id) {
+                  <div class="roster-row">
+                    @if (editingMemberId() === member.id) {
+                      <!-- Inline Member Editor -->
+                      <div class="edit-member-grid">
+                        <input type="text" class="form-input" [(ngModel)]="editName" placeholder="Name" />
+                        <input type="email" class="form-input" [(ngModel)]="editEmail" placeholder="Email" />
+                        <select class="form-select" [(ngModel)]="editRole">
+                          <option value="Member">Member</option>
+                          <option value="Lead">Lead</option>
+                          <option value="Manager">Manager</option>
+                        </select>
+                        <div class="edit-actions">
+                          <button type="button" class="btn-primary btn-sm" (click)="saveMemberEdit(member.id)">Save</button>
+                          <button type="button" class="btn-secondary btn-sm" (click)="cancelMemberEdit()">Cancel</button>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="member-info-left">
+                        <span class="avatar-circle" [style.background-color]="member.color">{{ member.avatar }}</span>
+                        <div class="member-text">
+                          <div class="member-name-line">
+                            <strong>{{ member.name }}</strong>
+                            @if (member.id === store.currentUserId()) {
+                              <span class="you-tag">Active User</span>
+                            }
+                          </div>
+                          <span class="member-email">{{ member.email }} · {{ member.role }}</span>
+                        </div>
+                      </div>
 
-            <!-- Project Selector Pills -->
-            <div class="project-selector-row">
-              <span class="field-label">Target Project:</span>
-              <div class="project-pills">
+                      <div class="member-actions-right">
+                        <span class="access-role-pill" [attr.data-access]="store.getMemberAccessRole(member)">
+                          {{ store.getMemberAccessRole(member) }}
+                        </span>
+
+                        @if (member.id !== store.currentUserId()) {
+                          <button
+                            type="button"
+                            class="btn-secondary btn-sm"
+                            (click)="store.switchCurrentUser(member.id)"
+                            title="Switch active session to this member"
+                          >
+                            Switch User
+                          </button>
+                        }
+
+                        @if (store.canCurrentUserManageSharing()) {
+                          <button
+                            type="button"
+                            class="btn-icon"
+                            (click)="startMemberEdit(member)"
+                            title="Edit member"
+                          >
+                            <i class="ph-light ph-pencil-simple"></i>
+                          </button>
+                          @if (member.id !== store.currentUserId() && store.teamMembers().length > 1) {
+                            <button
+                              type="button"
+                              class="btn-icon btn-icon-danger"
+                              (click)="removeMember(member)"
+                              title="Remove member"
+                            >
+                              <i class="ph-light ph-trash"></i>
+                            </button>
+                          }
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- TAB 2: PROJECTS & PROJECT MEMBER ASSIGNMENT -->
+          @if (activeTab() === 'PROJECTS') {
+            @if (store.canCurrentUserManageSharing()) {
+              <div class="section-box">
+                <div class="section-head">
+                  <h4 class="section-title">Create New Project</h4>
+                </div>
+                <div class="create-proj-grid">
+                  <input
+                    type="text"
+                    class="form-input"
+                    [(ngModel)]="newProjName"
+                    placeholder="Project Name (e.g., Document Summarizer)"
+                  />
+                  <input
+                    type="text"
+                    class="form-input font-mono"
+                    [(ngModel)]="newProjCode"
+                    placeholder="Code (e.g., DOC-SUM)"
+                  />
+                  <input
+                    type="text"
+                    class="form-input"
+                    [(ngModel)]="newProjTeam"
+                    placeholder="Team / Squad Name"
+                  />
+                  <button
+                    type="button"
+                    class="btn-primary"
+                    [disabled]="!newProjName.trim() || !newProjCode.trim()"
+                    (click)="submitCreateProject()"
+                  >
+                    <i class="ph-light ph-plus"></i>
+                    <span>Create Project</span>
+                  </button>
+                </div>
+              </div>
+            }
+
+            <div class="section-box">
+              <div class="section-head">
+                <div>
+                  <h4 class="section-title">Project Member Access</h4>
+                  <span class="section-hint">Select a project below and toggle which team members belong to it</span>
+                </div>
+                <button type="button" class="btn-secondary btn-sm" (click)="copyProjectLink()">
+                  <i class="ph-light" [class.ph-check]="copiedLink()" [class.ph-link-simple]="!copiedLink()"></i>
+                  <span>{{ copiedLink() ? 'Link Copied!' : 'Copy Project Link' }}</span>
+                </button>
+              </div>
+
+              <div class="project-pills-row">
                 @for (p of store.projects(); track p.id) {
                   <button
                     type="button"
@@ -85,167 +263,174 @@ import { SystemRole, RolePermissionPolicy, TeamMember, Project } from '../models
                     (click)="selectedProjectId.set(p.id)"
                   >
                     <span class="p-dot" [style.background-color]="p.color"></span>
-                    <span class="p-code font-mono">{{ p.code }}</span>
-                    <span class="p-count">({{ p.memberIds.length }})</span>
+                    <span class="font-mono">{{ p.code }}</span>
+                    <span class="p-name">{{ p.name }}</span>
+                    <span class="p-count font-mono">({{ p.memberIds.length }})</span>
                   </button>
                 }
               </div>
-            </div>
 
-            <!-- Project Squad Members Roster -->
-            <div class="members-table-wrap">
-              <div class="members-table-header">
-                <span class="col-member">Team Member</span>
-                <span class="col-role">System Role</span>
-                <span class="col-status">Project Status</span>
-                <span class="col-action">Access Toggle</span>
-              </div>
-
-              <div class="members-table-body">
+              <div class="roster-list">
                 @for (member of store.teamMembers(); track member.id) {
-                  <div class="member-row" [class.is-included]="isMemberAssigned(member.id)">
-                    <!-- Member Info -->
-                    <div class="col-member member-info-col">
-                      <span class="avatar-mini" [style.background]="getMemberRoleColor(member.role)">{{ member.avatar }}</span>
-                      <div class="member-meta">
-                        <span class="member-name">{{ member.name }}</span>
-                        <span class="member-role text-muted">{{ member.role }}</span>
+                  <div class="roster-row">
+                    <div class="member-info-left">
+                      <span class="avatar-circle" [style.background-color]="member.color">{{ member.avatar }}</span>
+                      <div class="member-text">
+                        <strong>{{ member.name }}</strong>
+                        <span class="member-email">{{ member.email }} · {{ store.getMemberAccessRole(member) }}</span>
                       </div>
                     </div>
 
-                    <!-- System Role Badge -->
-                    <div class="col-role">
-                      <span class="role-badge font-mono" [attr.data-role]="member.systemRole">{{ member.systemRole }}</span>
-                    </div>
-
-                    <!-- Membership Status -->
-                    <div class="col-status">
-                      @if (isMemberAssigned(member.id)) {
-                        <span class="status-pill status-member">
-                          <i class="ph-light ph-check-circle"></i> Member
-                        </span>
-                      } @else {
-                        <span class="status-pill status-non-member">
-                          <i class="ph-light ph-lock-simple"></i> No Access
-                        </span>
-                      }
-                    </div>
-
-                    <!-- 1-Click Access Toggle Switch -->
-                    <div class="col-action">
+                    <div class="member-actions-right">
+                      <span class="proj-access-status" [class.active]="isMemberAssigned(member.id)">
+                        {{ isMemberAssigned(member.id) ? 'Assigned' : 'Not in Project' }}
+                      </span>
                       <button
                         type="button"
                         class="toggle-switch-btn"
                         [class.is-active]="isMemberAssigned(member.id)"
                         [disabled]="!store.canCurrentUserManageSharing()"
                         (click)="toggleMember(member.id)"
-                        [title]="store.canCurrentUserManageSharing() ? (isMemberAssigned(member.id) ? 'Revoke project access' : 'Grant project access') : 'Only Tech Lead or Delivery Manager can alter project membership'"
                       >
                         <span class="switch-slider"></span>
-                        <span class="switch-label font-mono">
-                          {{ isMemberAssigned(member.id) ? 'Active' : 'Off' }}
-                        </span>
                       </button>
                     </div>
                   </div>
                 }
               </div>
             </div>
-          </div>
+          }
 
-          <!-- Section 2: Role Capabilities & Audit Visibility Matrix -->
-          <div class="modal-section">
-            <div class="section-header-row">
-              <div class="section-title-wrap">
-                <span class="section-step-pill">SECTION 2</span>
-                <h4 class="section-title">Role Capabilities &amp; Visibility Matrix</h4>
+          <!-- TAB 3: TEAM SETTINGS, BRANDING, PERMISSIONS & FRESH START -->
+          @if (activeTab() === 'SETTINGS') {
+            <!-- Workspace Branding -->
+            <div class="section-box">
+              <div class="section-head">
+                <div>
+                  <h4 class="section-title">Workspace Brand Name</h4>
+                  <span class="section-hint">Displayed in the navigation sidebar, sign-in screen, and browser title</span>
+                </div>
               </div>
-              @if (!store.canCurrentUserManageSharing()) {
-                <span class="readonly-badge font-mono">
-                  <i class="ph-light ph-lock-key"></i> Read-Only (Lead / Viewer Required)
-                </span>
-              }
+              <div class="brand-edit-row">
+                <input
+                  type="text"
+                  class="form-input"
+                  [(ngModel)]="brandNameDraft"
+                  [disabled]="!store.canCurrentUserManageSharing()"
+                  placeholder="TCS-AI Initiatives"
+                />
+                <button
+                  type="button"
+                  class="btn-primary"
+                  [disabled]="!store.canCurrentUserManageSharing() || !brandNameDraft.trim() || brandNameDraft.trim() === store.brandName()"
+                  (click)="saveBrandName()"
+                >
+                  Save Brand Name
+                </button>
+              </div>
             </div>
-            <p class="section-desc">
-              Define workspace-wide execution rights. When "View All Logs" is off, members in that role are restricted to their personal audit trail.
-            </p>
 
-            <div class="matrix-card">
-              <div class="matrix-grid-header">
-                <span class="col-m-role">Role</span>
-                <span class="col-m-perm text-center">Create Deliverables</span>
-                <span class="col-m-perm text-center">View All Logs</span>
-                <span class="col-m-perm text-center">Approve Sign-Off</span>
+            <!-- Role Capabilities Matrix -->
+            <div class="section-box">
+              <div class="section-head">
+                <div>
+                  <h4 class="section-title">Role Capabilities &amp; Activity Log Visibility</h4>
+                  <span class="section-hint">Configure task creation, full vs. personal activity log scope, and review sign-off</span>
+                </div>
               </div>
 
-              <div class="matrix-grid-body">
-                @for (r of policyRoles; track r) {
-                  <div class="matrix-row">
-                    <!-- Role Name -->
-                    <div class="col-m-role">
-                      <div class="role-cell">
-                        <span class="role-badge font-mono" [attr.data-role]="r">{{ r }}</span>
-                        <span class="role-desc text-muted">{{ getRoleDescription(r) }}</span>
-                      </div>
-                    </div>
+              <div class="matrix-table-wrap">
+                <table class="matrix-table">
+                  <thead>
+                    <tr>
+                      <th>System Role</th>
+                      <th class="text-center">Create Tasks</th>
+                      <th class="text-center">View All Activity Logs</th>
+                      <th class="text-center">Approve Reviews</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (r of policyRoles; track r) {
+                      <tr>
+                        <td>
+                          <strong>{{ r }}</strong>
+                          <span class="role-sub">{{ getRoleDescription(r) }}</span>
+                        </td>
+                        <td class="text-center">
+                          <input
+                            type="checkbox"
+                            [checked]="store.rolePolicies()[r].canCreateTasks"
+                            [disabled]="!store.canCurrentUserManageSharing() || r === 'ADMIN'"
+                            (change)="onTogglePolicy(r, 'canCreateTasks', $event)"
+                          />
+                        </td>
+                        <td class="text-center">
+                          <input
+                            type="checkbox"
+                            [checked]="store.rolePolicies()[r].canViewAllLogs"
+                            [disabled]="!store.canCurrentUserManageSharing() || r === 'ADMIN'"
+                            (change)="onTogglePolicy(r, 'canViewAllLogs', $event)"
+                          />
+                        </td>
+                        <td class="text-center">
+                          <input
+                            type="checkbox"
+                            [checked]="store.rolePolicies()[r].canApproveSignOff"
+                            [disabled]="!store.canCurrentUserManageSharing() || r === 'ADMIN'"
+                            (change)="onTogglePolicy(r, 'canApproveSignOff', $event)"
+                          />
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-                    <!-- Can Create Tasks -->
-                    <div class="col-m-perm text-center">
-                      <label class="matrix-toggle-label">
-                        <input
-                          type="checkbox"
-                          class="toggle-checkbox"
-                          [checked]="store.rolePolicies()[r].canCreateTasks"
-                          [disabled]="!store.canCurrentUserManageSharing() || r === 'ADMIN'"
-                          (change)="onTogglePolicy(r, 'canCreateTasks', $event)"
-                        />
-                        <span class="toggle-indicator"></span>
-                      </label>
-                    </div>
-
-                    <!-- Can View All Logs -->
-                    <div class="col-m-perm text-center">
-                      <label class="matrix-toggle-label">
-                        <input
-                          type="checkbox"
-                          class="toggle-checkbox"
-                          [checked]="store.rolePolicies()[r].canViewAllLogs"
-                          [disabled]="!store.canCurrentUserManageSharing() || r === 'ADMIN'"
-                          (change)="onTogglePolicy(r, 'canViewAllLogs', $event)"
-                        />
-                        <span class="toggle-indicator"></span>
-                      </label>
-                    </div>
-
-                    <!-- Can Approve Sign-Off -->
-                    <div class="col-m-perm text-center">
-                      <label class="matrix-toggle-label">
-                        <input
-                          type="checkbox"
-                          class="toggle-checkbox"
-                          [checked]="store.rolePolicies()[r].canApproveSignOff"
-                          [disabled]="!store.canCurrentUserManageSharing() || r === 'ADMIN'"
-                          (change)="onTogglePolicy(r, 'canApproveSignOff', $event)"
-                        />
-                        <span class="toggle-indicator"></span>
-                      </label>
-                    </div>
+            <!-- Discreet Clear All Tasks (Start Fresh) for Leads / Managers -->
+            @if (store.canCurrentUserManageSharing()) {
+              <div class="section-box danger-box">
+                <div class="danger-row">
+                  <div>
+                    <h4 class="section-title danger-title">Clear All Tasks (Start Fresh)</h4>
+                    <p class="section-hint">
+                      Removes all {{ store.tasks().length }} task(s) across projects while preserving your projects, team members, and workspace brand.
+                    </p>
                   </div>
-                }
+
+                  @if (!confirmingClearTasks()) {
+                    <button
+                      type="button"
+                      class="btn-danger-outline"
+                      [disabled]="store.tasks().length === 0"
+                      (click)="confirmingClearTasks.set(true)"
+                    >
+                      <i class="ph-light ph-broom"></i>
+                      <span>Clear All Tasks (Start Fresh)</span>
+                    </button>
+                  } @else {
+                    <div class="confirm-clear-actions">
+                      <button type="button" class="btn-danger-solid" (click)="executeClearAllTasks()">
+                        Confirm Clear ({{ store.tasks().length }})
+                      </button>
+                      <button type="button" class="btn-secondary btn-sm" (click)="confirmingClearTasks.set(false)">
+                        Cancel
+                      </button>
+                    </div>
+                  }
+                </div>
               </div>
-            </div>
-          </div>
+            }
+          }
         </div>
 
-        <!-- Modal Footer -->
+        <!-- Sticky Modal Footer -->
         <div class="modal-footer">
-          <div class="footer-meta text-muted">
-            <i class="ph-light ph-clock-counter-clockwise"></i>
-            <span>All permissions and sharing toggles are logged to the immutable audit ledger.</span>
-          </div>
-          <button type="button" class="btn-primary" (click)="close.emit()">
-            Done
-          </button>
+          <span class="footer-note">
+            <i class="ph-light ph-shield-check"></i>
+            <span>Changes are persisted via TaskRepository and recorded in the Activity Log</span>
+          </span>
+          <button type="button" class="btn-primary" (click)="close.emit()">Done</button>
         </div>
       </div>
     </div>
@@ -255,728 +440,775 @@ import { SystemRole, RolePermissionPolicy, TeamMember, Project } from '../models
       position: fixed;
       inset: 0;
       background: var(--surface-overlay);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      z-index: 1000;
+      backdrop-filter: blur(4px);
+      z-index: 120;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1.5rem;
-      animation: fadeIn 0.15s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
+      padding: 16px;
     }
 
     .modal-card {
-      background: var(--surface-modal);
+      background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
-      border-radius: 16px;
+      border-radius: var(--radius-card);
       width: 100%;
-      max-width: 740px;
-      max-height: 90vh;
+      max-width: 820px;
+      max-height: 88vh;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.45);
-      animation: slideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: var(--shadow-float);
       overflow: hidden;
     }
 
-    @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateY(12px) scale(0.98);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-
-    /* Header */
     .modal-header {
-      padding: 1.25rem 1.5rem;
+      padding: 14px 20px;
       border-bottom: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 1rem;
-      background: var(--surface-primary);
+      gap: 12px;
+      flex-shrink: 0;
     }
 
     .modal-title-row {
       display: flex;
       align-items: center;
-      gap: 0.875rem;
+      gap: 12px;
+      min-width: 0;
     }
 
     .modal-icon-wrap {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: var(--surface-subtle);
-      border: 1px solid var(--border-hairline);
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-inner);
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.2rem;
-      color: var(--accent-primary);
+      font-size: 18px;
       flex-shrink: 0;
     }
 
     .modal-title {
-      font-size: 1.25rem;
-      font-weight: 500;
+      font-size: 16px;
+      font-weight: 600;
       color: var(--text-primary);
       margin: 0;
-      line-height: 1.2;
-    }
-
-    .brand-dot {
-      color: var(--accent-primary);
     }
 
     .modal-sub {
-      font-size: 0.8125rem;
-      color: var(--text-muted);
-      margin: 0.2rem 0 0;
-      line-height: 1.4;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin: 2px 0 0 0;
     }
 
     .btn-close {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      border: 1px solid transparent;
+      border: none;
       background: transparent;
       color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.125rem;
+      font-size: 18px;
       cursor: pointer;
-      transition: all 0.15s ease;
-      flex-shrink: 0;
+      padding: 4px;
+      border-radius: var(--radius-sm);
     }
 
     .btn-close:hover {
-      background: var(--surface-subtle);
       color: var(--text-primary);
-      border-color: var(--border-hairline);
+      background: var(--bg-hover);
     }
 
-    /* Modal Body */
-    .modal-body {
-      padding: 1.25rem 1.5rem 2.5rem;
-      overflow-y: auto;
+    .tabs-bar {
       display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 20px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-hairline);
+      flex-shrink: 0;
+      overflow-x: auto;
     }
 
-    /* Scope Banner */
-    .scope-banner {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.75rem;
-      padding: 0.75rem 1rem;
-      border-radius: 10px;
-      background: rgba(138, 158, 126, 0.08);
-      border: 1px solid rgba(138, 158, 126, 0.25);
+    .tab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+    }
+
+    .tab-btn.active {
+      background: var(--accent-primary-tint);
+      border-color: var(--accent-primary);
       color: var(--accent-primary);
     }
 
-    .scope-banner.is-personal {
-      background: rgba(200, 160, 60, 0.08);
-      border-color: rgba(200, 160, 60, 0.25);
+    .modal-body {
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .readonly-banner, .feedback-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: var(--radius-inner);
+      font-size: 12px;
+      background: var(--accent-primary-tint);
+      border: 1px solid var(--accent-primary);
       color: var(--text-primary);
     }
 
-    .banner-icon {
-      font-size: 1.25rem;
-      margin-top: 0.125rem;
-      flex-shrink: 0;
+    .feedback-banner.is-error {
+      background: var(--accent-danger-tint);
+      border-color: var(--accent-danger);
+      color: var(--accent-danger);
     }
 
-    .banner-text {
+    .section-box {
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      background: var(--bg-subtle);
+      padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      gap: 0.125rem;
-      font-size: 0.8125rem;
-      line-height: 1.4;
+      gap: 12px;
     }
 
-    .banner-text strong {
-      font-size: 0.8125rem;
-      font-weight: 600;
-    }
-
-    .banner-text span {
-      color: var(--text-muted);
-    }
-
-    /* Section Headers */
-    .modal-section {
-      display: flex;
-      flex-direction: column;
-      gap: 0.875rem;
-    }
-
-    .section-header-row {
+    .section-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 1rem;
-    }
-
-    .section-title-wrap {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .section-step-pill {
-      font-size: 0.6875rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      padding: 2px 8px;
-      border-radius: 9999px;
-      background: var(--surface-subtle);
-      border: 1px solid var(--border-hairline);
-      color: var(--text-muted);
-      white-space: nowrap;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
     .section-title {
-      font-size: 0.9375rem;
+      font-size: 13.5px;
       font-weight: 600;
       color: var(--text-primary);
       margin: 0;
     }
 
-    .section-desc {
-      font-size: 0.8125rem;
+    .section-hint {
+      font-size: 11.5px;
       color: var(--text-muted);
-      margin: 0;
-      line-height: 1.4;
     }
 
-    .readonly-badge {
-      display: inline-flex;
+    .add-member-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1.6fr 1fr auto;
+      gap: 8px;
+    }
+
+    .create-proj-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 0.9fr 1.2fr auto;
+      gap: 8px;
+    }
+
+    .edit-member-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1.6fr 1fr auto;
+      gap: 8px;
+      width: 100%;
       align-items: center;
-      gap: 0.35rem;
-      font-size: 0.6875rem;
-      padding: 3px 8px;
-      border-radius: 9999px;
-      background: var(--surface-subtle);
-      border: 1px solid var(--border-hairline);
-      color: var(--text-muted);
-      white-space: nowrap;
     }
 
-    /* Copy Link Button */
-    .btn-copy-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 4px 10px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      background: var(--surface-subtle);
-      border: 1px solid var(--border-hairline);
-      border-radius: 9999px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      white-space: nowrap;
+    @media (max-width: 720px) {
+      .add-member-grid,
+      .create-proj-grid,
+      .edit-member-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
-    .btn-copy-link:hover {
+    .edit-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .form-input, .form-select {
+      padding: 7px 10px;
+      border-radius: var(--radius-inner);
+      border: 1px solid var(--border-strong);
+      background: var(--bg-surface);
       color: var(--text-primary);
+      font-size: 12px;
+      outline: none;
+      min-width: 0;
+    }
+
+    .form-input:focus, .form-select:focus {
       border-color: var(--accent-primary);
-      background: var(--surface-primary);
     }
 
-    /* Project Pills */
-    .project-selector-row {
+    .roster-list {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-inner);
+      background: var(--bg-surface);
+      overflow: hidden;
+    }
+
+    .roster-row {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-hairline);
       flex-wrap: wrap;
     }
 
-    .field-label {
-      font-size: 0.75rem;
-      font-weight: 500;
+    .roster-row:last-child {
+      border-bottom: none;
+    }
+
+    .member-info-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .avatar-circle {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .member-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .member-name-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      color: var(--text-primary);
+    }
+
+    .you-tag {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-primary-tint);
+      color: var(--accent-primary);
+    }
+
+    .member-email {
+      font-size: 11px;
       color: var(--text-muted);
-      white-space: nowrap;
     }
 
-    .project-pills {
+    .member-actions-right {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 8px;
+    }
+
+    .access-role-pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-secondary);
+    }
+
+    .access-role-pill[data-access="Lead"] {
+      background: var(--accent-primary-tint);
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+
+    .access-role-pill[data-access="Manager"] {
+      background: var(--status-done-bg);
+      border-color: var(--status-done);
+      color: var(--status-done-text);
+    }
+
+    .project-pills-row {
+      display: flex;
       flex-wrap: wrap;
+      gap: 6px;
     }
 
     .project-pill {
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 4px 10px;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      background: var(--surface-subtle);
+      gap: 6px;
+      padding: 6px 11px;
+      border-radius: var(--radius-pill);
       border: 1px solid var(--border-hairline);
+      background: var(--bg-surface);
       color: var(--text-secondary);
+      font-size: 12px;
       cursor: pointer;
-      transition: all 0.15s ease;
-      white-space: nowrap;
-    }
-
-    .project-pill:hover {
-      border-color: var(--border-focus);
-      color: var(--text-primary);
     }
 
     .project-pill.active {
-      background: var(--surface-primary);
+      background: var(--accent-primary-tint);
       border-color: var(--accent-primary);
-      color: var(--text-primary);
+      color: var(--accent-primary);
       font-weight: 600;
-      box-shadow: 0 0 0 1px var(--accent-primary);
     }
 
     .p-dot {
-      width: 6px;
-      height: 6px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
     }
 
     .p-count {
-      color: var(--text-muted);
-      font-size: 0.6875rem;
-    }
-
-    /* Members Table */
-    .members-table-wrap {
-      border: 1px solid var(--border-hairline);
-      border-radius: 12px;
-      background: var(--surface-primary);
-      overflow: hidden;
-    }
-
-    .members-table-header {
-      display: grid;
-      grid-template-columns: 2.2fr 1fr 1.2fr 1fr;
-      padding: 0.625rem 1rem;
-      background: var(--surface-subtle);
-      border-bottom: 1px solid var(--border-hairline);
-      font-size: 0.6875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      font-size: 11px;
       color: var(--text-muted);
     }
 
-    .members-table-body {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .member-row {
-      display: grid;
-      grid-template-columns: 2.2fr 1fr 1.2fr 1fr;
-      align-items: center;
-      padding: 0.625rem 1rem;
-      border-bottom: 1px solid var(--border-hairline);
-      transition: background 0.12s ease;
-    }
-
-    .member-row:last-child {
-      border-bottom: none;
-    }
-
-    .member-row:hover {
-      background: var(--surface-subtle);
-    }
-
-    .member-info-col {
-      display: flex;
-      align-items: center;
-      gap: 0.625rem;
-    }
-
-    .avatar-mini {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      color: #fff;
-      font-size: 0.6875rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .member-meta {
-      display: flex;
-      flex-direction: column;
-      line-height: 1.25;
-      min-width: 0;
-    }
-
-    .member-name {
-      font-size: 0.8125rem;
+    .proj-access-status {
+      font-size: 11px;
+      color: var(--text-muted);
       font-weight: 500;
-      color: var(--text-primary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
-    .member-role {
-      font-size: 0.6875rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .role-badge {
-      display: inline-block;
-      font-size: 0.6875rem;
+    .proj-access-status.active {
+      color: var(--status-done);
       font-weight: 600;
-      padding: 2px 7px;
-      border-radius: 4px;
-      background: var(--surface-subtle);
-      border: 1px solid var(--border-hairline);
-      color: var(--text-secondary);
-      white-space: nowrap;
     }
 
-    .role-badge[data-role="LEAD"],
-    .role-badge[data-role="ADMIN"] {
-      border-color: rgba(138, 158, 126, 0.4);
-      color: var(--accent-primary);
-    }
-
-    .role-badge[data-role="VIEWER"] {
-      border-color: rgba(90, 140, 180, 0.4);
-      color: #79a8d4;
-    }
-
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      font-size: 0.6875rem;
-      font-weight: 500;
-      padding: 2px 8px;
-      border-radius: 9999px;
-      white-space: nowrap;
-    }
-
-    .status-member {
-      background: rgba(138, 158, 126, 0.12);
-      color: var(--accent-primary);
-      border: 1px solid rgba(138, 158, 126, 0.3);
-    }
-
-    .status-non-member {
-      background: var(--surface-subtle);
-      color: var(--text-muted);
-      border: 1px solid var(--border-hairline);
-    }
-
-    /* Switch button */
     .toggle-switch-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: transparent;
-      border: none;
+      width: 38px;
+      height: 20px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong);
+      background: var(--bg-subtle);
+      position: relative;
       cursor: pointer;
-      padding: 2px;
+      padding: 0;
+      transition: var(--transition-tactile);
+    }
+
+    .toggle-switch-btn.is-active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
     }
 
     .toggle-switch-btn:disabled {
-      cursor: not-allowed;
       opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .switch-slider {
-      width: 32px;
-      height: 18px;
-      border-radius: 9999px;
-      background: var(--surface-subtle);
-      border: 1px solid var(--border-hairline);
-      position: relative;
-      transition: all 0.15s ease;
-    }
-
-    .switch-slider::after {
-      content: '';
       position: absolute;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--text-muted);
       top: 2px;
       left: 2px;
-      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ffffff;
+      transition: transform 0.16s ease;
     }
 
     .toggle-switch-btn.is-active .switch-slider {
-      background: var(--accent-primary);
-      border-color: var(--accent-primary);
+      transform: translateX(18px);
     }
 
-    .toggle-switch-btn.is-active .switch-slider::after {
-      background: #ffffff;
-      transform: translateX(14px);
-    }
-
-    .switch-label {
-      font-size: 0.6875rem;
-      color: var(--text-muted);
-    }
-
-    .toggle-switch-btn.is-active .switch-label {
-      color: var(--accent-primary);
-      font-weight: 600;
-    }
-
-    /* Matrix Card */
-    .matrix-card {
-      border: 1px solid var(--border-hairline);
-      border-radius: 12px;
-      background: var(--surface-primary);
-      overflow: hidden;
-    }
-
-    .matrix-grid-header {
-      display: grid;
-      grid-template-columns: 2.2fr 1fr 1fr 1fr;
-      padding: 0.625rem 1rem;
-      background: var(--surface-subtle);
-      border-bottom: 1px solid var(--border-hairline);
-      font-size: 0.6875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-    }
-
-    .matrix-grid-body {
+    .brand-edit-row {
       display: flex;
-      flex-direction: column;
-    }
-
-    .matrix-row {
-      display: grid;
-      grid-template-columns: 2.2fr 1fr 1fr 1fr;
+      gap: 8px;
       align-items: center;
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid var(--border-hairline);
-      transition: background 0.12s ease;
     }
 
-    .matrix-row:last-child {
+    .brand-edit-row .form-input {
+      flex: 1;
+    }
+
+    .matrix-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-inner);
+      background: var(--bg-surface);
+    }
+
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .matrix-table th, .matrix-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border-hairline);
+      text-align: left;
+    }
+
+    .matrix-table th {
+      background: var(--bg-subtle);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .matrix-table tr:last-child td {
       border-bottom: none;
     }
 
-    .matrix-row:hover {
-      background: var(--surface-subtle);
-    }
-
-    .role-cell {
-      display: flex;
-      align-items: center;
-      gap: 0.625rem;
-    }
-
-    .role-desc {
-      font-size: 0.6875rem;
-      white-space: nowrap;
-    }
-
-    .text-center {
+    .matrix-table .text-center {
       text-align: center;
     }
 
-    .matrix-toggle-label {
+    .role-sub {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .danger-box {
+      border-color: rgba(220, 38, 38, 0.35);
+      background: var(--accent-danger-tint);
+    }
+
+    .danger-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .danger-title {
+      color: var(--accent-danger);
+    }
+
+    .confirm-clear-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--accent-primary);
+      background: var(--accent-primary);
+      color: var(--text-inverse);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 11px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 11.5px;
+    }
+
+    .btn-icon {
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-pill);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
     }
 
-    .toggle-checkbox {
-      appearance: none;
-      -webkit-appearance: none;
-      width: 18px;
-      height: 18px;
-      border-radius: 4px;
-      border: 1px solid var(--border-hairline);
-      background: var(--surface-subtle);
-      cursor: pointer;
-      position: relative;
-      transition: all 0.15s ease;
-      outline: none;
+    .btn-icon:hover {
+      color: var(--text-primary);
+      border-color: var(--border-strong);
     }
 
-    .toggle-checkbox:checked {
-      background: var(--accent-primary);
-      border-color: var(--accent-primary);
+    .btn-icon-danger:hover {
+      color: var(--accent-danger);
+      border-color: var(--accent-danger);
     }
 
-    .toggle-checkbox:checked::after {
-      content: '';
-      position: absolute;
-      left: 5px;
-      top: 2px;
-      width: 5px;
-      height: 9px;
-      border: solid #ffffff;
-      border-width: 0 2px 2px 0;
-      transform: rotate(45deg);
-    }
-
-    .toggle-checkbox:disabled {
-      cursor: not-allowed;
-      opacity: 0.45;
-    }
-
-    /* Modal Footer */
-    .modal-footer {
-      padding: 1rem 1.5rem;
-      border-top: 1px solid var(--border-hairline);
-      display: flex;
+    .btn-danger-outline {
+      display: inline-flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      background: var(--surface-primary);
-    }
-
-    .footer-meta {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.75rem;
-    }
-
-    .btn-primary {
-      padding: 0.5rem 1.25rem;
-      border-radius: 9999px;
-      font-size: 0.8125rem;
+      gap: 6px;
+      padding: 7px 13px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--accent-danger);
+      background: var(--bg-surface);
+      color: var(--accent-danger);
+      font-size: 12px;
       font-weight: 600;
-      background: var(--accent-primary);
-      color: #ffffff;
-      border: none;
       cursor: pointer;
-      transition: all 0.15s ease;
       white-space: nowrap;
     }
 
-    .btn-primary:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
+    .btn-danger-outline:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
-    @media (max-width: 640px) {
-      .members-table-header,
-      .member-row,
-      .matrix-grid-header,
-      .matrix-row {
-        grid-template-columns: 1fr 1fr;
-        gap: 0.5rem;
-      }
-      .col-role,
-      .role-desc {
-        display: none;
-      }
+    .btn-danger-solid {
+      padding: 6px 13px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--accent-danger);
+      background: var(--accent-danger);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .footer-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      color: var(--text-muted);
     }
   `]
 })
-export class SharePermissionsModalComponent {
-  readonly store = inject(TaskStoreService);
+export class SharePermissionsModalComponent implements OnInit {
+  protected readonly store = inject(TaskStoreService);
 
   readonly initialProjectId = input<string | null>(null);
   readonly close = output<void>();
 
-  readonly selectedProjectId = signal<string>('p-1');
+  readonly activeTab = signal<TeamSettingsTab>('MEMBERS');
+  readonly selectedProjectId = signal<string>('proj-1');
   readonly copiedLink = signal<boolean>(false);
+  readonly confirmingClearTasks = signal<boolean>(false);
+  readonly feedbackMessage = signal<string>('');
+  readonly feedbackIsError = signal<boolean>(false);
 
-  readonly policyRoles: SystemRole[] = ['ADMIN', 'LEAD', 'VIEWER', 'DEV', 'QA'];
+  readonly policyRoles: SystemRole[] = ['DEV', 'QA', 'LEAD', 'VIEWER', 'ADMIN'];
 
-  constructor() {
-    // If initialProjectId is provided or store has an active project
-    const init = this.initialProjectId();
-    if (init && init !== 'ALL') {
-      this.selectedProjectId.set(init);
+  // Add Member Form
+  newMemberName = '';
+  newMemberEmail = '';
+  newMemberRole: MemberAccessRole = 'Member';
+
+  // Edit Member Form
+  readonly editingMemberId = signal<string | null>(null);
+  editName = '';
+  editEmail = '';
+  editRole: MemberAccessRole = 'Member';
+
+  // Create Project Form
+  newProjName = '';
+  newProjCode = '';
+  newProjTeam = 'Core AI Engineering';
+
+  // Workspace Brand Form
+  brandNameDraft = '';
+
+  readonly activeProject = computed(() =>
+    this.store.projects().find(p => p.id === this.selectedProjectId()) || this.store.projects()[0]
+  );
+
+  ngOnInit(): void {
+    this.brandNameDraft = this.store.brandName();
+    const initId = this.initialProjectId();
+    if (initId && initId !== 'ALL') {
+      this.selectedProjectId.set(initId);
+      this.activeTab.set('PROJECTS');
     } else {
-      const active = this.store.selectedProjectId();
-      if (active !== 'ALL') {
-        this.selectedProjectId.set(active);
-      } else {
-        const first = this.store.projects()[0];
-        if (first) {
-          this.selectedProjectId.set(first.id);
-        }
+      const storeSelected = this.store.selectedProjectId();
+      if (storeSelected && storeSelected !== 'ALL') {
+        this.selectedProjectId.set(storeSelected);
+      } else if (this.store.projects().length > 0) {
+        this.selectedProjectId.set(this.store.projects()[0].id);
       }
     }
   }
 
+  private showFeedback(msg: string, isError = false): void {
+    this.feedbackMessage.set(msg);
+    this.feedbackIsError.set(isError);
+    setTimeout(() => {
+      if (this.feedbackMessage() === msg) {
+        this.feedbackMessage.set('');
+      }
+    }, 3200);
+  }
+
+  submitAddMember(): void {
+    if (!this.newMemberName.trim()) return;
+    const allProjectIds = this.store.projects().map(p => p.id);
+    const created = this.store.addTeamMemberWithAccessRole({
+      name: this.newMemberName.trim(),
+      email: this.newMemberEmail.trim(),
+      accessRole: this.newMemberRole,
+      projectIds: [this.selectedProjectId() || allProjectIds[0]].filter(Boolean)
+    });
+    if (created) {
+      this.showFeedback(`Added ${created.name} (${this.newMemberRole}) to workspace.`);
+      this.newMemberName = '';
+      this.newMemberEmail = '';
+      this.newMemberRole = 'Member';
+    }
+  }
+
+  startMemberEdit(member: TeamMember): void {
+    this.editingMemberId.set(member.id);
+    this.editName = member.name;
+    this.editEmail = member.email;
+    this.editRole = this.store.getMemberAccessRole(member);
+  }
+
+  cancelMemberEdit(): void {
+    this.editingMemberId.set(null);
+  }
+
+  saveMemberEdit(memberId: string): void {
+    const ok = this.store.updateTeamMemberDetails(memberId, {
+      name: this.editName,
+      email: this.editEmail,
+      accessRole: this.editRole
+    });
+    if (ok) {
+      this.editingMemberId.set(null);
+      this.showFeedback('Member details updated.');
+    }
+  }
+
+  removeMember(member: TeamMember): void {
+    const res = this.store.removeTeamMember(member.id);
+    if (!res.success) {
+      this.showFeedback(res.error || 'Unable to remove member.', true);
+    } else {
+      this.showFeedback(`Removed ${member.name} from workspace.`);
+    }
+  }
+
+  submitCreateProject(): void {
+    if (!this.newProjName.trim() || !this.newProjCode.trim()) return;
+    const proj = this.store.addProject(
+      this.newProjName.trim(),
+      this.newProjCode.trim(),
+      this.newProjTeam.trim() || 'Core AI Engineering'
+    );
+    this.selectedProjectId.set(proj.id);
+    this.newProjName = '';
+    this.newProjCode = '';
+    this.showFeedback(`Created project [${proj.code}] ${proj.name}.`);
+  }
+
   isMemberAssigned(memberId: string): boolean {
-    const proj = this.store.projects().find(p => p.id === this.selectedProjectId());
-    if (!proj) return false;
-    return (proj.memberIds || []).includes(memberId);
+    const proj = this.activeProject();
+    return proj ? (proj.memberIds || []).includes(memberId) : false;
   }
 
   toggleMember(memberId: string): void {
-    if (!this.store.canCurrentUserManageSharing()) return;
-    this.store.toggleProjectMember(this.selectedProjectId(), memberId);
+    const ok = this.store.toggleProjectMember(this.selectedProjectId(), memberId);
+    if (!ok) {
+      this.showFeedback('At least one member must remain assigned to each project.', true);
+    }
   }
 
-  onTogglePolicy(role: SystemRole, key: 'canCreateTasks' | 'canViewAllLogs' | 'canApproveSignOff', event: Event): void {
-    if (!this.store.canCurrentUserManageSharing()) return;
-    const target = event.target as HTMLInputElement;
-    const checked = target.checked;
-    this.store.updateRolePermissionPolicy(role, { [key]: checked });
+  saveBrandName(): void {
+    const ok = this.store.updateBrandName(this.brandNameDraft);
+    if (ok) {
+      this.showFeedback(`Workspace renamed to "${this.store.brandName()}".`);
+    }
+  }
+
+  onTogglePolicy(role: SystemRole, key: keyof Omit<RolePermissionPolicy, 'role'>, event: Event): void {
+    const inputEl = event.target as HTMLInputElement;
+    this.store.updateRolePermissionPolicy(role, { [key]: inputEl.checked });
+  }
+
+  executeClearAllTasks(): void {
+    this.store.clearAllTasks();
+    this.confirmingClearTasks.set(false);
+    this.showFeedback('All tasks cleared. Workspace is ready for fresh tasks.');
+  }
+
+  copyProjectLink(): void {
+    const proj = this.activeProject();
+    const url = `${window.location.origin}${window.location.pathname}#/workspace?project=${proj?.code || 'ALL'}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).catch(() => {});
+    }
+    this.copiedLink.set(true);
+    setTimeout(() => this.copiedLink.set(false), 2200);
   }
 
   getRoleDescription(role: SystemRole): string {
     switch (role) {
-      case 'ADMIN': return 'Full portfolio & root policy control';
-      case 'LEAD': return 'Sprint sign-off & team management';
-      case 'VIEWER': return 'Delivery executive & audit oversight';
-      case 'DEV': return 'Core implementation & task updates';
-      case 'QA': return 'Verification & defect tracking';
+      case 'DEV': return 'Member (Engineering)';
+      case 'QA': return 'Member (Quality / Validation)';
+      case 'LEAD': return 'Lead (Review Sign-Off & Scope)';
+      case 'VIEWER': return 'Stakeholder (Read-Only Portfolio View)';
+      case 'ADMIN': return 'Manager (Full Workspace Admin)';
     }
-  }
-
-  getMemberRoleColor(roleTitle: string): string {
-    if (roleTitle.includes('Lead')) return '#8a9e7e';
-    if (roleTitle.includes('Delivery')) return '#79a8d4';
-    if (roleTitle.includes('QA')) return '#c59b4e';
-    return '#5a7860';
-  }
-
-  copyProjectLink(): void {
-    const proj = this.store.projects().find(p => p.id === this.selectedProjectId());
-    const code = proj ? proj.code : 'PORTFOLIO';
-    const url = `${window.location.origin}${window.location.pathname}#/workspace?project=${code}`;
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).catch(() => {});
-    }
-    this.copiedLink.set(true);
-    setTimeout(() => {
-      this.copiedLink.set(false);
-    }, 2200);
   }
 }

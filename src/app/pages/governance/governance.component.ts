@@ -17,10 +17,10 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
             <span class="gov-shield-icon">
               <i class="ph-light ph-shield-check"></i>
             </span>
-            <h1 class="gov-heading font-serif">Governance, Analytics &amp; Compliance Console<span class="brand-dot">.</span></h1>
-            <span class="gov-version-pill">v3.0 Kanso</span>
+            <h1 class="gov-heading">Governance, Analytics &amp; Audit Log</h1>
+            <span class="gov-version-pill">v4.0</span>
           </div>
-          <p class="gov-subtext">Squad RBAC authorization, cycle-time telemetry, failure recovery budgets &amp; append-only compliance audit trail</p>
+          <p class="gov-subtext">Role permissions, sprint capacity workload, review cycle times &amp; append-only compliance audit log</p>
         </div>
 
         <!-- Horizontal Pill Tabs -->
@@ -216,7 +216,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
                   <strong class="kpi-huge-number tabular-nums">{{ store.cycleTimeMetrics().avgLeadSignOffHours }}</strong>
                   <span class="kpi-unit">hours</span>
                 </div>
-                <p class="kpi-desc">Average elapsed duration tasks wait in DEPLOYED state before Lead inspection and server sign-off note.</p>
+                <p class="kpi-desc">Average elapsed duration tasks wait in Under Review state before Lead/Manager sign-off.</p>
               </div>
 
               <!-- KPI 2: Rework Penalty Overhead -->
@@ -263,7 +263,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
                           <strong class="item-name font-serif">{{ item.projectName }}</strong>
                         </div>
                         <div class="item-stats font-mono">
-                          <span>{{ item.deployedTasks }} Staged</span>
+                          <span>{{ item.deployedTasks }} Under Review</span>
                           <span class="text-rework">{{ item.totalReworkCount }} Reworks ({{ item.reworkOverheadPoints }}p)</span>
                           <span>{{ item.avgSignOffWaitHours }}h Wait</span>
                         </div>
@@ -452,7 +452,7 @@ import { SystemRole, ActivityLog } from '../../models/task.model';
                           <span class="details-text text-xs">{{ log.details }}</span>
                           @if (log.statusTransition) {
                             <span class="transition-tag font-mono text-xs">
-                              {{ log.statusTransition.from }} → {{ log.statusTransition.to }}
+                              {{ store.getStatusLabel(log.statusTransition.from) }} → {{ store.getStatusLabel(log.statusTransition.to) }}
                             </span>
                           }
                         </div>

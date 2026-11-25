@@ -18,9 +18,9 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
               <i class="ph-light ph-tray-arrow-down"></i>
             </span>
             <div>
-              <h3 class="modal-title font-serif">Smart Import Deliverables<span class="brand-dot">.</span></h3>
+              <h3 class="modal-title">Import JSON</h3>
               <p class="modal-sub">
-                Ingest tasks into PulseBoard schema with automatic project linkage and new squad member registration
+                Bulk import structured deliverables into {{ store.brandName() }} with automatic project &amp; member resolution
               </p>
             </div>
           </div>
@@ -38,7 +38,7 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
               <div>
                 <strong class="step-title">Copy LLM Extraction Prompt</strong>
                 <p class="step-desc">
-                  Prompt instructs LLM to output valid JSON matching project codes (RAG-CORE, EVAL-GW, PULSE-V1) and squad roles.
+                  Prompt instructs an LLM to output valid JSON matching project codes (RAG-CORE, EVAL-GW, TCS-OPS) and team roles.
                 </p>
               </div>
             </div>
@@ -125,23 +125,25 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
       border: 1px solid var(--border-hairline);
       width: 700px;
       max-width: 95vw;
+      max-height: 88vh;
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-float);
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      animation: scaleIn 0.22s var(--ease-tactile);
+      animation: scaleIn 0.2s var(--ease-tactile);
     }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes scaleIn { from { transform: scale(0.97); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
     .modal-header {
-      padding: 20px 24px;
+      padding: 16px 24px;
       border-bottom: 1px solid var(--border-hairline);
       background: var(--bg-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-shrink: 0;
     }
     .modal-title-row {
       display: flex;
@@ -182,11 +184,12 @@ import { SAMPLE_IMPORT_JSON } from '../data/seed-data';
     .btn-close:hover { color: var(--text-primary); }
 
     .modal-body {
-      padding: 24px 24px 36px;
+      padding: 20px 24px 28px;
       display: flex;
       flex-direction: column;
       gap: 16px;
-      max-height: 72vh;
+      flex: 1;
+      min-height: 0;
       overflow-y: auto;
     }
     .step-card {
@@ -427,10 +430,10 @@ export class ImportModalComponent {
   copyPrompt(): void {
     const promptText = `Extract engineering tasks from your conversation into this exact JSON format.
 Strict rules:
-1. "projectCode" MUST match one of: "RAG-CORE", "EVAL-GW", "PULSE-V1"
+1. "projectCode" MUST match one of: "RAG-CORE", "EVAL-GW", "TCS-OPS"
 2. "assigneeRole" should be one of: "AI Engineer", "Full-Stack Dev", "QA / Test Engineer", "Tech Lead"
 3. "priority" must be: "LOW", "MEDIUM", "HIGH", or "CRITICAL"
-4. "dependencies" (optional): list upstream task IDs if any
+4. "dependencies" (optional): list upstream task IDs if any (e.g. ["TCS-101"])
 5. Return ONLY a valid JSON object matching this schema:
 
 {

@@ -322,3 +322,25 @@ Every release candidate, pull request, and staging deployment must execute and s
 - **Task Drawer:** Slide-over inspection drawer for subtask checklists, blocker management, and Lead review note logging.
 - **Design System:** Complete Light/Dark mode token engine with zero external UI dependencies.
 - **Zero-Error Production Build:** Verified Angular v18 production bundle generation inside `dist/pulse-board/browser/`.
+
+---
+
+## v4.0.0 — TCS-AI Initiatives (2026-11-25)
+
+**Visual rule:** Kanso design system kept as-is (`#F9F8F6` / `#141312` surfaces, `#5C7362` sage, Newsreader + Plus Jakarta Sans, `9999px` pills, 16–20px cards). Only labels, features, and overflow handling changed.
+
+- Brand defaults to **TCS-AI Initiatives** (you can rename it in Team & Members). Theme button now reads **Light Mode** / **Dark Mode**. The color variables did not change.
+- Status labels: TODO ? **Yet to Start**, IN_PROGRESS ? **In Progress**, DEPLOYED ? **Under Review**, DONE ? **Completed** (`STATUS_LABELS`).
+- Renames: Timeline / Delivery Roadmap ? **Gantt Chart**, Recent Project Pulse ? **Activity Log**, Comfortable Pace ? **Normal Workload**.
+- Seed data is now 2 starter tasks (`TCS-101`, `TCS-102`). The Reset Demo button is gone. **Clear All Tasks (Start Fresh)** is in Team & Members.
+- Effort points no longer drive calendar duration. With 1 or more prerequisites, `startDate = max(prerequisite.dueDate) + 1 day`, and downstream dates cascade when an upstream date moves.
+- Inline subtask checklist (Enter / `+ Add`, checkbox, delete). `progress` (0–100) is calculated from subtasks, with a manual slider/number override. Gantt bars show a filled progress bar, a `%` label, and **On Track / Slipped +Nd**.
+- **Due Soon** filter (due within 3 days or overdue, not Completed) with a live count in My Day and Workspace.
+- **+ New Task** is now the primary top-bar button. The `?` menu holds AI Quick Capture (Voice/Text) and Import JSON. Modals are mounted once in the app shell.
+- `TaskRepository` abstraction: `LocalStorageTaskRepository` (default), `PostgresApiTaskRepository` (`environment.useBackendApi`).
+- Gantt week columns are computed from the visible tasks (min 4 weeks), so bars and the Today line stay in range.
+- Modals capped at `max-height: 88vh` with an internal-scrolling body; the drawer body scrolls inside a 100vh panel.
+
+### QA Gate
+- [x] `npx ng build --configuration production --base-href=/pulseboard/` completed with no errors or warnings.
+- [x] No leftover poetic labels in `src/app`.

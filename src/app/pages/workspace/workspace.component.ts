@@ -2,29 +2,38 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
-import { TaskStoreService } from '../../services/task-store.service';
+import {
+  TaskStoreService,
+  todayIsoDate,
+  addCalendarDays,
+  diffCalendarDays,
+  formatShortDate
+} from '../../services/task-store.service';
 import {
   Task,
   TaskStatus,
-  TaskPriority,
   Subtask,
   Project,
-  TeamMember,
   MethodologyView
 } from '../../models/task.model';
-import { ImportModalComponent } from '../../components/import-modal.component';
-import { AiPromptModalComponent } from '../../components/ai-prompt-modal.component';
+
+interface GanttWeekColumn {
+  id: string;
+  label: string;
+  startIso: string;
+  endIso: string;
+}
 
 @Component({
   selector: 'app-workspace',
   standalone: true,
-  imports: [CommonModule, FormsModule, DragDropModule, ImportModalComponent, AiPromptModalComponent],
+  imports: [CommonModule, FormsModule, DragDropModule],
   template: `
     <div class="workspace-page-wrapper">
-      <!-- 1. Top Execution Toolbar -->
+      <!-- 1. Top Execution & Triage Toolbar -->
       <div class="workspace-toolbar">
         <div class="toolbar-left">
-          <!-- View Switcher Tabs (Pill Geometry) -->
+          <!-- View Switcher Tabs -->
           <div class="view-switch-tabs">
             <button
               type="button"
@@ -50,8 +59,8 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
               [class.active]="store.currentView() === 'TIMELINE'"
               (click)="switchView('TIMELINE')"
             >
-              <i class="ph-light ph-chart-line-up"></i>
-              <span>Timeline</span>
+              <i class="ph-light ph-chart-bar-horizontal"></i>
+              <span>Gantt Chart</span>
             </button>
           </div>
 
@@ -63,18 +72,18 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
             <input
               type="text"
               class="search-input"
-              placeholder="Search deliverables, ID, phase..."
+              placeholder="Search tasks, ID, owner, phase..."
               [ngModel]="store.searchQuery()"
               (ngModelChange)="store.searchQuery.set($event)"
             />
             @if (store.searchQuery()) {
-              <button type="button" class="btn-clear" (click)="store.searchQuery.set('')">
+              <button type="button" class="btn-clear" (click)="store.searchQuery.set('')" title="Clear search">
                 <i class="ph-light ph-x"></i>
               </button>
             }
           </div>
 
-          <!-- Priority Filter Chips (Pill Geometry) -->
+          <!-- Priority Filter Chips -->
           <div class="priority-chips">
             <button
               type="button"
@@ -106,45 +115,65 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
               [class.active]="store.filterPriority() === 'MEDIUM'"
               (click)="store.filterPriority.set('MEDIUM')"
             >
-              Med
+              Medium
             </button>
           </div>
         </div>
 
-        <!-- Toolbar Right Actions -->
+        <!-- Toolbar Right Triage Filters -->
         <div class="toolbar-right">
+          <!-- Prominent Due Soon Weekly Follow-Up Filter -->
           <button
             type="button"
-            class="btn-action btn-ai-prompt"
-            [disabled]="!store.canCurrentUserCreateTasks()"
-            (click)="openAiPromptModal()"
-            [title]="store.canCurrentUserCreateTasks() ? 'Prompt with AI Voice & NLP Task Composer' : 'Task creation is restricted for ' + store.currentUserRole()"
+            class="btn-triage-filter btn-due-soon"
+            [class.active]="store.filterDueSoon()"
+            (click)="toggleDueSoonFilter()"
+            title="Filter tasks due within 3 days or overdue (not Completed) for weekly follow-up"
           >
-            <i class="ph-light ph-microphone"></i>
-            <span>Prompt with AI</span>
+            <i class="ph-light ph-calendar-check"></i>
+            <span>Due Soon</span>
+            <span class="triage-count-badge font-mono" [class.has-items]="store.dueSoonCount() > 0">
+              {{ store.dueSoonCount() }}
+            </span>
           </button>
+
+          <!-- Blocked Filter -->
           <button
             type="button"
-            class="btn-action btn-smart-import"
-            [disabled]="!store.canCurrentUserCreateTasks()"
-            (click)="openSmartImport()"
-            [title]="store.canCurrentUserCreateTasks() ? 'Import deliverables via structured JSON' : 'Task creation is restricted for ' + store.currentUserRole()"
+            class="btn-triage-filter btn-blocked-filter"
+            [class.active]="store.filterBlockedOnly()"
+            (click)="toggleBlockedFilter()"
+            title="Show only blocked tasks"
           >
-            <i class="ph-light ph-tray-arrow-down"></i>
-            <span>Smart Import</span>
+            <i class="ph-light ph-warning"></i>
+            <span>Blocked</span>
+            @if (store.blockedCount() > 0) {
+              <span class="triage-count-badge danger font-mono">{{ store.blockedCount() }}</span>
+            }
           </button>
-          <button
-            type="button"
-            class="btn-action btn-new-task"
-            [disabled]="!store.canCurrentUserCreateTasks()"
-            (click)="openNewTaskModal()"
-            [title]="store.canCurrentUserCreateTasks() ? 'Create new engineering deliverable' : 'Task creation is restricted for ' + store.currentUserRole()"
-          >
-            <i class="ph-light ph-plus"></i>
-            <span>New Task</span>
-          </button>
+
+          @if (hasActiveFilters()) {
+            <button type="button" class="btn-reset-filters" (click)="clearAllFilters()">
+              Reset Filters
+            </button>
+          }
         </div>
       </div>
+
+      <!-- Active Due Soon Weekly Follow-Up Strip -->
+      @if (store.filterDueSoon()) {
+        <div class="due-soon-triage-banner">
+          <div class="triage-banner-left">
+            <i class="ph-light ph-bell-ringing"></i>
+            <span>
+              <strong>Weekly Follow-Up Filter Active:</strong> Showing {{ store.filteredTasks().length }} open task(s) due within 3 days or overdue, with % progress, due dates, blockers, and owners.
+            </span>
+          </div>
+          <button type="button" class="btn-banner-clear" (click)="store.filterDueSoon.set(false)">
+            Show All Tasks
+          </button>
+        </div>
+      }
 
       <!-- 2. Workspace Viewport -->
       <div class="workspace-viewport custom-scroll">
@@ -167,7 +196,7 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
                     </span>
                   </div>
                   @if (col.status === 'DEPLOYED') {
-                    <span class="lead-check-tag">Lead Check</span>
+                    <span class="lead-check-tag">Sign-Off</span>
                   }
                 </div>
 
@@ -211,14 +240,44 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
                           }
                           @if (!store.canEditTask(task)) {
                             <span class="card-lock-badge" title="Read-only · Teammate task">
-                              <i class="ph-light ph-lock-key"></i> Read-only
+                              <i class="ph-light ph-lock-key"></i>
                             </span>
                           }
                         </div>
-                        <span class="card-pts font-mono">{{ task.effortPoints }}p</span>
+                        <span class="card-pts font-mono" title="Effort Points (Complexity)">{{ task.effortPoints }} pts</span>
                       </div>
 
                       <strong class="card-title">{{ task.title }}</strong>
+
+                      @if (task.blocked && task.blockerReason) {
+                        <div class="card-blocker-reason">
+                          <i class="ph-light ph-warning-circle"></i>
+                          <span>{{ task.blockerReason }}</span>
+                        </div>
+                      }
+
+                      <!-- Card Progress Bar & Due Date Row -->
+                      <div class="card-progress-wrap">
+                        <div class="card-progress-meta">
+                          <span class="card-pct font-mono">{{ task.progress }}%</span>
+                          <span
+                            class="card-due font-mono"
+                            [class.due-soon]="store.isTaskDueSoon(task)"
+                            [class.overdue]="store.isTaskOverdue(task)"
+                          >
+                            <i class="ph-light ph-calendar-blank"></i>
+                            {{ getDueLabel(task) }}
+                          </span>
+                        </div>
+                        <div class="card-progress-track">
+                          <div
+                            class="card-progress-fill"
+                            [style.width.%]="task.progress"
+                            [class.fill-done]="task.status === 'DONE'"
+                            [class.fill-blocked]="task.blocked"
+                          ></div>
+                        </div>
+                      </div>
 
                       <div class="card-footer">
                         <div class="card-meta-left">
@@ -228,26 +287,32 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
                               <i class="ph-light ph-check-square"></i> {{ getCompletedSubtasks(task) }}/{{ task.subtasks.length }}
                             </span>
                           }
-                          @if (isCriticalPath(task.id)) {
-                            <span class="key-path-tag" title="Key Path deliverable">
-                              <i class="ph-light ph-flame"></i> Key
+                          @if (task.dependencies.length > 0) {
+                            <span class="card-dep-tag font-mono" [title]="'Depends on ' + task.dependencies.join(', ')">
+                              <i class="ph-light ph-link"></i> {{ task.dependencies.length }}
                             </span>
                           }
                         </div>
 
-                        <!-- Stacked Avatars for Co-Assignees (Fan-Out on Group Hover) -->
-                        <div class="avatar-stack">
-                          @for (m of store.getTaskMembers(task); track m.id) {
-                            <span
-                              class="avatar-stack-item"
-                              [style.background-color]="m.color"
-                              [title]="m.name + ' (' + m.role + ')'"
-                            >
-                              {{ m.avatar }}
-                            </span>
-                          }
+                        <!-- Assigned Owners -->
+                        <div class="card-owners-wrap" [title]="getTaskAssigneesFullNames(task)">
+                          <div class="avatar-stack">
+                            @for (m of store.getTaskMembers(task); track m.id) {
+                              <span
+                                class="avatar-stack-item"
+                                [style.background-color]="m.color"
+                              >
+                                {{ m.avatar }}
+                              </span>
+                            }
+                          </div>
+                          <span class="card-owner-name">{{ getTaskAssigneesSummary(task) }}</span>
                         </div>
                       </div>
+                    </div>
+                  } @empty {
+                    <div class="empty-col-state">
+                      <span>No tasks in {{ col.title }}</span>
                     </div>
                   }
                 </div>
@@ -256,446 +321,372 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
           </div>
         }
 
-        <!-- B. AGILE SPRINT TABLE VIEW -->
+        <!-- B. SPRINT TABLE VIEW -->
         @if (store.currentView() === 'SPRINT') {
           <div class="sprint-table-card">
-            <table class="sprint-data-table">
-              <thead>
-                <tr>
-                  <th style="width: 80px;">ID</th>
-                  <th style="width: 105px;">Project</th>
-                  <th>Title</th>
-                  <th style="width: 140px;">Phase</th>
-                  <th style="width: 180px;">Assignees</th>
-                  <th style="width: 90px;">Priority</th>
-                  <th style="width: 70px;">Points</th>
-                  <th style="width: 105px;">Due Date</th>
-                  <th style="width: 165px;">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (task of store.filteredTasks(); track task.id) {
-                  <tr (click)="openTask(task.id)" class="sprint-row">
-                    <td class="font-mono text-muted text-xs">{{ task.id }}</td>
-                    <td>
-                      @if (getProject(task.projectId); as proj) {
-                        <span class="card-proj-badge" [style.color]="proj.color">{{ proj.code }}</span>
-                      }
-                    </td>
-                    <td>
-                      <div class="sprint-title-wrap">
-                        <strong class="sprint-task-title">{{ task.title }}</strong>
-                        @if (task.blocked) {
-                          <span class="card-blocked-tag">
-                            <i class="ph-light ph-warning"></i> Blocked
-                          </span>
+            <div class="sprint-table-scroll custom-scroll">
+              <table class="sprint-data-table">
+                <thead>
+                  <tr>
+                    <th style="width: 84px;">ID</th>
+                    <th style="width: 100px;">Project</th>
+                    <th>Deliverable</th>
+                    <th style="width: 165px;">Owners</th>
+                    <th style="width: 120px;">Progress</th>
+                    <th style="width: 82px;">Priority</th>
+                    <th style="width: 68px;">Effort</th>
+                    <th style="width: 165px;">Schedule</th>
+                    <th style="width: 155px;">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (task of store.filteredTasks(); track task.id) {
+                    <tr (click)="openTask(task.id)" class="sprint-row">
+                      <td class="font-mono text-muted text-xs">{{ task.id }}</td>
+                      <td>
+                        @if (getProject(task.projectId); as proj) {
+                          <span class="card-proj-badge" [style.color]="proj.color">{{ proj.code }}</span>
                         }
-                        @if (!store.canEditTask(task)) {
-                          <span class="card-lock-badge">
-                            <i class="ph-light ph-lock-key"></i> Read-only
-                          </span>
-                        }
-                        @if (isCriticalPath(task.id)) {
-                          <span class="key-path-tag">
-                            <i class="ph-light ph-flame"></i> Key
-                          </span>
-                        }
-                      </div>
-                    </td>
-                    <td class="text-secondary text-xs">{{ task.phase }}</td>
-                    <td>
-                      <div class="table-member-cell">
-                        <div class="avatar-stack">
-                          @for (m of store.getTaskMembers(task); track m.id) {
-                            <span class="avatar-stack-item" [style.background-color]="m.color" [title]="m.name">
-                              {{ m.avatar }}
+                      </td>
+                      <td>
+                        <div class="sprint-title-col">
+                          <div class="sprint-title-wrap">
+                            <strong class="sprint-task-title">{{ task.title }}</strong>
+                            @if (task.blocked) {
+                              <span class="card-blocked-tag">
+                                <i class="ph-light ph-warning"></i> Blocked
+                              </span>
+                            }
+                            @if (task.dependencies.length > 0) {
+                              <span class="dep-inline-pill font-mono">After {{ task.dependencies.join(', ') }}</span>
+                            }
+                          </div>
+                          @if (task.blocked && task.blockerReason) {
+                            <span class="sprint-blocker-sub">{{ task.blockerReason }}</span>
+                          }
+                        </div>
+                      </td>
+                      <td>
+                        <div class="table-member-cell">
+                          <div class="avatar-stack">
+                            @for (m of store.getTaskMembers(task); track m.id) {
+                              <span class="avatar-stack-item" [style.background-color]="m.color" [title]="m.name">
+                                {{ m.avatar }}
+                              </span>
+                            }
+                          </div>
+                          <span class="text-xs text-secondary truncate-names">{{ getTaskAssigneesSummary(task) }}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="table-progress-cell">
+                          <div class="table-progress-bar">
+                            <div class="table-progress-fill" [style.width.%]="task.progress"></div>
+                          </div>
+                          <span class="font-mono text-xs">{{ task.progress }}%</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span class="card-p-badge" [attr.data-priority]="task.priority">{{ task.priority }}</span>
+                      </td>
+                      <td class="font-mono text-xs tabular-nums">{{ task.effortPoints }} pts</td>
+                      <td>
+                        <div class="table-schedule-cell font-mono">
+                          <span>{{ formatDateShort(task.startDate) }} → {{ formatDateShort(task.dueDate) }}</span>
+                          @if (store.isTaskDueSoon(task)) {
+                            <span class="table-due-flag" [class.overdue]="store.isTaskOverdue(task)">
+                              {{ store.isTaskOverdue(task) ? 'Overdue' : 'Due Soon' }}
                             </span>
                           }
                         </div>
-                        <span class="text-xs text-secondary truncate-names">{{ getTaskAssigneesSummary(task) }}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span class="card-p-badge" [attr.data-priority]="task.priority">{{ task.priority }}</span>
-                    </td>
-                    <td class="font-mono text-xs tabular-nums">{{ task.effortPoints }}p</td>
-                    <td class="font-mono text-xs text-muted">{{ task.dueDate }}</td>
-                    <td (click)="$event.stopPropagation()">
-                      <select
-                        class="sprint-select-status"
-                        [ngModel]="task.status"
-                        (ngModelChange)="store.updateTaskStatus(task.id, $event)"
-                        [disabled]="!store.canEditTask(task)"
-                      >
-                        <option value="TODO">To Do</option>
-                        <option value="IN_PROGRESS">In Progress</option>
-                        <option value="DEPLOYED">Deployed to Staging</option>
-                        <option value="DONE">Done</option>
-                      </select>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+                      </td>
+                      <td (click)="$event.stopPropagation()">
+                        <select
+                          class="sprint-select-status"
+                          [ngModel]="task.status"
+                          (ngModelChange)="store.updateTaskStatus(task.id, $event)"
+                          [disabled]="!store.canEditTask(task)"
+                        >
+                          <option value="TODO">Yet to Start</option>
+                          <option value="IN_PROGRESS">In Progress</option>
+                          <option value="DEPLOYED">Under Review</option>
+                          <option value="DONE" [disabled]="!store.canSignOffDone() && task.status !== 'DONE'">Completed</option>
+                        </select>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="9" class="empty-table-cell">
+                        No tasks match the active filters. Click <strong>+ New Task</strong> in the top bar to create a deliverable.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           </div>
         }
 
-        <!-- C. DELIVERY ROADMAP (TIMELINE) VIEW -->
+        <!-- C. GANTT CHART VIEW -->
         @if (store.currentView() === 'TIMELINE') {
           <div class="timeline-container">
-            <!-- 1. Top Scannable Control & Legend Strip -->
+            <!-- 1. Gantt Legend & Schedule Controls -->
             <div class="timeline-sub-toolbar">
               <div class="timeline-legend-group">
                 <div class="timeline-legend-item">
-                  <span class="legend-color-dot dot-completed"></span>
-                  <span class="legend-label">Completed / Deployed</span>
+                  <span class="legend-color-dot dot-todo"></span>
+                  <span class="legend-label">Yet to Start</span>
                 </div>
                 <div class="timeline-legend-item">
                   <span class="legend-color-dot dot-inprogress"></span>
                   <span class="legend-label">In Progress</span>
                 </div>
                 <div class="timeline-legend-item">
+                  <span class="legend-color-dot dot-review"></span>
+                  <span class="legend-label">Under Review</span>
+                </div>
+                <div class="timeline-legend-item">
+                  <span class="legend-color-dot dot-completed"></span>
+                  <span class="legend-label">Completed</span>
+                </div>
+                <div class="timeline-legend-item">
                   <span class="legend-color-dot dot-blocked"></span>
-                  <span class="legend-label">Blocked / Delayed</span>
+                  <span class="legend-label">Blocked</span>
                 </div>
               </div>
 
               <div class="timeline-toolbar-actions">
-                <!-- Deliverables Count Pill -->
                 <span class="timeline-stat-pill font-mono">
-                  {{ store.filteredTasks().length }} Deliverables
+                  {{ store.filteredTasks().length }} Task(s) · Hover row to inspect dependencies
                 </span>
 
-                <!-- Interactive "Blocked Only" Toggle -->
-                <button
-                  type="button"
-                  class="btn-timeline-opt btn-blocked-toggle"
-                  [class.active]="store.filterBlockedOnly()"
-                  (click)="toggleBlockedFilter()"
-                  title="Filter to show only blocked or delayed deliverables"
-                >
-                  <i class="ph-light ph-warning"></i>
-                  <span>Blocked Only</span>
-                  @if (store.filterBlockedOnly()) {
-                    <span class="filter-active-indicator">Active</span>
-                  }
-                </button>
-
-                <!-- Domino Conflict / Auto-Shift Dates (if conflicts exist) -->
                 @if (store.ganttScheduleMetrics().hasConflicts) {
                   <button
                     type="button"
                     class="btn-timeline-opt btn-conflict-autoshift"
                     [disabled]="!store.canEditTasks()"
                     (click)="store.cascadeShiftDates()"
-                    title="Auto-shift downstream dates to eliminate dependency conflicts"
+                    title="Shift downstream start/due dates to start 1 day after upstream prerequisites finish"
                   >
-                    <i class="ph-light ph-lightning"></i>
-                    <span>Auto-Shift Dates</span>
+                    <i class="ph-light ph-arrows-out-line-horizontal"></i>
+                    <span>Auto-Shift Dates ({{ store.ganttScheduleMetrics().conflicts.length }})</span>
                   </button>
                 }
               </div>
             </div>
 
-            <!-- 2. Split Delivery Roadmap Canvas -->
-            <div class="timeline-split-card">
-              <!-- Left Column: Task & Upstream Dependency Summary (340px) -->
-              <div class="timeline-left-column">
-                <div class="timeline-col-header">
-                  <span>Deliverable &amp; Dependencies</span>
-                  <span class="font-mono text-muted text-xs">Points</span>
-                </div>
-                <div class="timeline-left-list">
-                  @for (task of store.filteredTasks(); track task.id) {
-                    <div
-                      class="timeline-deliverable-item"
-                      [class.is-hovered]="task.id === hoveredTaskId()"
-                      [class.is-connected]="isTaskConnectedToHovered(task.id)"
-                      [class.is-blocked]="task.blocked"
-                      (mouseenter)="onTaskHover(task.id)"
-                      (mouseleave)="onTaskHover(null)"
-                      (click)="openTask(task.id)"
-                    >
-                      <div class="deliverable-meta-wrap">
-                        <div class="deliverable-badges-row">
-                          <span class="deliverable-key font-mono">{{ task.id }}</span>
-                          @if (getProject(task.projectId); as proj) {
-                            <span class="card-proj-badge" [style.color]="proj.color">{{ proj.code }}</span>
-                          }
-                          <span
-                            class="timeline-status-badge"
-                            [attr.data-status]="getTimelineStatusKey(task)"
-                          >
-                            {{ getTimelineStatusLabel(task) }}
-                          </span>
-                        </div>
-                        <span class="deliverable-title text-truncate" [title]="task.title">
-                          {{ task.title }}
-                        </span>
-                        @if (task.dependencies.length > 0) {
-                          <div class="deliverable-dep-row">
-                            <span class="dep-pill font-mono">
-                              <i class="ph-light ph-arrow-bend-down-right"></i> After {{ task.dependencies.join(', ') }}
+            <!-- 2. Split Gantt Chart Canvas -->
+            @if (store.filteredTasks().length > 0) {
+              <div class="timeline-split-card">
+                <!-- Left Column: Deliverable, Status & Dependencies (350px) -->
+                <div class="timeline-left-column">
+                  <div class="timeline-col-header">
+                    <span>Deliverable &amp; Prerequisites</span>
+                    <span class="font-mono text-muted text-xs">Effort</span>
+                  </div>
+                  <div class="timeline-left-list">
+                    @for (task of store.filteredTasks(); track task.id) {
+                      <div
+                        class="timeline-deliverable-item"
+                        [class.is-hovered]="task.id === hoveredTaskId()"
+                        [class.is-connected]="isTaskConnectedToHovered(task.id)"
+                        [class.is-blocked]="task.blocked"
+                        (mouseenter)="onTaskHover(task.id)"
+                        (mouseleave)="onTaskHover(null)"
+                        (click)="openTask(task.id)"
+                      >
+                        <div class="deliverable-meta-wrap">
+                          <div class="deliverable-badges-row">
+                            <span class="deliverable-key font-mono">{{ task.id }}</span>
+                            @if (getProject(task.projectId); as proj) {
+                              <span class="card-proj-badge" [style.color]="proj.color">{{ proj.code }}</span>
+                            }
+                            <span
+                              class="timeline-status-badge"
+                              [attr.data-status]="getGanttStatusKey(task)"
+                            >
+                              {{ task.blocked ? 'Blocked' : store.getStatusLabel(task.status) }}
                             </span>
                           </div>
-                        }
-                      </div>
-                      <span class="font-mono text-muted text-xs deliverable-effort">{{ task.effortPoints }}p</span>
-                    </div>
-                  }
-                </div>
-              </div>
-
-              <!-- Right Column: Breathable 4-Week Columns & Duration Track Canvas -->
-              <div class="timeline-right-column custom-scroll">
-                <!-- Weekly Sprint Column Headers -->
-                <div class="timeline-weeks-header">
-                  @for (week of timelineWeeks; track week.id) {
-                    <div class="timeline-week-head-col">
-                      <span>{{ week.label }}</span>
-                    </div>
-                  }
-
-                  <!-- Today Tag Marker in Header -->
-                  <div class="timeline-today-head-badge" [style.left.%]="todayPercent">
-                    <span class="today-tag-text font-mono">Today</span>
-                  </div>
-                </div>
-
-                <!-- Timeline Tracks & Hover SVG Overlay -->
-                <div class="timeline-track-canvas" [style.height.px]="store.filteredTasks().length * 88">
-                  <!-- Vertical Weekly Column Grid Dividers -->
-                  <div class="timeline-weeks-grid-bg">
-                    @for (week of timelineWeeks; track week.id) {
-                      <div class="week-v-divider"></div>
-                    }
-                  </div>
-
-                  <!-- Vertical "Today" Marker Line -->
-                  <div class="timeline-today-v-line" [style.left.%]="todayPercent"></div>
-
-                  <!-- Hover-Only Curved SVG Connector Overlay (Zero Lines When Idle) -->
-                  <svg
-                    class="timeline-hover-svg"
-                    width="100%"
-                    [attr.height]="store.filteredTasks().length * 88"
-                    [attr.viewBox]="'0 0 1000 ' + (store.filteredTasks().length * 88)"
-                    preserveAspectRatio="none"
-                  >
-                    <defs>
-                      <marker
-                        id="timeline-arrow-normal"
-                        viewBox="0 0 10 10"
-                        refX="6"
-                        refY="5"
-                        markerWidth="6"
-                        markerHeight="6"
-                        orient="auto-start-reverse"
-                      >
-                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent-primary)" />
-                      </marker>
-                      <marker
-                        id="timeline-arrow-danger"
-                        viewBox="0 0 10 10"
-                        refX="6"
-                        refY="5"
-                        markerWidth="6"
-                        markerHeight="6"
-                        orient="auto-start-reverse"
-                      >
-                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent-danger)" />
-                      </marker>
-                    </defs>
-                    @for (conn of activeConnectors(); track conn.id) {
-                      <path
-                        [attr.d]="conn.d"
-                        class="timeline-svg-connector"
-                        [class.connector-is-conflict]="conn.isConflict"
-                        [attr.marker-end]="conn.isConflict ? 'url(#timeline-arrow-danger)' : 'url(#timeline-arrow-normal)'"
-                      />
-                    }
-                  </svg>
-
-                  <!-- Task Duration Pill Bars -->
-                  @for (task of store.filteredTasks(); track task.id; let idx = $index) {
-                    <div
-                      class="timeline-lane-row"
-                      [style.top.px]="idx * 88"
-                      [class.is-hovered]="task.id === hoveredTaskId()"
-                      [class.is-connected]="isTaskConnectedToHovered(task.id)"
-                      (mouseenter)="onTaskHover(task.id)"
-                      (mouseleave)="onTaskHover(null)"
-                      (click)="openTask(task.id)"
-                    >
-                      <!-- Horizontal Rounded Pill Bar -->
-                      <div
-                        class="timeline-duration-pill"
-                        [style.left.%]="getTimelineBarLeftPercent(task)"
-                        [style.width.%]="getTimelineBarWidthPercent(task)"
-                        [attr.data-status]="getTimelineStatusKey(task)"
-                        [class.is-critical]="isCriticalPath(task.id)"
-                        [title]="task.title + ' (' + task.startDate + ' → ' + task.dueDate + ')'"
-                      >
-                        <!-- Stacked Co-Assignee Overlapping Avatars -->
-                        <div class="timeline-bar-avatar-stack">
-                          @for (m of store.getTaskMembers(task); track m.id) {
-                            <span
-                              class="bar-avatar-dot"
-                              [style.background-color]="m.color"
-                              [title]="m.name + ' (' + m.role + ')'"
-                            >
-                              {{ m.avatar }}
-                            </span>
-                          }
-                        </div>
-
-                        <!-- Pill Status + Points Label -->
-                        <div class="timeline-bar-label-group">
-                          @if (task.blocked) {
-                            <i class="ph-light ph-warning"></i>
-                          }
-                          <span class="timeline-bar-label-text">
-                            {{ getTimelineStatusLabel(task) }} · {{ task.effortPoints }} pts
+                          <span class="deliverable-title text-truncate" [title]="task.title">
+                            {{ task.title }}
                           </span>
+                          <div class="deliverable-sub-row">
+                            <span class="deliverable-dates font-mono">
+                              {{ formatDateShort(task.startDate) }} – {{ formatDateShort(task.dueDate) }}
+                            </span>
+                            @if (task.dependencies.length > 0) {
+                              <span class="dep-pill font-mono">
+                                <i class="ph-light ph-arrow-bend-down-right"></i> After {{ task.dependencies.join(', ') }}
+                              </span>
+                            }
+                          </div>
+                        </div>
+                        <span class="font-mono text-muted text-xs deliverable-effort">{{ task.effortPoints }}p</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Right Column: Dynamic Weekly Schedule & Filled Progress Bars -->
+                <div class="timeline-right-column custom-scroll">
+                  <div class="timeline-weeks-header" [style.grid-template-columns]="'repeat(' + ganttWindow().weeks.length + ', minmax(160px, 1fr))'">
+                    @for (week of ganttWindow().weeks; track week.id) {
+                      <div class="timeline-week-head-col">
+                        <span>{{ week.label }}</span>
+                      </div>
+                    }
+
+                    @if (ganttWindow().todayPct !== null) {
+                      <div class="timeline-today-head-badge" [style.left.%]="ganttWindow().todayPct">
+                        <span class="today-tag-text font-mono">TODAY</span>
+                      </div>
+                    }
+                  </div>
+
+                  <div class="timeline-track-canvas" [style.height.px]="store.filteredTasks().length * 88">
+                    <!-- Vertical Weekly Dividers -->
+                    <div class="timeline-weeks-grid-bg" [style.grid-template-columns]="'repeat(' + ganttWindow().weeks.length + ', minmax(160px, 1fr))'">
+                      @for (week of ganttWindow().weeks; track week.id) {
+                        <div class="week-v-divider"></div>
+                      }
+                    </div>
+
+                    <!-- Today Marker Line -->
+                    @if (ganttWindow().todayPct !== null) {
+                      <div class="timeline-today-v-line" [style.left.%]="ganttWindow().todayPct"></div>
+                    }
+
+                    <!-- Hover-Only Curved Dependency Connectors -->
+                    <svg
+                      class="timeline-hover-svg"
+                      width="100%"
+                      [attr.height]="store.filteredTasks().length * 88"
+                      [attr.viewBox]="'0 0 1000 ' + (store.filteredTasks().length * 88)"
+                      preserveAspectRatio="none"
+                    >
+                      <defs>
+                        <marker
+                          id="gantt-arrow-normal"
+                          viewBox="0 0 10 10"
+                          refX="6"
+                          refY="5"
+                          markerWidth="6"
+                          markerHeight="6"
+                          orient="auto-start-reverse"
+                        >
+                          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent-primary)" />
+                        </marker>
+                        <marker
+                          id="gantt-arrow-danger"
+                          viewBox="0 0 10 10"
+                          refX="6"
+                          refY="5"
+                          markerWidth="6"
+                          markerHeight="6"
+                          orient="auto-start-reverse"
+                        >
+                          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent-danger)" />
+                        </marker>
+                      </defs>
+                      @for (conn of activeConnectors(); track conn.id) {
+                        <path
+                          [attr.d]="conn.d"
+                          class="timeline-svg-connector"
+                          [class.connector-is-conflict]="conn.isConflict"
+                          [attr.marker-end]="conn.isConflict ? 'url(#gantt-arrow-danger)' : 'url(#gantt-arrow-normal)'"
+                        />
+                      }
+                    </svg>
+
+                    <!-- Task Gantt Bars with Filled % Progress & Schedule Variance -->
+                    @for (task of store.filteredTasks(); track task.id; let idx = $index) {
+                      <div
+                        class="timeline-lane-row"
+                        [style.top.px]="idx * 88"
+                        [class.is-hovered]="task.id === hoveredTaskId()"
+                        [class.is-connected]="isTaskConnectedToHovered(task.id)"
+                        (mouseenter)="onTaskHover(task.id)"
+                        (mouseleave)="onTaskHover(null)"
+                        (click)="openTask(task.id)"
+                      >
+                        <div
+                          class="gantt-bar-outer"
+                          [style.left.%]="getGanttBarLeftPercent(task)"
+                          [style.width.%]="getGanttBarWidthPercent(task)"
+                          [attr.data-status]="getGanttStatusKey(task)"
+                          [title]="task.title + ' · ' + task.progress + '% complete (' + task.startDate + ' to ' + task.dueDate + ')'"
+                        >
+                          <!-- Crisp Filled Progress Bar (0% - 100%) -->
+                          <div class="gantt-bar-progress-fill" [style.width.%]="task.progress"></div>
+
+                          <!-- Bar Foreground Content -->
+                          <div class="gantt-bar-content">
+                            <div class="timeline-bar-avatar-stack">
+                              @for (m of store.getTaskMembers(task); track m.id) {
+                                <span
+                                  class="bar-avatar-dot"
+                                  [style.background-color]="m.color"
+                                  [title]="m.name + ' (' + m.role + ')'"
+                                >
+                                  {{ m.avatar }}
+                                </span>
+                              }
+                            </div>
+
+                            <span class="gantt-bar-pct font-mono">{{ task.progress }}%</span>
+
+                            <span
+                              class="gantt-variance-tag font-mono"
+                              [class.is-slipped]="getScheduleVarianceDays(task) > 0"
+                            >
+                              {{ getScheduleVarianceDays(task) > 0 ? 'Slipped +' + getScheduleVarianceDays(task) + 'd' : 'On Track' }}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  }
+                    }
+                  </div>
                 </div>
               </div>
-            </div>
+            } @else {
+              <div class="empty-gantt-card">
+                <i class="ph-light ph-chart-bar-horizontal"></i>
+                <h4>No Tasks to Plot</h4>
+                <p>Clear active filters or click <strong>+ New Task</strong> in the top bar to schedule deliverables on the Gantt Chart.</p>
+              </div>
+            }
           </div>
         }
       </div>
-
-      <!-- NEW TASK MODAL -->
-      @if (isNewTaskModalOpen()) {
-        <div class="modal-backdrop" (click)="closeNewTaskModal()">
-          <div class="modal-card" (click)="$event.stopPropagation()">
-            <div class="modal-head">
-              <h3 class="font-serif">Create New Deliverable</h3>
-              <button type="button" class="btn-close" (click)="closeNewTaskModal()">
-                <i class="ph-light ph-x"></i>
-              </button>
-            </div>
-            <div class="modal-body custom-scroll">
-              <div class="form-group">
-                <label class="form-label required">Task Title</label>
-                <input type="text" class="form-input" [(ngModel)]="newTaskTitle" placeholder="e.g. Implement streaming token parser" />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Description</label>
-                <textarea class="form-textarea" rows="3" [(ngModel)]="newTaskDescription" placeholder="Engineering requirements & specifications..."></textarea>
-              </div>
-
-              <div class="form-grid-2">
-                <div class="form-group">
-                  <label class="form-label">Project</label>
-                  <select class="form-select" [(ngModel)]="newTaskProjectId">
-                    @for (proj of store.visibleProjects(); track proj.id) {
-                      <option [value]="proj.id">{{ proj.name }} ({{ proj.code }})</option>
-                    }
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Primary Assignee</label>
-                  <select class="form-select" [(ngModel)]="newTaskAssigneeId">
-                    @for (mem of store.teamMembers(); track mem.id) {
-                      <option [value]="mem.id">{{ mem.name }} • {{ mem.role }}</option>
-                    }
-                  </select>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Co-Assignees (Points Split Equally)</label>
-                <div class="modal-assignee-pool">
-                  @for (mem of store.teamMembers(); track mem.id) {
-                    <button
-                      type="button"
-                      class="pool-chip-btn"
-                      [class.selected]="isNewTaskAssignee(mem.id)"
-                      (click)="toggleNewTaskAssignee(mem.id)"
-                    >
-                      <span class="chip-avatar-sm" [style.background-color]="mem.color">{{ mem.avatar }}</span>
-                      <span>{{ mem.name }}</span>
-                      <span class="capacity-mini-dot" [attr.data-status]="store.getMemberLoadMetric(mem.id).status"></span>
-                    </button>
-                  }
-                </div>
-              </div>
-
-              <div class="form-grid-3">
-                <div class="form-group">
-                  <label class="form-label">Priority</label>
-                  <select class="form-select" [(ngModel)]="newTaskPriority">
-                    <option value="CRITICAL">Critical</option>
-                    <option value="HIGH">High</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="LOW">Low</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Story Points</label>
-                  <input type="number" class="form-input" [(ngModel)]="newTaskEffort" min="1" max="21" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Due Date</label>
-                  <input type="date" class="form-input" [(ngModel)]="newTaskDueDate" />
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Subtask Checklist (1 item per line)</label>
-                <textarea class="form-textarea" rows="3" [(ngModel)]="newTaskInitialSubtasks" placeholder="Write unit test&#10;Verify GPU memory&#10;Deploy to staging"></textarea>
-              </div>
-            </div>
-
-            <div class="modal-actions">
-              <button type="button" class="btn-cancel" (click)="closeNewTaskModal()">Cancel</button>
-              <button type="button" class="btn-submit" [disabled]="!newTaskTitle.trim()" (click)="submitNewTask()">Create Task</button>
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- STANDALONE SMART IMPORT MODAL -->
-      @if (isSmartImportModalOpen()) {
-        <app-import-modal (closeModal)="closeSmartImport()"></app-import-modal>
-      }
-
-      <!-- STANDALONE PROMPT WITH AI MODAL -->
-      @if (isAiPromptModalOpen()) {
-        <app-ai-prompt-modal (closeModal)="closeAiPromptModal()"></app-ai-prompt-modal>
-      }
     </div>
   `,
   styles: [`
     .workspace-page-wrapper {
       display: flex;
       flex-direction: column;
-      height: 100%;
-      min-height: calc(100vh - 50px);
-      overflow: hidden;
+      min-height: calc(100vh - 56px);
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
       background: var(--bg-canvas);
     }
 
     .workspace-toolbar {
-      padding: 10px 24px;
+      padding: 10px 20px;
       background: var(--bg-surface);
       border-bottom: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
       flex-wrap: wrap;
     }
 
-    .toolbar-left {
+    .toolbar-left, .toolbar-right {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
     }
 
@@ -704,8 +695,8 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       align-items: center;
       background: var(--bg-subtle);
       border: 1px solid var(--border-hairline);
-      border-radius: var(--radius-pill);
-      padding: 3px;
+      border-radius: var(--radius-inner);
+      padding: 2px;
       gap: 2px;
     }
 
@@ -713,10 +704,10 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 5px 14px;
+      padding: 5px 12px;
       border-radius: var(--radius-pill);
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
       color: var(--text-secondary);
       background: transparent;
       border: none;
@@ -732,19 +723,18 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       background: var(--bg-surface);
       color: var(--accent-primary);
       box-shadow: var(--shadow-sm);
-      font-weight: 600;
     }
 
     .search-box-wrap {
       position: relative;
       display: flex;
       align-items: center;
-      width: 220px;
+      width: 230px;
     }
 
     .search-icon {
       position: absolute;
-      left: 12px;
+      left: 10px;
       font-size: 13px;
       color: var(--text-muted);
       pointer-events: none;
@@ -754,8 +744,8 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
 
     .search-input {
       width: 100%;
-      padding: 6px 28px 6px 32px;
-      border-radius: var(--radius-pill);
+      padding: 6px 26px 6px 30px;
+      border-radius: var(--radius-inner);
       border: 1px solid var(--border-hairline);
       background: var(--bg-subtle);
       color: var(--text-primary);
@@ -785,14 +775,14 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     .priority-chips {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
     }
 
     .p-chip {
-      padding: 4px 10px;
+      padding: 5px 10px;
       border-radius: var(--radius-pill);
       font-size: 11px;
-      font-weight: 500;
+      font-weight: 600;
       background: var(--bg-subtle);
       border: 1px solid var(--border-hairline);
       color: var(--text-secondary);
@@ -801,319 +791,454 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     }
 
     .p-chip:hover {
-      background: var(--bg-surface);
       color: var(--text-primary);
+      background: var(--bg-surface);
     }
 
     .p-chip.active {
       background: var(--accent-primary-tint);
+      border-color: var(--accent-primary);
       color: var(--accent-primary);
-      border-color: rgba(92, 115, 98, 0.35);
-      font-weight: 600;
     }
 
-    .toolbar-right {
+    .btn-triage-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-hairline);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition-tactile);
+    }
+
+    .btn-triage-filter:hover {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+    }
+
+    .btn-due-soon.active {
+      background: var(--accent-warn-tint);
+      border-color: var(--accent-warn);
+      color: var(--accent-warn);
+    }
+
+    .btn-blocked-filter.active {
+      background: var(--status-blocked-bg);
+      border-color: var(--accent-danger);
+      color: var(--status-blocked-text);
+    }
+
+    .triage-count-badge {
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      font-size: 10.5px;
+      font-weight: 700;
+      background: var(--bg-surface);
+      color: var(--text-muted);
+    }
+
+    .triage-count-badge.has-items {
+      background: var(--accent-warn);
+      color: #fff;
+    }
+
+    .triage-count-badge.danger {
+      background: var(--accent-danger);
+      color: #fff;
+    }
+
+    .btn-reset-filters {
+      padding: 5px 10px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-hairline);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-reset-filters:hover { color: var(--text-primary); }
+
+    .due-soon-triage-banner {
+      padding: 8px 20px;
+      background: var(--accent-warn-tint);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+
+    .triage-banner-left {
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .btn-action {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      white-space: nowrap;
-      padding: 6px 14px;
+    .triage-banner-left i {
+      color: var(--accent-warn);
+      font-size: 15px;
+    }
+
+    .btn-banner-clear {
+      padding: 4px 10px;
       border-radius: var(--radius-pill);
-      font-size: 12px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
-      border: 1px solid transparent;
-      transition: var(--transition-tactile);
-    }
-
-    .btn-action:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-      transform: none !important;
-    }
-
-    .btn-ai-prompt {
-      background: var(--bg-subtle);
-      border-color: var(--border-hairline);
-      color: var(--text-primary);
-    }
-
-    .btn-ai-prompt:hover:not(:disabled) {
-      background: var(--accent-primary-tint);
-      color: var(--accent-primary);
-      border-color: var(--accent-primary);
-      transform: translateY(-1px);
-    }
-
-    .btn-smart-import {
-      background: var(--bg-subtle);
-      border-color: var(--border-hairline);
-      color: var(--text-secondary);
-    }
-
-    .btn-smart-import:hover:not(:disabled) {
-      background: var(--accent-primary-tint);
-      color: var(--accent-primary);
-      border-color: rgba(92, 115, 98, 0.3);
-      transform: translateY(-1px);
-    }
-
-    .btn-new-task {
-      background: var(--accent-primary);
-      color: #ffffff;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .btn-new-task:hover:not(:disabled) {
-      background: var(--accent-primary-hover);
-      transform: translateY(-1px);
+      white-space: nowrap;
     }
 
     .workspace-viewport {
       flex: 1;
-      padding: 20px 24px 48px;
-      overflow: auto;
+      padding: 16px 20px 28px;
+      min-width: 0;
     }
 
-    /* KANBAN */
+    /* KANBAN BOARD */
     .kanban-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(280px, 1fr));
-      gap: 16px;
-      min-width: 1140px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
       align-items: start;
+    }
+
+    @media (max-width: 1180px) {
+      .kanban-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .kanban-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .kanban-column {
       background: var(--bg-subtle);
       border: 1px solid var(--border-hairline);
       border-radius: var(--radius-card);
-      padding: 14px;
       display: flex;
       flex-direction: column;
-      min-height: calc(100vh - 190px);
-    }
-
-    .kanban-column.col-deployed-highlight {
-      background: var(--status-deployed-bg);
-      border-color: rgba(123, 104, 174, 0.35);
+      min-width: 0;
+      max-height: calc(100vh - 155px);
     }
 
     .col-head {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 14px;
-      padding: 0 4px;
+      gap: 8px;
+      flex-shrink: 0;
     }
 
     .col-title-wrap {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
+      min-width: 0;
     }
 
     .col-dot {
-      width: 7px;
-      height: 7px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
+      flex-shrink: 0;
     }
 
     .col-name {
       font-size: 12.5px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--text-primary);
       margin: 0;
-      letter-spacing: -0.01em;
+      white-space: nowrap;
     }
 
     .col-count {
-      font-size: 10.5px;
-      font-weight: 600;
-      padding: 1px 7px;
-      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
       background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
-      color: var(--text-secondary);
+      padding: 1px 7px;
+      border-radius: var(--radius-pill);
     }
 
     .lead-check-tag {
-      font-size: 9.5px;
+      font-size: 10px;
       font-weight: 700;
       padding: 2px 7px;
       border-radius: var(--radius-pill);
-      background: var(--status-deployed);
-      color: #ffffff;
+      background: var(--status-deployed-bg);
+      color: var(--status-deployed-text);
+      white-space: nowrap;
     }
 
     .kanban-drop-zone {
+      padding: 10px;
       display: flex;
       flex-direction: column;
       gap: 10px;
-      flex: 1;
-      min-height: 200px;
+      min-height: 160px;
+      overflow-y: auto;
+    }
+
+    .empty-col-state {
+      padding: 24px 12px;
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      border: 1px dashed var(--border-hairline);
+      border-radius: var(--radius-inner);
     }
 
     .task-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
-      border-radius: 14px;
-      padding: 14px 16px;
-      box-shadow: var(--shadow-sm);
-      cursor: grab;
+      border-radius: var(--radius-inner);
+      padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 9px;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
       transition: var(--transition-tactile);
     }
 
     .task-card:hover {
-      transform: translateY(-2px);
+      border-color: var(--accent-primary);
       box-shadow: var(--shadow-md);
-      border-color: rgba(92, 115, 98, 0.4);
-    }
-
-    .task-card.card-is-deployed {
-      border-color: rgba(123, 104, 174, 0.4);
     }
 
     .task-card.card-is-blocked {
-      border-color: rgba(200, 109, 81, 0.5);
+      border-left: 3px solid var(--accent-danger);
     }
 
     .task-card-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 6px;
     }
 
     .card-id-row {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
+      flex-wrap: wrap;
     }
 
     .card-id {
-      font-size: 11px;
+      font-size: 10.5px;
+      font-weight: 700;
       color: var(--text-muted);
     }
 
     .card-proj-badge {
       font-size: 10px;
       font-weight: 700;
-      font-family: var(--font-mono);
-      padding: 1px 6px;
-      border-radius: var(--radius-pill);
       background: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
+      padding: 1px 6px;
+      border-radius: 4px;
     }
 
     .card-blocked-tag {
       display: inline-flex;
       align-items: center;
       gap: 3px;
-      font-size: 9.5px;
-      font-weight: 600;
+      font-size: 10px;
+      font-weight: 700;
       padding: 1px 6px;
-      border-radius: var(--radius-pill);
+      border-radius: 4px;
       background: var(--status-blocked-bg);
       color: var(--status-blocked-text);
     }
 
     .card-lock-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      font-size: 9.5px;
-      font-weight: 600;
-      padding: 1px 6px;
-      border-radius: var(--radius-pill);
-      background: var(--bg-subtle);
       color: var(--text-muted);
-      border: 1px solid var(--border-hairline);
+      font-size: 12px;
+      display: inline-flex;
     }
 
     .card-pts {
       font-size: 10.5px;
-      color: var(--text-muted);
+      font-weight: 700;
+      color: var(--text-secondary);
       background: var(--bg-subtle);
       padding: 1px 6px;
-      border-radius: var(--radius-pill);
+      border-radius: 4px;
+      white-space: nowrap;
     }
 
     .card-title {
       font-size: 13px;
       font-weight: 600;
       color: var(--text-primary);
-      line-height: 1.45;
+      line-height: 1.38;
+      word-break: break-word;
     }
+
+    .card-blocker-reason {
+      display: flex;
+      align-items: flex-start;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--status-blocked-text);
+      background: var(--status-blocked-bg);
+      padding: 5px 8px;
+      border-radius: 4px;
+      line-height: 1.35;
+    }
+
+    .card-progress-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .card-progress-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10.5px;
+      color: var(--text-muted);
+    }
+
+    .card-pct {
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+
+    .card-due {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .card-due.due-soon {
+      color: var(--accent-warn);
+      font-weight: 700;
+    }
+
+    .card-due.overdue {
+      color: var(--accent-danger);
+      font-weight: 700;
+    }
+
+    .card-progress-track {
+      height: 5px;
+      border-radius: 999px;
+      background: var(--bg-subtle);
+      overflow: hidden;
+    }
+
+    .card-progress-fill {
+      height: 100%;
+      background: var(--accent-primary);
+      border-radius: 999px;
+      transition: width 0.2s ease;
+    }
+
+    .card-progress-fill.fill-done { background: var(--status-done); }
+    .card-progress-fill.fill-blocked { background: var(--accent-danger); }
 
     .card-footer {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-top: 4px;
+      gap: 8px;
+      padding-top: 4px;
+      border-top: 1px solid var(--border-hairline);
     }
 
     .card-meta-left {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
+      flex-wrap: wrap;
     }
 
     .card-p-badge {
       font-size: 9.5px;
-      font-weight: 600;
+      font-weight: 700;
       padding: 1px 6px;
-      border-radius: var(--radius-pill);
+      border-radius: 4px;
       background: var(--bg-subtle);
       color: var(--text-secondary);
     }
+    .card-p-badge[data-priority="CRITICAL"] { background: var(--badge-critical-bg); color: var(--badge-critical-text); }
+    .card-p-badge[data-priority="HIGH"] { background: var(--badge-high-bg); color: var(--badge-high-text); }
 
-    .card-p-badge[data-priority="CRITICAL"] {
-      background: var(--badge-critical-bg);
-      color: var(--badge-critical-text);
-    }
-
-    .card-p-badge[data-priority="HIGH"] {
-      background: var(--badge-high-bg);
-      color: var(--badge-high-text);
-    }
-
-    .card-checklist-tag {
+    .card-checklist-tag, .card-dep-tag {
       display: inline-flex;
       align-items: center;
       gap: 3px;
-      font-size: 10.5px;
-      color: var(--text-secondary);
+      font-size: 10px;
+      color: var(--text-muted);
     }
 
-    .key-path-tag {
-      display: inline-flex;
+    .card-owners-wrap {
+      display: flex;
       align-items: center;
-      gap: 2px;
-      font-size: 9px;
-      font-weight: 700;
-      padding: 1px 6px;
-      border-radius: var(--radius-pill);
-      background: var(--accent-warn-tint);
-      color: var(--accent-warn);
-      border: 1px solid rgba(197, 155, 78, 0.3);
+      gap: 5px;
+      min-width: 0;
     }
+
+    .card-owner-name {
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      max-width: 82px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .avatar-stack {
+      display: flex;
+      align-items: center;
+    }
+
+    .avatar-stack-item {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 8.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid var(--bg-surface);
+      margin-left: -5px;
+    }
+    .avatar-stack-item:first-child { margin-left: 0; }
 
     /* SPRINT TABLE */
     .sprint-table-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
       border-radius: var(--radius-card);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .sprint-table-scroll {
+      width: 100%;
       overflow-x: auto;
-      box-shadow: var(--shadow-soft);
     }
 
     .sprint-data-table {
@@ -1123,192 +1248,216 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
     }
 
     .sprint-data-table th {
-      padding: 12px 16px;
-      background: var(--bg-subtle);
+      padding: 11px 14px;
       font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.04em;
-      border-bottom: 1px solid var(--border-hairline);
-    }
-
-    .sprint-row {
-      border-bottom: 1px solid var(--border-hairline);
-      cursor: pointer;
-      transition: var(--transition-tactile);
-    }
-
-    .sprint-row:hover {
+      color: var(--text-muted);
       background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border-hairline);
     }
 
     .sprint-data-table td {
-      padding: 12px 16px;
-      font-size: 12.5px;
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border-hairline);
+      vertical-align: middle;
+    }
+
+    .sprint-row {
+      cursor: pointer;
+      transition: background 0.12s ease;
+    }
+    .sprint-row:hover { background: var(--bg-subtle); }
+
+    .sprint-title-col {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
     }
 
     .sprint-title-wrap {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
+      flex-wrap: wrap;
     }
 
     .sprint-task-title {
-      color: var(--text-primary);
       font-size: 13px;
       font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .sprint-blocker-sub {
+      font-size: 11px;
+      color: var(--accent-danger);
+    }
+
+    .dep-inline-pill {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-hairline);
     }
 
     .table-member-cell {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
     }
 
     .truncate-names {
-      max-width: 110px;
+      max-width: 100px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
+    .table-progress-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .table-progress-bar {
+      flex: 1;
+      height: 6px;
+      background: var(--bg-subtle);
+      border-radius: 999px;
+      overflow: hidden;
+      min-width: 48px;
+    }
+
+    .table-progress-fill {
+      height: 100%;
+      background: var(--accent-primary);
+      border-radius: 999px;
+    }
+
+    .table-schedule-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .table-due-flag {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--accent-warn);
+    }
+    .table-due-flag.overdue { color: var(--accent-danger); }
+
     .sprint-select-status {
-      padding: 5px 10px;
-      border-radius: var(--radius-pill);
+      width: 100%;
+      padding: 5px 8px;
+      border-radius: var(--radius-inner);
       border: 1px solid var(--border-hairline);
       background: var(--bg-subtle);
       color: var(--text-primary);
       font-size: 11.5px;
-      outline: none;
-      transition: var(--transition-tactile);
+      font-weight: 600;
+      cursor: pointer;
     }
 
-    .sprint-select-status:hover {
-      border-color: var(--accent-primary);
+    .empty-table-cell {
+      padding: 32px !important;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12.5px;
     }
 
-    /* DELIVERY ROADMAP (TIMELINE) VIEW */
+    .text-xs { font-size: 11.5px; }
+    .text-muted { color: var(--text-muted); }
+    .text-secondary { color: var(--text-secondary); }
+
+    /* GANTT CHART VIEW */
     .timeline-container {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
     }
 
     .timeline-sub-toolbar {
+      padding: 10px 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-hairline);
-      border-radius: var(--radius-card);
-      padding: 10px 18px;
-      box-shadow: var(--shadow-soft);
       flex-wrap: wrap;
     }
 
     .timeline-legend-group {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
       flex-wrap: wrap;
     }
 
     .timeline-legend-item {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 6px;
       font-size: 11.5px;
+      font-weight: 600;
       color: var(--text-secondary);
-      font-weight: 500;
     }
 
     .legend-color-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 9999px;
-      flex-shrink: 0;
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
     }
-
-    .dot-completed { background: var(--accent-primary); }
-    .dot-inprogress { background: var(--accent-warn); }
+    .dot-todo { background: var(--status-todo); }
+    .dot-inprogress { background: var(--accent-primary); }
+    .dot-review { background: var(--status-deployed); }
+    .dot-completed { background: var(--status-done); }
     .dot-blocked { background: var(--accent-danger); }
 
     .timeline-toolbar-actions {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
     .timeline-stat-pill {
       font-size: 11px;
-      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-subtle);
       padding: 4px 10px;
       border-radius: var(--radius-pill);
-      background: var(--bg-subtle);
       border: 1px solid var(--border-hairline);
-      color: var(--text-secondary);
-      white-space: nowrap;
-    }
-
-    .btn-timeline-opt {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 12px;
-      border-radius: var(--radius-pill);
-      font-size: 11.5px;
-      font-weight: 500;
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: var(--transition-tactile);
-      white-space: nowrap;
-    }
-
-    .btn-timeline-opt:hover:not(:disabled) {
-      color: var(--text-primary);
-      border-color: var(--border-strong);
-    }
-
-    .btn-blocked-toggle.active {
-      background: var(--accent-danger-tint);
-      color: var(--accent-danger);
-      border-color: rgba(200, 109, 81, 0.4);
-      font-weight: 600;
-    }
-
-    .filter-active-indicator {
-      font-size: 9px;
-      padding: 1px 6px;
-      border-radius: var(--radius-pill);
-      background: var(--accent-danger);
-      color: #ffffff;
-      text-transform: uppercase;
-      font-weight: 700;
     }
 
     .btn-conflict-autoshift {
-      background: var(--accent-warn-tint);
-      color: var(--accent-warn);
-      border-color: rgba(197, 155, 78, 0.4);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      background: var(--accent-primary);
+      color: #fff;
+      border: none;
+      font-size: 11.5px;
       font-weight: 600;
-    }
-
-    .btn-conflict-autoshift:hover:not(:disabled) {
-      background: var(--accent-warn);
-      color: #ffffff;
+      cursor: pointer;
     }
 
     .timeline-split-card {
-      display: flex;
       background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
       border-radius: var(--radius-card);
+      display: flex;
       overflow: hidden;
-      box-shadow: var(--shadow-soft);
+      box-shadow: var(--shadow-sm);
     }
 
     .timeline-left-column {
@@ -1318,234 +1467,206 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       display: flex;
       flex-direction: column;
       background: var(--bg-surface);
+      z-index: 3;
     }
 
     .timeline-col-header {
       height: 44px;
-      padding: 0 16px;
+      padding: 0 14px;
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: var(--bg-subtle);
-      border-bottom: 1px solid var(--border-hairline);
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.04em;
       color: var(--text-muted);
     }
 
-    .timeline-left-list {
-      display: flex;
-      flex-direction: column;
-    }
-
     .timeline-deliverable-item {
       height: 88px;
       min-height: 88px;
-      box-sizing: border-box;
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-bottom: 1px solid var(--border-hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 10px;
       cursor: pointer;
-      transition: var(--transition-tactile);
-      background: var(--bg-surface);
+      transition: background 0.14s ease;
     }
 
-    .timeline-deliverable-item:hover {
-      background: var(--bg-subtle);
-    }
-
+    .timeline-deliverable-item:hover,
     .timeline-deliverable-item.is-hovered {
       background: var(--bg-subtle);
-      box-shadow: inset 3px 0 0 var(--accent-primary);
     }
 
     .timeline-deliverable-item.is-connected {
       background: var(--accent-primary-tint);
-      box-shadow: inset 3px 0 0 var(--accent-primary);
-    }
-
-    .timeline-deliverable-item.is-blocked {
-      box-shadow: inset 3px 0 0 var(--accent-danger);
     }
 
     .deliverable-meta-wrap {
       display: flex;
       flex-direction: column;
-      gap: 3px;
-      overflow: hidden;
+      gap: 4px;
+      min-width: 0;
       flex: 1;
     }
 
     .deliverable-badges-row {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
+      flex-wrap: wrap;
     }
 
     .deliverable-key {
-      font-size: 11px;
+      font-size: 10.5px;
+      font-weight: 700;
       color: var(--text-muted);
-      font-weight: 500;
     }
 
     .timeline-status-badge {
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+    }
+    .timeline-status-badge[data-status="inprogress"] { background: var(--accent-primary-tint); color: var(--accent-primary); }
+    .timeline-status-badge[data-status="review"] { background: var(--status-deployed-bg); color: var(--status-deployed-text); }
+    .timeline-status-badge[data-status="completed"] { background: var(--status-done-bg); color: var(--status-done-text); }
+    .timeline-status-badge[data-status="blocked"] { background: var(--status-blocked-bg); color: var(--status-blocked-text); }
+
+    .deliverable-title {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .deliverable-sub-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .deliverable-dates {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .dep-pill {
       display: inline-flex;
       align-items: center;
+      gap: 3px;
       font-size: 9.5px;
       font-weight: 600;
       padding: 1px 6px;
       border-radius: var(--radius-pill);
-      white-space: nowrap;
-    }
-
-    .timeline-status-badge[data-status="completed"] {
-      background: var(--accent-primary-tint);
-      color: var(--accent-primary);
-    }
-
-    .timeline-status-badge[data-status="inprogress"] {
-      background: var(--accent-warn-tint);
-      color: var(--accent-warn);
-    }
-
-    .timeline-status-badge[data-status="blocked"] {
-      background: var(--accent-danger-tint);
-      color: var(--accent-danger);
-    }
-
-    .timeline-status-badge[data-status="todo"] {
       background: var(--bg-subtle);
-      color: var(--text-secondary);
+      color: var(--accent-primary);
       border: 1px solid var(--border-hairline);
-    }
-
-    .deliverable-title {
-      font-size: 12.5px;
-      font-weight: 500;
-      color: var(--text-primary);
-    }
-
-    .deliverable-dep-row {
-      display: flex;
-      align-items: center;
-    }
-
-    .deliverable-effort {
-      flex-shrink: 0;
-      padding-left: 4px;
     }
 
     .timeline-right-column {
       flex: 1;
-      min-width: 600px;
+      min-width: 0;
       overflow-x: auto;
+      position: relative;
       display: flex;
       flex-direction: column;
-      position: relative;
-      background: var(--bg-surface);
     }
 
     .timeline-weeks-header {
       height: 44px;
-      display: flex;
       background: var(--bg-subtle);
       border-bottom: 1px solid var(--border-hairline);
+      display: grid;
       position: relative;
+      min-width: 640px;
     }
 
     .timeline-week-head-col {
-      flex: 1;
-      min-width: 150px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding-top: 10px;
       border-right: 1px solid var(--border-hairline);
       font-size: 11px;
       font-weight: 600;
       color: var(--text-secondary);
-      text-align: center;
+      padding-top: 8px;
     }
+    .timeline-week-head-col:last-child { border-right: none; }
 
     .timeline-today-head-badge {
       position: absolute;
       top: 2px;
       transform: translateX(-50%);
-      z-index: 10;
+      z-index: 5;
       pointer-events: none;
     }
 
     .today-tag-text {
-      display: inline-flex;
-      align-items: center;
+      font-size: 9px;
+      font-weight: 700;
       padding: 1px 6px;
       border-radius: var(--radius-pill);
       background: var(--accent-primary);
-      color: #ffffff;
-      font-size: 9px;
-      font-weight: 700;
-      line-height: 1.2;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      box-shadow: var(--shadow-sm);
+      color: #fff;
+      letter-spacing: 0.04em;
     }
 
     .timeline-track-canvas {
       position: relative;
-      width: 100%;
-      min-width: 600px;
+      min-width: 640px;
     }
 
     .timeline-weeks-grid-bg {
       position: absolute;
       inset: 0;
-      display: flex;
+      display: grid;
       pointer-events: none;
-      z-index: 1;
     }
 
     .week-v-divider {
-      flex: 1;
-      min-width: 150px;
-      border-right: 1px solid var(--border-hairline);
+      border-right: 1px dashed var(--border-hairline);
       height: 100%;
     }
+    .week-v-divider:last-child { border-right: none; }
 
     .timeline-today-v-line {
       position: absolute;
       top: 0;
       bottom: 0;
       width: 0;
-      border-left: 2px dashed var(--accent-primary);
-      z-index: 3;
+      border-left: 1.5px dashed var(--accent-primary);
+      z-index: 2;
       pointer-events: none;
-      opacity: 0.8;
     }
 
     .timeline-hover-svg {
       position: absolute;
-      top: 0;
-      left: 0;
+      inset: 0;
       pointer-events: none;
-      z-index: 6;
+      z-index: 4;
     }
 
     .timeline-svg-connector {
       fill: none;
       stroke: var(--accent-primary);
-      stroke-width: 2.2;
-      opacity: 0.92;
+      stroke-width: 2;
+      stroke-dasharray: 4 3;
     }
 
     .timeline-svg-connector.connector-is-conflict {
       stroke: var(--accent-danger);
-      stroke-width: 2.5;
-      stroke-dasharray: 4 2;
     }
 
     .timeline-lane-row {
@@ -1553,285 +1674,144 @@ import { AiPromptModalComponent } from '../../components/ai-prompt-modal.compone
       left: 0;
       right: 0;
       height: 88px;
+      border-bottom: 1px solid var(--border-hairline);
+      display: flex;
+      align-items: center;
       cursor: pointer;
-      transition: background 0.15s ease;
-      z-index: 4;
     }
 
-    .timeline-lane-row:hover {
-      background: rgba(140, 133, 123, 0.04);
-    }
-
+    .timeline-lane-row:hover,
     .timeline-lane-row.is-hovered {
-      background: rgba(140, 133, 123, 0.06);
-    }
-
-    .timeline-lane-row.is-connected {
       background: var(--accent-primary-tint);
     }
 
-    .timeline-duration-pill {
+    .gantt-bar-outer {
       position: absolute;
-      top: 26px;
-      height: 36px;
-      border-radius: var(--radius-pill);
+      height: 38px;
+      border-radius: 6px;
+      background: var(--bg-subtle);
+      border: 1.5px solid var(--border-subtle);
+      overflow: hidden;
       display: flex;
       align-items: center;
-      padding: 0 12px;
-      gap: 8px;
+      z-index: 3;
       box-shadow: var(--shadow-sm);
-      transition: var(--transition-tactile);
-      z-index: 5;
+      min-width: 115px;
     }
 
-    .timeline-duration-pill:hover {
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
+    .gantt-bar-outer[data-status="inprogress"] { border-color: var(--accent-primary); }
+    .gantt-bar-outer[data-status="review"] { border-color: var(--status-deployed); }
+    .gantt-bar-outer[data-status="completed"] { border-color: var(--status-done); }
+    .gantt-bar-outer[data-status="blocked"] { border-color: var(--accent-danger); }
+
+    .gantt-bar-progress-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      background: var(--accent-primary-tint);
+      border-right: 2px solid var(--accent-primary);
+      transition: width 0.2s ease;
+      pointer-events: none;
     }
 
-    .timeline-duration-pill[data-status="completed"] {
-      background: rgba(92, 115, 98, 0.16);
-      border: 1px solid rgba(92, 115, 98, 0.45);
-      color: var(--accent-primary);
+    .gantt-bar-outer[data-status="completed"] .gantt-bar-progress-fill {
+      background: var(--status-done-bg);
+      border-right-color: var(--status-done);
     }
 
-    .timeline-duration-pill[data-status="inprogress"] {
-      background: rgba(197, 155, 78, 0.16);
-      border: 1px solid rgba(197, 155, 78, 0.45);
-      color: var(--accent-warn);
+    .gantt-bar-outer[data-status="review"] .gantt-bar-progress-fill {
+      background: var(--status-deployed-bg);
+      border-right-color: var(--status-deployed);
     }
 
-    .timeline-duration-pill[data-status="blocked"] {
-      background: rgba(200, 109, 81, 0.18);
-      border: 1px solid rgba(200, 109, 81, 0.55);
-      color: var(--accent-danger);
+    .gantt-bar-outer[data-status="blocked"] .gantt-bar-progress-fill {
+      background: var(--status-blocked-bg);
+      border-right-color: var(--accent-danger);
     }
 
-    .timeline-duration-pill[data-status="todo"] {
-      background: rgba(140, 133, 123, 0.14);
-      border: 1px solid rgba(140, 133, 123, 0.35);
-      color: var(--text-secondary);
-    }
-
-    .timeline-duration-pill.is-critical {
-      box-shadow: 0 0 0 2px var(--accent-warn), 0 2px 8px rgba(197, 155, 78, 0.35);
+    .gantt-bar-content {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      white-space: nowrap;
     }
 
     .timeline-bar-avatar-stack {
       display: flex;
       align-items: center;
-      margin-right: 2px;
     }
 
     .bar-avatar-dot {
-      width: 18px;
-      height: 18px;
-      border-radius: 9999px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 8px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 8.5px;
       font-weight: 700;
-      color: #ffffff;
-      border: 1.5px solid var(--bg-surface);
-      margin-left: -5px;
-      flex-shrink: 0;
-    }
-
-    .bar-avatar-dot:first-child {
-      margin-left: 0;
-    }
-
-    .timeline-bar-label-group {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      overflow: hidden;
-    }
-
-    .timeline-bar-label-text {
-      font-size: 11px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* SHARED MODALS */
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(20, 19, 18, 0.45);
-      backdrop-filter: blur(6px);
-      z-index: 95;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      border: 1.5px solid var(--bg-surface);
+      margin-left: -4px;
+    }
+    .bar-avatar-dot:first-child { margin-left: 0; }
+
+    .gantt-bar-pct {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-primary);
     }
 
-    .modal-card {
-      width: 100%;
-      max-width: 540px;
+    .gantt-variance-tag {
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-surface);
+      color: var(--status-done-text);
+      border: 1px solid var(--border-hairline);
+    }
+
+    .gantt-variance-tag.is-slipped {
+      background: var(--status-blocked-bg);
+      color: var(--status-blocked-text);
+      border-color: var(--accent-danger);
+    }
+
+    .empty-gantt-card {
+      padding: 48px 24px;
       background: var(--bg-surface);
       border: 1px solid var(--border-hairline);
       border-radius: var(--radius-card);
-      box-shadow: var(--shadow-float);
+      text-align: center;
+      color: var(--text-secondary);
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-      max-height: 90vh;
-    }
-
-    .modal-head {
-      display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 18px 24px;
-      border-bottom: 1px solid var(--border-hairline);
+      gap: 8px;
     }
 
-    .modal-head h3 { font-size: 18px; font-weight: 500; margin: 0; }
-    .btn-close {
-      background: transparent;
-      border: none;
-      font-size: 18px;
-      cursor: pointer;
+    .empty-gantt-card i {
+      font-size: 32px;
       color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      transition: var(--transition-tactile);
-    }
-    .btn-close:hover { color: var(--text-primary); }
-
-    .modal-body {
-      padding: 22px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      overflow-y: auto;
     }
 
-    .form-group { display: flex; flex-direction: column; gap: 5px; }
-    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-    .form-label { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
-    .form-label.required::after { content: ' *'; color: var(--accent-danger); }
-
-    .form-input, .form-select, .form-textarea {
-      padding: 8px 12px;
-      border-radius: var(--radius-inner);
-      border: 1px solid var(--border-hairline);
-      background: var(--bg-subtle);
+    .empty-gantt-card h4 {
+      margin: 0;
+      font-size: 15px;
       color: var(--text-primary);
+    }
+
+    .empty-gantt-card p {
+      margin: 0;
       font-size: 12.5px;
-      outline: none;
-      transition: var(--transition-tactile);
-    }
-
-    .form-input:focus, .form-select:focus, .form-textarea:focus {
-      background: var(--bg-surface);
-      border-color: var(--accent-primary);
-      box-shadow: 0 0 0 2px var(--accent-primary-tint);
-    }
-
-    .modal-assignee-pool {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
-    .pool-chip-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: var(--radius-pill);
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-hairline);
-      color: var(--text-secondary);
-      font-size: 11px;
-      cursor: pointer;
-      transition: var(--transition-tactile);
-    }
-
-    .pool-chip-btn:hover {
-      background: var(--bg-surface);
-      color: var(--text-primary);
-    }
-
-    .pool-chip-btn.selected {
-      background: var(--accent-primary-tint);
-      border-color: rgba(92, 115, 98, 0.35);
-      color: var(--accent-primary);
-      font-weight: 600;
-    }
-
-    .chip-avatar-sm {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      color: #ffffff;
-      font-size: 8.5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-    }
-
-    .capacity-mini-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-    }
-    .capacity-mini-dot[data-status="OPTIMAL"] { background: var(--status-done); }
-    .capacity-mini-dot[data-status="NEAR_CAPACITY"] { background: var(--accent-warn); }
-    .capacity-mini-dot[data-status="OVER_BUDGET"] { background: var(--accent-danger); }
-
-    .modal-actions {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 10px;
-      padding: 16px 24px;
-      border-top: 1px solid var(--border-hairline);
-      background: var(--bg-subtle);
-    }
-
-    .btn-cancel {
-      padding: 8px 16px;
-      border-radius: var(--radius-pill);
-      background: transparent;
-      border: 1px solid var(--border-hairline);
-      color: var(--text-secondary);
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: var(--transition-tactile);
-    }
-
-    .btn-cancel:hover {
-      background: var(--bg-surface);
-      color: var(--text-primary);
-    }
-
-    .btn-submit {
-      padding: 8px 18px;
-      border-radius: var(--radius-pill);
-      background: var(--accent-primary);
-      border: none;
-      color: #ffffff;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: var(--shadow-sm);
-      transition: var(--transition-tactile);
-    }
-
-    .btn-submit:hover:not(:disabled) {
-      background: var(--accent-primary-hover);
-      transform: translateY(-1px);
+      color: var(--text-muted);
     }
   `]
 })
@@ -1844,83 +1824,121 @@ export class WorkspaceComponent {
     description: string;
     accentColor: string;
   }> = [
-    { status: 'TODO', title: 'To Do', description: 'Backlog ready for sprint intake', accentColor: 'var(--status-todo)' },
-    { status: 'IN_PROGRESS', title: 'In Progress', description: 'Actively in development', accentColor: 'var(--status-inprogress)' },
-    { status: 'DEPLOYED', title: 'Deployed to Server', description: 'Staged on GPU/Cloud, ready for verification', accentColor: 'var(--status-deployed)' },
-    { status: 'DONE', title: 'Done', description: 'Verified & closed', accentColor: 'var(--status-done)' }
+    { status: 'TODO', title: 'Yet to Start', description: 'Queued deliverables', accentColor: 'var(--status-todo)' },
+    { status: 'IN_PROGRESS', title: 'In Progress', description: 'Actively in execution', accentColor: 'var(--accent-primary)' },
+    { status: 'DEPLOYED', title: 'Under Review', description: 'Awaiting Lead/QA sign-off', accentColor: 'var(--status-deployed)' },
+    { status: 'DONE', title: 'Completed', description: 'Approved & closed', accentColor: 'var(--status-done)' }
   ];
 
   readonly dropListIds: string[] = ['list-TODO', 'list-IN_PROGRESS', 'list-DEPLOYED', 'list-DONE'];
-
-  // Delivery Roadmap (Timeline) Signals & Helpers
   readonly hoveredTaskId = signal<string | null>(null);
-  readonly timelineWeeks = [
-    { id: 'w1', label: 'Week 1 · Nov 10 - Nov 16' },
-    { id: 'w2', label: 'Week 2 · Nov 17 - Nov 23' },
-    { id: 'w3', label: 'Week 3 · Nov 24 - Nov 30' },
-    { id: 'w4', label: 'Week 4 · Dec 01 - Dec 07' }
-  ];
-  readonly timelineStartTs = new Date('2026-11-10T00:00:00Z').getTime();
-  readonly todayPercent = 42.86; // Nov 22, 2026 (Day 12 of 28 days)
 
-  // Modals
-  readonly isNewTaskModalOpen = signal<boolean>(false);
-  readonly isSmartImportModalOpen = signal<boolean>(false);
-  readonly isAiPromptModalOpen = signal<boolean>(false);
+  // Dynamic Weekly Gantt Window based on visible tasks + Today
+  readonly ganttWindow = computed(() => {
+    const tasks = this.store.filteredTasks();
+    const today = todayIsoDate();
 
-  // New Task Form
-  newTaskTitle = '';
-  newTaskDescription = '';
-  newTaskProjectId = '';
-  newTaskAssigneeId = '';
-  newTaskAssigneeIds: string[] = ['tm-1'];
-  newTaskPriority: TaskPriority = 'MEDIUM';
-  newTaskEffort = 3;
-  newTaskDueDate = new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0];
-  newTaskInitialSubtasks = '';
+    let minIso = today;
+    let maxIso = addCalendarDays(today, 21);
 
-  toggleNewTaskAssignee(memberId: string): void {
-    if (this.newTaskAssigneeIds.includes(memberId)) {
-      if (this.newTaskAssigneeIds.length > 1) {
-        this.newTaskAssigneeIds = this.newTaskAssigneeIds.filter(id => id !== memberId);
-      }
-    } else {
-      this.newTaskAssigneeIds = [...this.newTaskAssigneeIds, memberId];
+    for (const t of tasks) {
+      if (t.startDate && t.startDate < minIso) minIso = t.startDate;
+      if (t.dueDate && t.dueDate > maxIso) maxIso = t.dueDate;
     }
-    if (!this.newTaskAssigneeIds.includes(this.newTaskAssigneeId)) {
-      this.newTaskAssigneeId = this.newTaskAssigneeIds[0];
+
+    // Snap minIso back by 2 days for clean left padding and build 7-day weekly columns (min 4 weeks)
+    const startAnchor = addCalendarDays(minIso, -2);
+    const rawSpanDays = Math.max(28, diffCalendarDays(startAnchor, maxIso) + 5);
+    const numWeeks = Math.min(12, Math.max(4, Math.ceil(rawSpanDays / 7)));
+    const totalDays = numWeeks * 7;
+
+    const weeks: GanttWeekColumn[] = [];
+    for (let i = 0; i < numWeeks; i++) {
+      const wStart = addCalendarDays(startAnchor, i * 7);
+      const wEnd = addCalendarDays(wStart, 6);
+      weeks.push({
+        id: `wk-${i + 1}`,
+        label: `Week ${i + 1} · ${formatShortDate(wStart)} – ${formatShortDate(wEnd)}`,
+        startIso: wStart,
+        endIso: wEnd
+      });
     }
-  }
 
-  isNewTaskAssignee(memberId: string): boolean {
-    return this.newTaskAssigneeIds.includes(memberId);
-  }
+    const todayOffset = diffCalendarDays(startAnchor, today);
+    const todayPct =
+      todayOffset >= 0 && todayOffset <= totalDays
+        ? Number(((todayOffset / totalDays) * 100).toFixed(2))
+        : null;
 
-  getTaskAssigneesSummary(task: Task): string {
-    const members = this.store.getTaskMembers(task);
-    if (members.length === 0) return 'Unassigned';
-    if (members.length === 1) return members[0].name;
-    return `${members[0].name} +${members.length - 1}`;
-  }
+    return {
+      startIso: startAnchor,
+      totalDays,
+      weeks,
+      todayPct
+    };
+  });
 
   switchView(view: MethodologyView): void {
     this.store.currentView.set(view);
   }
 
-  isCriticalPath(taskId: string): boolean {
-    return this.store.ganttScheduleMetrics().criticalPathTaskIds.has(taskId);
+  toggleDueSoonFilter(): void {
+    this.store.filterDueSoon.update(v => !v);
+  }
+
+  toggleBlockedFilter(): void {
+    this.store.filterBlockedOnly.update(v => !v);
+  }
+
+  hasActiveFilters(): boolean {
+    return (
+      this.store.filterDueSoon() ||
+      this.store.filterBlockedOnly() ||
+      this.store.filterPriority() !== 'ALL' ||
+      !!this.store.searchQuery().trim()
+    );
+  }
+
+  clearAllFilters(): void {
+    this.store.filterDueSoon.set(false);
+    this.store.filterBlockedOnly.set(false);
+    this.store.filterDeployedOnly.set(false);
+    this.store.filterPriority.set('ALL');
+    this.store.searchQuery.set('');
   }
 
   getProject(projectId: string): Project | undefined {
     return this.store.projectMap().get(projectId);
   }
 
-  getMember(assigneeId: string): TeamMember {
-    return this.store.assigneeMap().get(assigneeId) || this.store.teamMembers()[0];
-  }
-
   getCompletedSubtasks(task: Task): number {
     return (task.subtasks || []).filter((st: Subtask) => st.completed).length;
+  }
+
+  getTaskAssigneesSummary(task: Task): string {
+    const members = this.store.getTaskMembers(task);
+    if (members.length === 0) return 'Unassigned';
+    if (members.length === 1) return members[0].name.split(' ')[0];
+    return `${members[0].name.split(' ')[0]} +${members.length - 1}`;
+  }
+
+  getTaskAssigneesFullNames(task: Task): string {
+    const members = this.store.getTaskMembers(task);
+    return members.length > 0 ? members.map(m => `${m.name} (${m.role})`).join(', ') : 'Unassigned';
+  }
+
+  formatDateShort(iso: string): string {
+    return formatShortDate(iso);
+  }
+
+  getDueLabel(task: Task): string {
+    if (!task.dueDate) return 'No Date';
+    if (task.status === 'DONE') return formatShortDate(task.dueDate);
+    const days = this.store.getDaysUntilDue(task);
+    if (days < 0) return `Overdue ${Math.abs(days)}d`;
+    if (days === 0) return 'Due Today';
+    if (days <= 3) return `Due in ${days}d`;
+    return formatShortDate(task.dueDate);
   }
 
   openTask(taskId: string): void {
@@ -1929,107 +1947,19 @@ export class WorkspaceComponent {
 
   onTaskDrop(event: CdkDragDrop<Task[], Task[], Task>): void {
     if (!this.store.canEditTasks()) return;
-
     const draggedTask = event.item.data as Task;
-    if (!this.store.canEditTask(draggedTask)) {
-      console.warn('Ownership lock: Cannot move teammate task.');
-      return;
-    }
+    if (!this.store.canEditTask(draggedTask)) return;
 
     if (event.previousContainer === event.container) {
       const status = event.container.id.replace('list-', '') as TaskStatus;
       this.store.reorderTasksInColumn(status, event.previousIndex, event.currentIndex);
     } else {
       const targetStatus = event.container.id.replace('list-', '') as TaskStatus;
-
       if (targetStatus === 'DONE' && !this.store.canSignOffDone()) {
-        console.warn('RBAC: Only LEAD or ADMIN can mark tasks DONE.');
         return;
       }
-
       this.store.updateTaskStatus(draggedTask.id, targetStatus);
     }
-  }
-
-  openNewTaskModal(): void {
-    if (!this.store.canCreateTasks()) return;
-    this.newTaskTitle = '';
-    this.newTaskDescription = '';
-    const activeP = this.store.selectedProjectId();
-    const visibleProjects = this.store.visibleProjects();
-    this.newTaskProjectId = (activeP !== 'ALL' && visibleProjects.some(p => p.id === activeP))
-      ? activeP
-      : (visibleProjects[0]?.id || 'proj-1');
-    const curId = this.store.currentUserId();
-    this.newTaskAssigneeId = curId;
-    this.newTaskAssigneeIds = [curId];
-    this.newTaskPriority = 'MEDIUM';
-    this.newTaskEffort = 3;
-    this.newTaskDueDate = new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0];
-    this.newTaskInitialSubtasks = '';
-    this.isNewTaskModalOpen.set(true);
-  }
-
-  closeNewTaskModal(): void {
-    this.isNewTaskModalOpen.set(false);
-  }
-
-  submitNewTask(): void {
-    if (!this.newTaskTitle.trim() || !this.store.canCreateTasks()) return;
-
-    const subtasks: Subtask[] = this.newTaskInitialSubtasks
-      .split('\n')
-      .map((l: string) => l.trim())
-      .filter((l: string) => l.length > 0)
-      .map((title: string, idx: number) => ({
-        id: `st-init-${Date.now()}-${idx}`,
-        taskId: '',
-        title,
-        completed: false,
-        createdAt: new Date().toISOString().split('T')[0]
-      }));
-
-    const assigneeIds = this.newTaskAssigneeIds.length > 0 ? this.newTaskAssigneeIds : [this.newTaskAssigneeId || 'tm-1'];
-
-    this.store.createTask({
-      projectId: this.newTaskProjectId,
-      title: this.newTaskTitle.trim(),
-      description: this.newTaskDescription.trim(),
-      assigneeIds,
-      assigneeId: assigneeIds[0],
-      priority: this.newTaskPriority,
-      phase: 'Phase 2: Serving Engine',
-      sprint: 'Sprint 24.3',
-      effortPoints: Number(this.newTaskEffort) || 3,
-      startDate: new Date().toISOString().split('T')[0],
-      dueDate: this.newTaskDueDate,
-      baselineDueDate: this.newTaskDueDate,
-      reworkCount: 0,
-      slipReason: null,
-      subtasks
-    });
-
-    this.closeNewTaskModal();
-  }
-
-  openSmartImport(): void {
-    this.isSmartImportModalOpen.set(true);
-  }
-
-  closeSmartImport(): void {
-    this.isSmartImportModalOpen.set(false);
-  }
-
-  openAiPromptModal(): void {
-    this.isAiPromptModalOpen.set(true);
-  }
-
-  closeAiPromptModal(): void {
-    this.isAiPromptModalOpen.set(false);
-  }
-
-  toggleBlockedFilter(): void {
-    this.store.filterBlockedOnly.update(v => !v);
   }
 
   onTaskHover(taskId: string | null): void {
@@ -2048,35 +1978,32 @@ export class WorkspaceComponent {
     return false;
   }
 
-  getTimelineStatusKey(task: Task): 'completed' | 'inprogress' | 'blocked' | 'todo' {
+  getGanttStatusKey(task: Task): 'todo' | 'inprogress' | 'review' | 'completed' | 'blocked' {
     if (task.blocked) return 'blocked';
-    if (task.status === 'DONE' || task.status === 'DEPLOYED') return 'completed';
+    if (task.status === 'DONE') return 'completed';
+    if (task.status === 'DEPLOYED') return 'review';
     if (task.status === 'IN_PROGRESS') return 'inprogress';
     return 'todo';
   }
 
-  getTimelineStatusLabel(task: Task): string {
-    if (task.blocked) return 'Blocked';
-    if (task.status === 'DONE') return 'Completed';
-    if (task.status === 'DEPLOYED') return 'Deployed';
-    if (task.status === 'IN_PROGRESS') return 'In Progress';
-    return 'To Do';
+  getScheduleVarianceDays(task: Task): number {
+    const baseline = task.baselineDueDate || task.dueDate;
+    return Math.max(0, diffCalendarDays(baseline, task.dueDate));
   }
 
-  getTimelineBarLeftPercent(task: Task): number {
-    const startTs = new Date(task.startDate || '2026-11-10').getTime();
-    const diffDays = Math.max(0, (startTs - this.timelineStartTs) / 86400000);
-    const leftPct = (diffDays / 28) * 100;
-    return Math.max(1, Math.min(86, Number(leftPct.toFixed(2))));
+  getGanttBarLeftPercent(task: Task): number {
+    const win = this.ganttWindow();
+    const offsetDays = Math.max(0, diffCalendarDays(win.startIso, task.startDate));
+    const pct = (offsetDays / win.totalDays) * 100;
+    return Math.max(0.5, Math.min(84, Number(pct.toFixed(2))));
   }
 
-  getTimelineBarWidthPercent(task: Task): number {
-    const startTs = new Date(task.startDate || '2026-11-10').getTime();
-    const dueTs = new Date(task.dueDate || '2026-11-20').getTime();
-    const durDays = Math.max(2, (dueTs - startTs) / 86400000);
-    const widthPct = (durDays / 28) * 100;
-    const leftPct = this.getTimelineBarLeftPercent(task);
-    return Math.max(10, Math.min(98 - leftPct, Number(widthPct.toFixed(2))));
+  getGanttBarWidthPercent(task: Task): number {
+    const win = this.ganttWindow();
+    const spanDays = Math.max(1.5, diffCalendarDays(task.startDate, task.dueDate) + 1);
+    const widthPct = (spanDays / win.totalDays) * 100;
+    const leftPct = this.getGanttBarLeftPercent(task);
+    return Math.max(13, Math.min(99 - leftPct, Number(widthPct.toFixed(2))));
   }
 
   readonly activeConnectors = computed(() => {
@@ -2100,14 +2027,14 @@ export class WorkspaceComponent {
         const upstream = taskMap.get(upstreamId);
         const upIdx = taskIndexMap.get(upstreamId);
         if (upstream && upIdx !== undefined) {
-          const x1 = (this.getTimelineBarLeftPercent(upstream) + this.getTimelineBarWidthPercent(upstream)) * 10;
+          const x1 = (this.getGanttBarLeftPercent(upstream) + this.getGanttBarWidthPercent(upstream)) * 10;
           const y1 = upIdx * 88 + 44;
-          const x2 = this.getTimelineBarLeftPercent(downstream) * 10;
+          const x2 = this.getGanttBarLeftPercent(downstream) * 10;
           const y2 = downIdx * 88 + 44;
 
           const dx = Math.max(25, Math.abs(x2 - x1) * 0.4);
           const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
-          const isConflict = upstream.dueDate > downstream.startDate || downstream.blocked;
+          const isConflict = upstream.dueDate >= downstream.startDate || downstream.blocked;
 
           connectors.push({
             id: `${upstream.id}->${downstream.id}`,
